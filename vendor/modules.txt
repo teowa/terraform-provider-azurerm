@@ -390,7 +390,7 @@ github.com/sergi/go-diff/diffmatchpatch
 # github.com/shopspring/decimal v1.2.0
 ## explicit; go 1.13
 github.com/shopspring/decimal
-# github.com/tombuildsstuff/giovanni v0.18.0
+# github.com/tombuildsstuff/giovanni v0.18.1-0.20220418155356-230a2cd682a5
 ## explicit; go 1.13
 github.com/tombuildsstuff/giovanni/storage/2019-12-12/blob/accounts
 github.com/tombuildsstuff/giovanni/storage/2019-12-12/blob/blobs
