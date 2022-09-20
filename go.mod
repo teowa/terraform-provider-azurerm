@@ -1,7 +1,10 @@
 module github.com/hashicorp/terraform-provider-azurerm
 
+replace github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network => /home/wangta/go/src/github.com/azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network
+
 require (
 	github.com/Azure/azure-sdk-for-go v66.0.0+incompatible
+	github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network v0.0.0-00010101000000-000000000000
 	github.com/Azure/go-autorest/autorest v0.11.27
 	github.com/Azure/go-autorest/autorest/date v0.3.0
 	github.com/Azure/go-autorest/autorest/to v0.4.0

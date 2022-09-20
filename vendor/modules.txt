@@ -83,6 +83,9 @@ github.com/Azure/azure-sdk-for-go/services/timeseriesinsights/mgmt/2020-05-15/ti
 github.com/Azure/azure-sdk-for-go/services/web/mgmt/2021-02-01/web
 github.com/Azure/azure-sdk-for-go/services/webpubsub/mgmt/2021-10-01/webpubsub
 github.com/Azure/azure-sdk-for-go/version
+# github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network v0.0.0-00010101000000-000000000000 => /home/wangta/go/src/github.com/azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network
+## explicit; go 1.18
+github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network
 # github.com/Azure/go-autorest v14.2.0+incompatible
 ## explicit
 github.com/Azure/go-autorest
@@ -746,3 +749,4 @@ google.golang.org/protobuf/types/known/timestamppb
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
+# github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network => /home/wangta/go/src/github.com/azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network
