@@ -3,6 +3,8 @@ package network
 import (
 	"context"
 	"fmt"
+	"time"
+
 	virtualNetworkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
@@ -17,7 +19,6 @@ import (
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
-	"time"
 )
 
 type VirtualNetworkManagerModel struct {
@@ -123,16 +124,14 @@ func (r VirtualNetworkManagerResource) Attributes() map[string]*pluginsdk.Schema
 						Type:     pluginsdk.TypeList,
 						Computed: true,
 						Elem: &pluginsdk.Schema{
-							Type:     pluginsdk.TypeString,
-							Computed: true,
+							Type: pluginsdk.TypeString,
 						},
 					},
 					"management_groups": {
 						Type:     pluginsdk.TypeList,
 						Computed: true,
 						Elem: &pluginsdk.Schema{
-							Type:     pluginsdk.TypeString,
-							Computed: true,
+							Type: pluginsdk.TypeString,
 						},
 					},
 				},
