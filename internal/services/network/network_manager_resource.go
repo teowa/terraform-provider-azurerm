@@ -21,7 +21,7 @@ import (
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
 )
 
-type VirtualNetworkManagerModel struct {
+type NetworkManagerModel struct {
 	CrossTenantScopes []CrossTenantScope     `tfschema:"cross_tenant_scopes"`
 	Scope             []Scope                `tfschema:"scope"`
 	ScopeAccess       []string               `tfschema:"scope_access"`
@@ -43,9 +43,21 @@ type CrossTenantScope struct {
 	Subscriptions    []string `tfschema:"subscriptions"`
 }
 
-type VirtualNetworkManagerResource struct{}
+type NetworkManagerResource struct{}
 
-func (r VirtualNetworkManagerResource) Arguments() map[string]*pluginsdk.Schema {
+func (r NetworkManagerResource) ResourceType() string {
+	return "azurerm_network_manager"
+}
+
+func (r NetworkManagerResource) IDValidationFunc() pluginsdk.SchemaValidateFunc {
+	return validate.VirtualNetworkManagerID
+}
+
+func (r NetworkManagerResource) ModelObject() interface{} {
+	return &NetworkManagerModel{}
+}
+
+func (r NetworkManagerResource) Arguments() map[string]*pluginsdk.Schema {
 	return map[string]*pluginsdk.Schema{
 		"name": {
 			Type:         pluginsdk.TypeString,
@@ -109,7 +121,7 @@ func (r VirtualNetworkManagerResource) Arguments() map[string]*pluginsdk.Schema 
 	}
 }
 
-func (r VirtualNetworkManagerResource) Attributes() map[string]*pluginsdk.Schema {
+func (r NetworkManagerResource) Attributes() map[string]*pluginsdk.Schema {
 	return map[string]*pluginsdk.Schema{
 		"cross_tenant_scopes": {
 			Type:     pluginsdk.TypeList,
@@ -140,28 +152,16 @@ func (r VirtualNetworkManagerResource) Attributes() map[string]*pluginsdk.Schema
 	}
 }
 
-func (r VirtualNetworkManagerResource) ResourceType() string {
-	return "azurerm_virtual_network_manager"
-}
-
-func (r VirtualNetworkManagerResource) IDValidationFunc() pluginsdk.SchemaValidateFunc {
-	return validate.VirtualNetworkManagerID
-}
-
-func (r VirtualNetworkManagerResource) ModelObject() interface{} {
-	return &VirtualNetworkManagerModel{}
-}
-
-func (r VirtualNetworkManagerResource) Create() sdk.ResourceFunc {
+func (r NetworkManagerResource) Create() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
 			metadata.Logger.Info("Decoding state..")
-			var state VirtualNetworkManagerModel
+			var state NetworkManagerModel
 			if err := metadata.Decode(&state); err != nil {
 				return err
 			}
 
-			client := metadata.Client.Network.VirtualNetworkManagersClient
+			client := metadata.Client.Network.ManagersClient
 			subscriptionId := metadata.Client.Account.SubscriptionId
 
 			id := parse.NewVirtualNetworkManagerID(subscriptionId, state.ResourceGroupName, state.Name)
@@ -197,10 +197,10 @@ func (r VirtualNetworkManagerResource) Create() sdk.ResourceFunc {
 	}
 }
 
-func (r VirtualNetworkManagerResource) Read() sdk.ResourceFunc {
+func (r NetworkManagerResource) Read() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.Network.VirtualNetworkManagersClient
+			client := metadata.Client.Network.ManagersClient
 			id, err := parse.VirtualNetworkManagerID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
@@ -227,7 +227,7 @@ func (r VirtualNetworkManagerResource) Read() sdk.ResourceFunc {
 				scopeAccess = flattenVirtualNetworkManagerScopeAccess(resp.NetworkManagerScopeAccesses)
 			}
 
-			return metadata.Encode(&VirtualNetworkManagerModel{
+			return metadata.Encode(&NetworkManagerModel{
 				Description:       description,
 				Location:          location.NormalizeNilable(resp.Location),
 				Name:              id.NetworkManagerName,
@@ -241,7 +241,7 @@ func (r VirtualNetworkManagerResource) Read() sdk.ResourceFunc {
 	}
 }
 
-func (r VirtualNetworkManagerResource) Update() sdk.ResourceFunc {
+func (r NetworkManagerResource) Update() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
 			id, err := parse.VirtualNetworkManagerID(metadata.ResourceData.Id())
@@ -250,7 +250,7 @@ func (r VirtualNetworkManagerResource) Update() sdk.ResourceFunc {
 			}
 
 			metadata.Logger.Infof("updating %s..", *id)
-			client := metadata.Client.Network.VirtualNetworkManagersClient
+			client := metadata.Client.Network.ManagersClient
 			existing, err := client.Get(ctx, id.ResourceGroup, id.NetworkManagerName)
 			if err != nil {
 				return fmt.Errorf("retrieving %s: %+v", *id, err)
@@ -258,7 +258,7 @@ func (r VirtualNetworkManagerResource) Update() sdk.ResourceFunc {
 			if existing.ManagerProperties == nil {
 				return fmt.Errorf("unexpected null properties of %s", *id)
 			}
-			var state VirtualNetworkManagerModel
+			var state NetworkManagerModel
 			if err := metadata.Decode(&state); err != nil {
 				return err
 			}
@@ -289,10 +289,10 @@ func (r VirtualNetworkManagerResource) Update() sdk.ResourceFunc {
 	}
 }
 
-func (r VirtualNetworkManagerResource) Delete() sdk.ResourceFunc {
+func (r NetworkManagerResource) Delete() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.Network.VirtualNetworkManagersClient
+			client := metadata.Client.Network.ManagersClient
 			id, err := parse.VirtualNetworkManagerID(metadata.ResourceData.Id())
 			if err != nil {
 				return err

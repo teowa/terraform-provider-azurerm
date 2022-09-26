@@ -10,353 +10,353 @@ package network
 // Changes may cause incorrect behavior and will be lost if the code is regenerated.
 
 import (
-    "context"
-    "github.com/Azure/go-autorest/autorest"
-    "github.com/Azure/go-autorest/autorest/azure"
-    "github.com/Azure/go-autorest/tracing"
-    "net/http"
+	"context"
+	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/go-autorest/autorest/azure"
+	"github.com/Azure/go-autorest/tracing"
+	"net/http"
 )
 
 const (
-// DefaultBaseURI is the default URI used for the service Network
-DefaultBaseURI = "https://management.azure.com")
+	// DefaultBaseURI is the default URI used for the service Network
+	DefaultBaseURI = "https://management.azure.com"
+)
 
 // BaseClient is the base client for Network.
 type BaseClient struct {
-    autorest.Client
-    BaseURI string
-            SubscriptionID string
+	autorest.Client
+	BaseURI        string
+	SubscriptionID string
 }
 
 // New creates an instance of the BaseClient client.
-func New(subscriptionID string)BaseClient {
-    return NewWithBaseURI(DefaultBaseURI, subscriptionID)
+func New(subscriptionID string) BaseClient {
+	return NewWithBaseURI(DefaultBaseURI, subscriptionID)
 }
 
 // NewWithBaseURI creates an instance of the BaseClient client using a custom endpoint.  Use this when interacting with
 // an Azure cloud that uses a non-standard base URI (sovereign clouds, Azure stack).
 func NewWithBaseURI(baseURI string, subscriptionID string) BaseClient {
-    return BaseClient{
-        Client: autorest.NewClientWithUserAgent(UserAgent()),
-        BaseURI: baseURI,
-                SubscriptionID: subscriptionID,
-    }
+	return BaseClient{
+		Client:         autorest.NewClientWithUserAgent(UserAgent()),
+		BaseURI:        baseURI,
+		SubscriptionID: subscriptionID,
+	}
 }
 
-    // ListActiveConnectivityConfigurations lists active connectivity configurations in a network manager.
-        // Parameters:
-            // parameters - active Configuration Parameter.
-            // resourceGroupName - the name of the resource group.
-            // networkManagerName - the name of the network manager.
-    func (client BaseClient) ListActiveConnectivityConfigurations(ctx context.Context, parameters ActiveConfigurationParameter, resourceGroupName string, networkManagerName string) (result ActiveConnectivityConfigurationsListResult, err error) {
-        if tracing.IsEnabled() {
-            ctx = tracing.StartSpan(ctx, fqdn + "/BaseClient.ListActiveConnectivityConfigurations")
-            defer func() {
-                sc := -1
-            if result.Response.Response != nil {
-            sc = result.Response.Response.StatusCode
-            }
-                tracing.EndSpan(ctx, sc, err)
-            }()
-        }
-        req, err := client.ListActiveConnectivityConfigurationsPreparer(ctx, parameters, resourceGroupName, networkManagerName)
-        if err != nil {
-        err = autorest.NewErrorWithError(err, "network.BaseClient", "ListActiveConnectivityConfigurations", nil , "Failure preparing request")
-        return
-        }
+// ListActiveConnectivityConfigurations lists active connectivity configurations in a network manager.
+// Parameters:
+// parameters - active Configuration Parameter.
+// resourceGroupName - the name of the resource group.
+// networkManagerName - the name of the network manager.
+func (client BaseClient) ListActiveConnectivityConfigurations(ctx context.Context, parameters ActiveConfigurationParameter, resourceGroupName string, networkManagerName string) (result ActiveConnectivityConfigurationsListResult, err error) {
+	if tracing.IsEnabled() {
+		ctx = tracing.StartSpan(ctx, fqdn+"/BaseClient.ListActiveConnectivityConfigurations")
+		defer func() {
+			sc := -1
+			if result.Response.Response != nil {
+				sc = result.Response.Response.StatusCode
+			}
+			tracing.EndSpan(ctx, sc, err)
+		}()
+	}
+	req, err := client.ListActiveConnectivityConfigurationsPreparer(ctx, parameters, resourceGroupName, networkManagerName)
+	if err != nil {
+		err = autorest.NewErrorWithError(err, "network.BaseClient", "ListActiveConnectivityConfigurations", nil, "Failure preparing request")
+		return
+	}
 
-            resp, err := client.ListActiveConnectivityConfigurationsSender(req)
-            if err != nil {
-            result.Response = autorest.Response{Response: resp}
-            err = autorest.NewErrorWithError(err, "network.BaseClient", "ListActiveConnectivityConfigurations", resp, "Failure sending request")
-            return
-            }
+	resp, err := client.ListActiveConnectivityConfigurationsSender(req)
+	if err != nil {
+		result.Response = autorest.Response{Response: resp}
+		err = autorest.NewErrorWithError(err, "network.BaseClient", "ListActiveConnectivityConfigurations", resp, "Failure sending request")
+		return
+	}
 
-            result, err = client.ListActiveConnectivityConfigurationsResponder(resp)
-            if err != nil {
-            err = autorest.NewErrorWithError(err, "network.BaseClient", "ListActiveConnectivityConfigurations", resp, "Failure responding to request")
-            return
-            }
+	result, err = client.ListActiveConnectivityConfigurationsResponder(resp)
+	if err != nil {
+		err = autorest.NewErrorWithError(err, "network.BaseClient", "ListActiveConnectivityConfigurations", resp, "Failure responding to request")
+		return
+	}
 
-        return
-    }
+	return
+}
 
-        // ListActiveConnectivityConfigurationsPreparer prepares the ListActiveConnectivityConfigurations request.
-        func (client BaseClient) ListActiveConnectivityConfigurationsPreparer(ctx context.Context, parameters ActiveConfigurationParameter, resourceGroupName string, networkManagerName string) (*http.Request, error) {
-            pathParameters := map[string]interface{} {
-            "networkManagerName": autorest.Encode("path",networkManagerName),
-            "resourceGroupName": autorest.Encode("path",resourceGroupName),
-            "subscriptionId": autorest.Encode("path",client.SubscriptionID),
-            }
+// ListActiveConnectivityConfigurationsPreparer prepares the ListActiveConnectivityConfigurations request.
+func (client BaseClient) ListActiveConnectivityConfigurationsPreparer(ctx context.Context, parameters ActiveConfigurationParameter, resourceGroupName string, networkManagerName string) (*http.Request, error) {
+	pathParameters := map[string]interface{}{
+		"networkManagerName": autorest.Encode("path", networkManagerName),
+		"resourceGroupName":  autorest.Encode("path", resourceGroupName),
+		"subscriptionId":     autorest.Encode("path", client.SubscriptionID),
+	}
 
-                const APIVersion = "2022-01-01"
-        queryParameters := map[string]interface{} {
-        "api-version": APIVersion,
-        }
+	const APIVersion = "2022-01-01"
+	queryParameters := map[string]interface{}{
+		"api-version": APIVersion,
+	}
 
-        preparer := autorest.CreatePreparer(
-    autorest.AsContentType("application/json; charset=utf-8"),
-    autorest.AsPost(),
-    autorest.WithBaseURL(client.BaseURI),
-    autorest.WithPathParameters("/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/networkManagers/{networkManagerName}/listActiveConnectivityConfigurations",pathParameters),
-    autorest.WithJSON(parameters),
-    autorest.WithQueryParameters(queryParameters))
-        return preparer.Prepare((&http.Request{}).WithContext(ctx))
-        }
+	preparer := autorest.CreatePreparer(
+		autorest.AsContentType("application/json; charset=utf-8"),
+		autorest.AsPost(),
+		autorest.WithBaseURL(client.BaseURI),
+		autorest.WithPathParameters("/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/networkManagers/{networkManagerName}/listActiveConnectivityConfigurations", pathParameters),
+		autorest.WithJSON(parameters),
+		autorest.WithQueryParameters(queryParameters))
+	return preparer.Prepare((&http.Request{}).WithContext(ctx))
+}
 
-        // ListActiveConnectivityConfigurationsSender sends the ListActiveConnectivityConfigurations request. The method will close the
-        // http.Response Body if it receives an error.
-        func (client BaseClient) ListActiveConnectivityConfigurationsSender(req *http.Request) (*http.Response, error) {
-                    return client.Send(req, azure.DoRetryWithRegistration(client.Client))
-                    }
+// ListActiveConnectivityConfigurationsSender sends the ListActiveConnectivityConfigurations request. The method will close the
+// http.Response Body if it receives an error.
+func (client BaseClient) ListActiveConnectivityConfigurationsSender(req *http.Request) (*http.Response, error) {
+	return client.Send(req, azure.DoRetryWithRegistration(client.Client))
+}
 
-        // ListActiveConnectivityConfigurationsResponder handles the response to the ListActiveConnectivityConfigurations request. The method always
-        // closes the http.Response Body.
-        func (client BaseClient) ListActiveConnectivityConfigurationsResponder(resp *http.Response) (result ActiveConnectivityConfigurationsListResult, err error) {
-                err = autorest.Respond(
-                resp,
-                azure.WithErrorUnlessStatusCode(http.StatusOK),
-                autorest.ByUnmarshallingJSON(&result),
-                autorest.ByClosing())
-                result.Response = autorest.Response{Response: resp}
-                return
-        }
+// ListActiveConnectivityConfigurationsResponder handles the response to the ListActiveConnectivityConfigurations request. The method always
+// closes the http.Response Body.
+func (client BaseClient) ListActiveConnectivityConfigurationsResponder(resp *http.Response) (result ActiveConnectivityConfigurationsListResult, err error) {
+	err = autorest.Respond(
+		resp,
+		azure.WithErrorUnlessStatusCode(http.StatusOK),
+		autorest.ByUnmarshallingJSON(&result),
+		autorest.ByClosing())
+	result.Response = autorest.Response{Response: resp}
+	return
+}
 
-    // ListActiveSecurityAdminRules lists active security admin rules in a network manager.
-        // Parameters:
-            // parameters - active Configuration Parameter.
-            // resourceGroupName - the name of the resource group.
-            // networkManagerName - the name of the network manager.
-    func (client BaseClient) ListActiveSecurityAdminRules(ctx context.Context, parameters ActiveConfigurationParameter, resourceGroupName string, networkManagerName string) (result ActiveSecurityAdminRulesListResult, err error) {
-        if tracing.IsEnabled() {
-            ctx = tracing.StartSpan(ctx, fqdn + "/BaseClient.ListActiveSecurityAdminRules")
-            defer func() {
-                sc := -1
-            if result.Response.Response != nil {
-            sc = result.Response.Response.StatusCode
-            }
-                tracing.EndSpan(ctx, sc, err)
-            }()
-        }
-        req, err := client.ListActiveSecurityAdminRulesPreparer(ctx, parameters, resourceGroupName, networkManagerName)
-        if err != nil {
-        err = autorest.NewErrorWithError(err, "network.BaseClient", "ListActiveSecurityAdminRules", nil , "Failure preparing request")
-        return
-        }
+// ListActiveSecurityAdminRules lists active security admin rules in a network manager.
+// Parameters:
+// parameters - active Configuration Parameter.
+// resourceGroupName - the name of the resource group.
+// networkManagerName - the name of the network manager.
+func (client BaseClient) ListActiveSecurityAdminRules(ctx context.Context, parameters ActiveConfigurationParameter, resourceGroupName string, networkManagerName string) (result ActiveSecurityAdminRulesListResult, err error) {
+	if tracing.IsEnabled() {
+		ctx = tracing.StartSpan(ctx, fqdn+"/BaseClient.ListActiveSecurityAdminRules")
+		defer func() {
+			sc := -1
+			if result.Response.Response != nil {
+				sc = result.Response.Response.StatusCode
+			}
+			tracing.EndSpan(ctx, sc, err)
+		}()
+	}
+	req, err := client.ListActiveSecurityAdminRulesPreparer(ctx, parameters, resourceGroupName, networkManagerName)
+	if err != nil {
+		err = autorest.NewErrorWithError(err, "network.BaseClient", "ListActiveSecurityAdminRules", nil, "Failure preparing request")
+		return
+	}
 
-            resp, err := client.ListActiveSecurityAdminRulesSender(req)
-            if err != nil {
-            result.Response = autorest.Response{Response: resp}
-            err = autorest.NewErrorWithError(err, "network.BaseClient", "ListActiveSecurityAdminRules", resp, "Failure sending request")
-            return
-            }
+	resp, err := client.ListActiveSecurityAdminRulesSender(req)
+	if err != nil {
+		result.Response = autorest.Response{Response: resp}
+		err = autorest.NewErrorWithError(err, "network.BaseClient", "ListActiveSecurityAdminRules", resp, "Failure sending request")
+		return
+	}
 
-            result, err = client.ListActiveSecurityAdminRulesResponder(resp)
-            if err != nil {
-            err = autorest.NewErrorWithError(err, "network.BaseClient", "ListActiveSecurityAdminRules", resp, "Failure responding to request")
-            return
-            }
+	result, err = client.ListActiveSecurityAdminRulesResponder(resp)
+	if err != nil {
+		err = autorest.NewErrorWithError(err, "network.BaseClient", "ListActiveSecurityAdminRules", resp, "Failure responding to request")
+		return
+	}
 
-        return
-    }
+	return
+}
 
-        // ListActiveSecurityAdminRulesPreparer prepares the ListActiveSecurityAdminRules request.
-        func (client BaseClient) ListActiveSecurityAdminRulesPreparer(ctx context.Context, parameters ActiveConfigurationParameter, resourceGroupName string, networkManagerName string) (*http.Request, error) {
-            pathParameters := map[string]interface{} {
-            "networkManagerName": autorest.Encode("path",networkManagerName),
-            "resourceGroupName": autorest.Encode("path",resourceGroupName),
-            "subscriptionId": autorest.Encode("path",client.SubscriptionID),
-            }
+// ListActiveSecurityAdminRulesPreparer prepares the ListActiveSecurityAdminRules request.
+func (client BaseClient) ListActiveSecurityAdminRulesPreparer(ctx context.Context, parameters ActiveConfigurationParameter, resourceGroupName string, networkManagerName string) (*http.Request, error) {
+	pathParameters := map[string]interface{}{
+		"networkManagerName": autorest.Encode("path", networkManagerName),
+		"resourceGroupName":  autorest.Encode("path", resourceGroupName),
+		"subscriptionId":     autorest.Encode("path", client.SubscriptionID),
+	}
 
-                const APIVersion = "2022-01-01"
-        queryParameters := map[string]interface{} {
-        "api-version": APIVersion,
-        }
+	const APIVersion = "2022-01-01"
+	queryParameters := map[string]interface{}{
+		"api-version": APIVersion,
+	}
 
-        preparer := autorest.CreatePreparer(
-    autorest.AsContentType("application/json; charset=utf-8"),
-    autorest.AsPost(),
-    autorest.WithBaseURL(client.BaseURI),
-    autorest.WithPathParameters("/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/networkManagers/{networkManagerName}/listActiveSecurityAdminRules",pathParameters),
-    autorest.WithJSON(parameters),
-    autorest.WithQueryParameters(queryParameters))
-        return preparer.Prepare((&http.Request{}).WithContext(ctx))
-        }
+	preparer := autorest.CreatePreparer(
+		autorest.AsContentType("application/json; charset=utf-8"),
+		autorest.AsPost(),
+		autorest.WithBaseURL(client.BaseURI),
+		autorest.WithPathParameters("/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/networkManagers/{networkManagerName}/listActiveSecurityAdminRules", pathParameters),
+		autorest.WithJSON(parameters),
+		autorest.WithQueryParameters(queryParameters))
+	return preparer.Prepare((&http.Request{}).WithContext(ctx))
+}
 
-        // ListActiveSecurityAdminRulesSender sends the ListActiveSecurityAdminRules request. The method will close the
-        // http.Response Body if it receives an error.
-        func (client BaseClient) ListActiveSecurityAdminRulesSender(req *http.Request) (*http.Response, error) {
-                    return client.Send(req, azure.DoRetryWithRegistration(client.Client))
-                    }
+// ListActiveSecurityAdminRulesSender sends the ListActiveSecurityAdminRules request. The method will close the
+// http.Response Body if it receives an error.
+func (client BaseClient) ListActiveSecurityAdminRulesSender(req *http.Request) (*http.Response, error) {
+	return client.Send(req, azure.DoRetryWithRegistration(client.Client))
+}
 
-        // ListActiveSecurityAdminRulesResponder handles the response to the ListActiveSecurityAdminRules request. The method always
-        // closes the http.Response Body.
-        func (client BaseClient) ListActiveSecurityAdminRulesResponder(resp *http.Response) (result ActiveSecurityAdminRulesListResult, err error) {
-                err = autorest.Respond(
-                resp,
-                azure.WithErrorUnlessStatusCode(http.StatusOK),
-                autorest.ByUnmarshallingJSON(&result),
-                autorest.ByClosing())
-                result.Response = autorest.Response{Response: resp}
-                return
-        }
+// ListActiveSecurityAdminRulesResponder handles the response to the ListActiveSecurityAdminRules request. The method always
+// closes the http.Response Body.
+func (client BaseClient) ListActiveSecurityAdminRulesResponder(resp *http.Response) (result ActiveSecurityAdminRulesListResult, err error) {
+	err = autorest.Respond(
+		resp,
+		azure.WithErrorUnlessStatusCode(http.StatusOK),
+		autorest.ByUnmarshallingJSON(&result),
+		autorest.ByClosing())
+	result.Response = autorest.Response{Response: resp}
+	return
+}
 
-    // ListNetworkManagerEffectiveConnectivityConfigurations list all effective connectivity configurations applied on a
-    // virtual network.
-        // Parameters:
-            // parameters - parameters supplied to list correct page.
-            // resourceGroupName - the name of the resource group.
-            // virtualNetworkName - the name of the virtual network.
-    func (client BaseClient) ListNetworkManagerEffectiveConnectivityConfigurations(ctx context.Context, parameters QueryRequestOptions, resourceGroupName string, virtualNetworkName string) (result ManagerEffectiveConnectivityConfigurationListResult, err error) {
-        if tracing.IsEnabled() {
-            ctx = tracing.StartSpan(ctx, fqdn + "/BaseClient.ListNetworkManagerEffectiveConnectivityConfigurations")
-            defer func() {
-                sc := -1
-            if result.Response.Response != nil {
-            sc = result.Response.Response.StatusCode
-            }
-                tracing.EndSpan(ctx, sc, err)
-            }()
-        }
-        req, err := client.ListNetworkManagerEffectiveConnectivityConfigurationsPreparer(ctx, parameters, resourceGroupName, virtualNetworkName)
-        if err != nil {
-        err = autorest.NewErrorWithError(err, "network.BaseClient", "ListNetworkManagerEffectiveConnectivityConfigurations", nil , "Failure preparing request")
-        return
-        }
+// ListNetworkManagerEffectiveConnectivityConfigurations list all effective connectivity configurations applied on a
+// virtual network.
+// Parameters:
+// parameters - parameters supplied to list correct page.
+// resourceGroupName - the name of the resource group.
+// virtualNetworkName - the name of the virtual network.
+func (client BaseClient) ListNetworkManagerEffectiveConnectivityConfigurations(ctx context.Context, parameters QueryRequestOptions, resourceGroupName string, virtualNetworkName string) (result ManagerEffectiveConnectivityConfigurationListResult, err error) {
+	if tracing.IsEnabled() {
+		ctx = tracing.StartSpan(ctx, fqdn+"/BaseClient.ListNetworkManagerEffectiveConnectivityConfigurations")
+		defer func() {
+			sc := -1
+			if result.Response.Response != nil {
+				sc = result.Response.Response.StatusCode
+			}
+			tracing.EndSpan(ctx, sc, err)
+		}()
+	}
+	req, err := client.ListNetworkManagerEffectiveConnectivityConfigurationsPreparer(ctx, parameters, resourceGroupName, virtualNetworkName)
+	if err != nil {
+		err = autorest.NewErrorWithError(err, "network.BaseClient", "ListNetworkManagerEffectiveConnectivityConfigurations", nil, "Failure preparing request")
+		return
+	}
 
-            resp, err := client.ListNetworkManagerEffectiveConnectivityConfigurationsSender(req)
-            if err != nil {
-            result.Response = autorest.Response{Response: resp}
-            err = autorest.NewErrorWithError(err, "network.BaseClient", "ListNetworkManagerEffectiveConnectivityConfigurations", resp, "Failure sending request")
-            return
-            }
+	resp, err := client.ListNetworkManagerEffectiveConnectivityConfigurationsSender(req)
+	if err != nil {
+		result.Response = autorest.Response{Response: resp}
+		err = autorest.NewErrorWithError(err, "network.BaseClient", "ListNetworkManagerEffectiveConnectivityConfigurations", resp, "Failure sending request")
+		return
+	}
 
-            result, err = client.ListNetworkManagerEffectiveConnectivityConfigurationsResponder(resp)
-            if err != nil {
-            err = autorest.NewErrorWithError(err, "network.BaseClient", "ListNetworkManagerEffectiveConnectivityConfigurations", resp, "Failure responding to request")
-            return
-            }
+	result, err = client.ListNetworkManagerEffectiveConnectivityConfigurationsResponder(resp)
+	if err != nil {
+		err = autorest.NewErrorWithError(err, "network.BaseClient", "ListNetworkManagerEffectiveConnectivityConfigurations", resp, "Failure responding to request")
+		return
+	}
 
-        return
-    }
+	return
+}
 
-        // ListNetworkManagerEffectiveConnectivityConfigurationsPreparer prepares the ListNetworkManagerEffectiveConnectivityConfigurations request.
-        func (client BaseClient) ListNetworkManagerEffectiveConnectivityConfigurationsPreparer(ctx context.Context, parameters QueryRequestOptions, resourceGroupName string, virtualNetworkName string) (*http.Request, error) {
-            pathParameters := map[string]interface{} {
-            "resourceGroupName": autorest.Encode("path",resourceGroupName),
-            "subscriptionId": autorest.Encode("path",client.SubscriptionID),
-            "virtualNetworkName": autorest.Encode("path",virtualNetworkName),
-            }
+// ListNetworkManagerEffectiveConnectivityConfigurationsPreparer prepares the ListNetworkManagerEffectiveConnectivityConfigurations request.
+func (client BaseClient) ListNetworkManagerEffectiveConnectivityConfigurationsPreparer(ctx context.Context, parameters QueryRequestOptions, resourceGroupName string, virtualNetworkName string) (*http.Request, error) {
+	pathParameters := map[string]interface{}{
+		"resourceGroupName":  autorest.Encode("path", resourceGroupName),
+		"subscriptionId":     autorest.Encode("path", client.SubscriptionID),
+		"virtualNetworkName": autorest.Encode("path", virtualNetworkName),
+	}
 
-                const APIVersion = "2022-01-01"
-        queryParameters := map[string]interface{} {
-        "api-version": APIVersion,
-        }
+	const APIVersion = "2022-01-01"
+	queryParameters := map[string]interface{}{
+		"api-version": APIVersion,
+	}
 
-        preparer := autorest.CreatePreparer(
-    autorest.AsContentType("application/json; charset=utf-8"),
-    autorest.AsPost(),
-    autorest.WithBaseURL(client.BaseURI),
-    autorest.WithPathParameters("/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/virtualNetworks/{virtualNetworkName}/listNetworkManagerEffectiveConnectivityConfigurations",pathParameters),
-    autorest.WithJSON(parameters),
-    autorest.WithQueryParameters(queryParameters))
-        return preparer.Prepare((&http.Request{}).WithContext(ctx))
-        }
+	preparer := autorest.CreatePreparer(
+		autorest.AsContentType("application/json; charset=utf-8"),
+		autorest.AsPost(),
+		autorest.WithBaseURL(client.BaseURI),
+		autorest.WithPathParameters("/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/virtualNetworks/{virtualNetworkName}/listNetworkManagerEffectiveConnectivityConfigurations", pathParameters),
+		autorest.WithJSON(parameters),
+		autorest.WithQueryParameters(queryParameters))
+	return preparer.Prepare((&http.Request{}).WithContext(ctx))
+}
 
-        // ListNetworkManagerEffectiveConnectivityConfigurationsSender sends the ListNetworkManagerEffectiveConnectivityConfigurations request. The method will close the
-        // http.Response Body if it receives an error.
-        func (client BaseClient) ListNetworkManagerEffectiveConnectivityConfigurationsSender(req *http.Request) (*http.Response, error) {
-                    return client.Send(req, azure.DoRetryWithRegistration(client.Client))
-                    }
+// ListNetworkManagerEffectiveConnectivityConfigurationsSender sends the ListNetworkManagerEffectiveConnectivityConfigurations request. The method will close the
+// http.Response Body if it receives an error.
+func (client BaseClient) ListNetworkManagerEffectiveConnectivityConfigurationsSender(req *http.Request) (*http.Response, error) {
+	return client.Send(req, azure.DoRetryWithRegistration(client.Client))
+}
 
-        // ListNetworkManagerEffectiveConnectivityConfigurationsResponder handles the response to the ListNetworkManagerEffectiveConnectivityConfigurations request. The method always
-        // closes the http.Response Body.
-        func (client BaseClient) ListNetworkManagerEffectiveConnectivityConfigurationsResponder(resp *http.Response) (result ManagerEffectiveConnectivityConfigurationListResult, err error) {
-                err = autorest.Respond(
-                resp,
-                azure.WithErrorUnlessStatusCode(http.StatusOK),
-                autorest.ByUnmarshallingJSON(&result),
-                autorest.ByClosing())
-                result.Response = autorest.Response{Response: resp}
-                return
-        }
+// ListNetworkManagerEffectiveConnectivityConfigurationsResponder handles the response to the ListNetworkManagerEffectiveConnectivityConfigurations request. The method always
+// closes the http.Response Body.
+func (client BaseClient) ListNetworkManagerEffectiveConnectivityConfigurationsResponder(resp *http.Response) (result ManagerEffectiveConnectivityConfigurationListResult, err error) {
+	err = autorest.Respond(
+		resp,
+		azure.WithErrorUnlessStatusCode(http.StatusOK),
+		autorest.ByUnmarshallingJSON(&result),
+		autorest.ByClosing())
+	result.Response = autorest.Response{Response: resp}
+	return
+}
 
-    // ListNetworkManagerEffectiveSecurityAdminRules list all effective security admin rules applied on a virtual network.
-        // Parameters:
-            // parameters - parameters supplied to list correct page.
-            // resourceGroupName - the name of the resource group.
-            // virtualNetworkName - the name of the virtual network.
-    func (client BaseClient) ListNetworkManagerEffectiveSecurityAdminRules(ctx context.Context, parameters QueryRequestOptions, resourceGroupName string, virtualNetworkName string) (result ManagerEffectiveSecurityAdminRulesListResult, err error) {
-        if tracing.IsEnabled() {
-            ctx = tracing.StartSpan(ctx, fqdn + "/BaseClient.ListNetworkManagerEffectiveSecurityAdminRules")
-            defer func() {
-                sc := -1
-            if result.Response.Response != nil {
-            sc = result.Response.Response.StatusCode
-            }
-                tracing.EndSpan(ctx, sc, err)
-            }()
-        }
-        req, err := client.ListNetworkManagerEffectiveSecurityAdminRulesPreparer(ctx, parameters, resourceGroupName, virtualNetworkName)
-        if err != nil {
-        err = autorest.NewErrorWithError(err, "network.BaseClient", "ListNetworkManagerEffectiveSecurityAdminRules", nil , "Failure preparing request")
-        return
-        }
+// ListNetworkManagerEffectiveSecurityAdminRules list all effective security admin rules applied on a virtual network.
+// Parameters:
+// parameters - parameters supplied to list correct page.
+// resourceGroupName - the name of the resource group.
+// virtualNetworkName - the name of the virtual network.
+func (client BaseClient) ListNetworkManagerEffectiveSecurityAdminRules(ctx context.Context, parameters QueryRequestOptions, resourceGroupName string, virtualNetworkName string) (result ManagerEffectiveSecurityAdminRulesListResult, err error) {
+	if tracing.IsEnabled() {
+		ctx = tracing.StartSpan(ctx, fqdn+"/BaseClient.ListNetworkManagerEffectiveSecurityAdminRules")
+		defer func() {
+			sc := -1
+			if result.Response.Response != nil {
+				sc = result.Response.Response.StatusCode
+			}
+			tracing.EndSpan(ctx, sc, err)
+		}()
+	}
+	req, err := client.ListNetworkManagerEffectiveSecurityAdminRulesPreparer(ctx, parameters, resourceGroupName, virtualNetworkName)
+	if err != nil {
+		err = autorest.NewErrorWithError(err, "network.BaseClient", "ListNetworkManagerEffectiveSecurityAdminRules", nil, "Failure preparing request")
+		return
+	}
 
-            resp, err := client.ListNetworkManagerEffectiveSecurityAdminRulesSender(req)
-            if err != nil {
-            result.Response = autorest.Response{Response: resp}
-            err = autorest.NewErrorWithError(err, "network.BaseClient", "ListNetworkManagerEffectiveSecurityAdminRules", resp, "Failure sending request")
-            return
-            }
+	resp, err := client.ListNetworkManagerEffectiveSecurityAdminRulesSender(req)
+	if err != nil {
+		result.Response = autorest.Response{Response: resp}
+		err = autorest.NewErrorWithError(err, "network.BaseClient", "ListNetworkManagerEffectiveSecurityAdminRules", resp, "Failure sending request")
+		return
+	}
 
-            result, err = client.ListNetworkManagerEffectiveSecurityAdminRulesResponder(resp)
-            if err != nil {
-            err = autorest.NewErrorWithError(err, "network.BaseClient", "ListNetworkManagerEffectiveSecurityAdminRules", resp, "Failure responding to request")
-            return
-            }
+	result, err = client.ListNetworkManagerEffectiveSecurityAdminRulesResponder(resp)
+	if err != nil {
+		err = autorest.NewErrorWithError(err, "network.BaseClient", "ListNetworkManagerEffectiveSecurityAdminRules", resp, "Failure responding to request")
+		return
+	}
 
-        return
-    }
+	return
+}
 
-        // ListNetworkManagerEffectiveSecurityAdminRulesPreparer prepares the ListNetworkManagerEffectiveSecurityAdminRules request.
-        func (client BaseClient) ListNetworkManagerEffectiveSecurityAdminRulesPreparer(ctx context.Context, parameters QueryRequestOptions, resourceGroupName string, virtualNetworkName string) (*http.Request, error) {
-            pathParameters := map[string]interface{} {
-            "resourceGroupName": autorest.Encode("path",resourceGroupName),
-            "subscriptionId": autorest.Encode("path",client.SubscriptionID),
-            "virtualNetworkName": autorest.Encode("path",virtualNetworkName),
-            }
+// ListNetworkManagerEffectiveSecurityAdminRulesPreparer prepares the ListNetworkManagerEffectiveSecurityAdminRules request.
+func (client BaseClient) ListNetworkManagerEffectiveSecurityAdminRulesPreparer(ctx context.Context, parameters QueryRequestOptions, resourceGroupName string, virtualNetworkName string) (*http.Request, error) {
+	pathParameters := map[string]interface{}{
+		"resourceGroupName":  autorest.Encode("path", resourceGroupName),
+		"subscriptionId":     autorest.Encode("path", client.SubscriptionID),
+		"virtualNetworkName": autorest.Encode("path", virtualNetworkName),
+	}
 
-                const APIVersion = "2022-01-01"
-        queryParameters := map[string]interface{} {
-        "api-version": APIVersion,
-        }
+	const APIVersion = "2022-01-01"
+	queryParameters := map[string]interface{}{
+		"api-version": APIVersion,
+	}
 
-        preparer := autorest.CreatePreparer(
-    autorest.AsContentType("application/json; charset=utf-8"),
-    autorest.AsPost(),
-    autorest.WithBaseURL(client.BaseURI),
-    autorest.WithPathParameters("/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/virtualNetworks/{virtualNetworkName}/listNetworkManagerEffectiveSecurityAdminRules",pathParameters),
-    autorest.WithJSON(parameters),
-    autorest.WithQueryParameters(queryParameters))
-        return preparer.Prepare((&http.Request{}).WithContext(ctx))
-        }
+	preparer := autorest.CreatePreparer(
+		autorest.AsContentType("application/json; charset=utf-8"),
+		autorest.AsPost(),
+		autorest.WithBaseURL(client.BaseURI),
+		autorest.WithPathParameters("/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/virtualNetworks/{virtualNetworkName}/listNetworkManagerEffectiveSecurityAdminRules", pathParameters),
+		autorest.WithJSON(parameters),
+		autorest.WithQueryParameters(queryParameters))
+	return preparer.Prepare((&http.Request{}).WithContext(ctx))
+}
 
-        // ListNetworkManagerEffectiveSecurityAdminRulesSender sends the ListNetworkManagerEffectiveSecurityAdminRules request. The method will close the
-        // http.Response Body if it receives an error.
-        func (client BaseClient) ListNetworkManagerEffectiveSecurityAdminRulesSender(req *http.Request) (*http.Response, error) {
-                    return client.Send(req, azure.DoRetryWithRegistration(client.Client))
-                    }
+// ListNetworkManagerEffectiveSecurityAdminRulesSender sends the ListNetworkManagerEffectiveSecurityAdminRules request. The method will close the
+// http.Response Body if it receives an error.
+func (client BaseClient) ListNetworkManagerEffectiveSecurityAdminRulesSender(req *http.Request) (*http.Response, error) {
+	return client.Send(req, azure.DoRetryWithRegistration(client.Client))
+}
 
-        // ListNetworkManagerEffectiveSecurityAdminRulesResponder handles the response to the ListNetworkManagerEffectiveSecurityAdminRules request. The method always
-        // closes the http.Response Body.
-        func (client BaseClient) ListNetworkManagerEffectiveSecurityAdminRulesResponder(resp *http.Response) (result ManagerEffectiveSecurityAdminRulesListResult, err error) {
-                err = autorest.Respond(
-                resp,
-                azure.WithErrorUnlessStatusCode(http.StatusOK),
-                autorest.ByUnmarshallingJSON(&result),
-                autorest.ByClosing())
-                result.Response = autorest.Response{Response: resp}
-                return
-        }
-
+// ListNetworkManagerEffectiveSecurityAdminRulesResponder handles the response to the ListNetworkManagerEffectiveSecurityAdminRules request. The method always
+// closes the http.Response Body.
+func (client BaseClient) ListNetworkManagerEffectiveSecurityAdminRulesResponder(resp *http.Response) (result ManagerEffectiveSecurityAdminRulesListResult, err error) {
+	err = autorest.Respond(
+		resp,
+		azure.WithErrorUnlessStatusCode(http.StatusOK),
+		autorest.ByUnmarshallingJSON(&result),
+		autorest.ByClosing())
+	result.Response = autorest.Response{Response: resp}
+	return
+}

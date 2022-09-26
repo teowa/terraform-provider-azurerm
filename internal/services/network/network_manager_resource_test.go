@@ -13,11 +13,11 @@ import (
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
 )
 
-type VirtualNetworkManagerResource struct{}
+type NetworkManagerResource struct{}
 
 func TestAccVirtualNetworkManager_basic(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_virtual_network_manager", "test")
-	r := VirtualNetworkManagerResource{}
+	data := acceptance.BuildTestData(t, "azurerm_network_manager", "test")
+	r := NetworkManagerResource{}
 
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
@@ -31,8 +31,8 @@ func TestAccVirtualNetworkManager_basic(t *testing.T) {
 }
 
 func TestAccVirtualNetworkManager_complete(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_virtual_network_manager", "test")
-	r := VirtualNetworkManagerResource{}
+	data := acceptance.BuildTestData(t, "azurerm_network_manager", "test")
+	r := NetworkManagerResource{}
 
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
@@ -46,8 +46,8 @@ func TestAccVirtualNetworkManager_complete(t *testing.T) {
 }
 
 func TestAccVirtualNetworkManager_update(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_virtual_network_manager", "test")
-	r := VirtualNetworkManagerResource{}
+	data := acceptance.BuildTestData(t, "azurerm_network_manager", "test")
+	r := NetworkManagerResource{}
 
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
@@ -75,8 +75,8 @@ func TestAccVirtualNetworkManager_update(t *testing.T) {
 }
 
 func TestAccVirtualNetworkManager_requiresImport(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_virtual_network_manager", "test")
-	r := VirtualNetworkManagerResource{}
+	data := acceptance.BuildTestData(t, "azurerm_network_manager", "test")
+	r := NetworkManagerResource{}
 
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
@@ -89,12 +89,12 @@ func TestAccVirtualNetworkManager_requiresImport(t *testing.T) {
 	})
 }
 
-func (r VirtualNetworkManagerResource) Exists(ctx context.Context, clients *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
+func (r NetworkManagerResource) Exists(ctx context.Context, clients *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
 	id, err := parse.VirtualNetworkManagerID(state.ID)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := clients.Network.VirtualNetworkManagersClient.Get(ctx, id.ResourceGroup, id.NetworkManagerName)
+	resp, err := clients.Network.ManagersClient.Get(ctx, id.ResourceGroup, id.NetworkManagerName)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving %s: %+v", *id, err)
 	}
@@ -102,11 +102,11 @@ func (r VirtualNetworkManagerResource) Exists(ctx context.Context, clients *clie
 	return utils.Bool(resp.ID != nil), nil
 }
 
-func (r VirtualNetworkManagerResource) basic(data acceptance.TestData) string {
+func (r NetworkManagerResource) basic(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 %s
 
-resource "azurerm_virtual_network_manager" "test" {
+resource "azurerm_network_manager" "test" {
   name                    = "acctest-vnetmanager-%d"
   location                = azurerm_resource_group.test.location
   resource_group_name     = azurerm_resource_group.test.name
@@ -118,28 +118,28 @@ resource "azurerm_virtual_network_manager" "test" {
 `, r.template(data), data.RandomInteger)
 }
 
-func (r VirtualNetworkManagerResource) requiresImport(data acceptance.TestData) string {
+func (r NetworkManagerResource) requiresImport(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 %s
 
-resource "azurerm_virtual_network_manager" "test" {
-  name                    = azurerm_virtual_network_manager.test.name
-  location                = azurerm_virtual_network_manager.test.location
+resource "azurerm_network_manager" "test" {
+  name                    = azurerm_network_manager.test.name
+  location                = azurerm_network_manager.test.location
   resource_group_name     = azruerm_virtual_network_manager.test.resource_group_name
   scope {
-    subscription_ids = azurerm_virtual_network_manager.scope.0.subscription_ids
+    subscription_ids = azurerm_network_manager.scope.0.subscription_ids
   }
-  scope_access = azurerm_virtual_network_manager.scope.0.scope_access
+  scope_access = azurerm_network_manager.scope.0.scope_access
 }
 `, r.template(data))
 }
 
-func (r VirtualNetworkManagerResource) complete(data acceptance.TestData) string {
+func (r NetworkManagerResource) complete(data acceptance.TestData) string {
 
 	return fmt.Sprintf(`
 %s
 
-resource "azurerm_virtual_network_manager" "test" {
+resource "azurerm_network_manager" "test" {
   name                    = "acctest-vnetmanager-%d"
   location                = azurerm_resource_group.test.location
   resource_group_name     = azurerm_resource_group.test.name
@@ -155,7 +155,7 @@ resource "azurerm_virtual_network_manager" "test" {
 `, r.template(data), data.RandomInteger)
 }
 
-func (VirtualNetworkManagerResource) template(data acceptance.TestData) string {
+func (NetworkManagerResource) template(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 provider "azurerm" {
   features {}

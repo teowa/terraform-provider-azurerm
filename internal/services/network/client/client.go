@@ -26,6 +26,16 @@ type Client struct {
 	InterfacesClient                       *network.InterfacesClient
 	IPGroupsClient                         *network.IPGroupsClient
 	LocalNetworkGatewaysClient             *network.LocalNetworkGatewaysClient
+	ManagersClient                         *virtualNetworkManager.ManagersClient
+	ManagerNetworkGroupsClient             *virtualNetworkManager.GroupsClient
+	ManagerStaticMembersClient             *virtualNetworkManager.StaticMembersClient
+	ManagerConnectivityConfClient          *virtualNetworkManager.ConnectivityConfigurationsClient
+	ManagerSecurityAdminConfClient         *virtualNetworkManager.SecurityAdminConfigurationsClient
+	ManagerAdminRuleCollectionsClient      *virtualNetworkManager.AdminRuleCollectionsClient
+	ManagerAdminRulesClient                *virtualNetworkManager.AdminRulesClient
+	ManagerManagementGrpConnectionsClient  *virtualNetworkManager.ManagementGroupNetworkManagerConnectionsClient
+	ManagerSubscriptionConnectionsClient   *virtualNetworkManager.SubscriptionNetworkManagerConnectionsClient
+	ManagerScopeConnectionsClient          *virtualNetworkManager.ScopeConnectionsClient
 	NatRuleClient                          *network.NatRulesClient
 	PointToSiteVpnGatewaysClient           *network.P2sVpnGatewaysClient
 	ProfileClient                          *network.ProfilesClient
@@ -53,7 +63,6 @@ type Client struct {
 	VnetPeeringsClient                     *network.VirtualNetworkPeeringsClient
 	VirtualWanClient                       *network.VirtualWansClient
 	VirtualHubClient                       *network.VirtualHubsClient
-	VirtualNetworkManagersClient           *virtualNetworkManager.ManagersClient
 	VpnConnectionsClient                   *network.VpnConnectionsClient
 	VpnGatewaysClient                      *network.VpnGatewaysClient
 	VpnServerConfigurationsClient          *network.VpnServerConfigurationsClient
@@ -124,8 +133,35 @@ func NewClient(o *common.ClientOptions) *Client {
 	LocalNetworkGatewaysClient := network.NewLocalNetworkGatewaysClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
 	o.ConfigureClient(&LocalNetworkGatewaysClient.Client, o.ResourceManagerAuthorizer)
 
-	VirtualNetworkManagersClient := virtualNetworkManager.NewManagersClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
-	o.ConfigureClient(&VirtualNetworkManagersClient.Client, o.ResourceManagerAuthorizer)
+	ManagersClient := virtualNetworkManager.NewManagersClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
+	o.ConfigureClient(&ManagersClient.Client, o.ResourceManagerAuthorizer)
+
+	ManagerNetworkGroupsClient := virtualNetworkManager.NewGroupsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
+	o.ConfigureClient(&ManagerNetworkGroupsClient.Client, o.ResourceManagerAuthorizer)
+
+	ManagerStaticMembersClient := virtualNetworkManager.NewStaticMembersClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
+	o.ConfigureClient(&ManagerStaticMembersClient.Client, o.ResourceManagerAuthorizer)
+
+	ManagerConnectivityConfClient := virtualNetworkManager.NewConnectivityConfigurationsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
+	o.ConfigureClient(&ManagerConnectivityConfClient.Client, o.ResourceManagerAuthorizer)
+
+	ManagerSecurityAdminConfClient := virtualNetworkManager.NewSecurityAdminConfigurationsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
+	o.ConfigureClient(&ManagerSecurityAdminConfClient.Client, o.ResourceManagerAuthorizer)
+
+	ManagerAdminRuleCollectionsClient := virtualNetworkManager.NewAdminRuleCollectionsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
+	o.ConfigureClient(&ManagerAdminRuleCollectionsClient.Client, o.ResourceManagerAuthorizer)
+
+	ManagerAdminRulesClient := virtualNetworkManager.NewAdminRulesClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
+	o.ConfigureClient(&ManagerAdminRulesClient.Client, o.ResourceManagerAuthorizer)
+
+	ManagerManagementGrpConnectionsClient := virtualNetworkManager.NewManagementGroupNetworkManagerConnectionsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
+	o.ConfigureClient(&ManagerManagementGrpConnectionsClient.Client, o.ResourceManagerAuthorizer)
+
+	ManagerSubscriptionConnectionsClient := virtualNetworkManager.NewSubscriptionNetworkManagerConnectionsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
+	o.ConfigureClient(&ManagerSubscriptionConnectionsClient.Client, o.ResourceManagerAuthorizer)
+
+	ManagerScopeConnectionsClient := virtualNetworkManager.NewScopeConnectionsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
+	o.ConfigureClient(&ManagerScopeConnectionsClient.Client, o.ResourceManagerAuthorizer)
 
 	NatRuleClient := network.NewNatRulesClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
 	o.ConfigureClient(&NatRuleClient.Client, o.ResourceManagerAuthorizer)
@@ -258,6 +294,16 @@ func NewClient(o *common.ClientOptions) *Client {
 		InterfacesClient:                       &InterfacesClient,
 		IPGroupsClient:                         &IpGroupsClient,
 		LocalNetworkGatewaysClient:             &LocalNetworkGatewaysClient,
+		ManagersClient:                         &ManagersClient,
+		ManagerNetworkGroupsClient:             &ManagerNetworkGroupsClient,
+		ManagerStaticMembersClient:             &ManagerStaticMembersClient,
+		ManagerConnectivityConfClient:          &ManagerConnectivityConfClient,
+		ManagerSecurityAdminConfClient:         &ManagerSecurityAdminConfClient,
+		ManagerAdminRuleCollectionsClient:      &ManagerAdminRuleCollectionsClient,
+		ManagerAdminRulesClient:                &ManagerAdminRulesClient,
+		ManagerManagementGrpConnectionsClient:  &ManagerManagementGrpConnectionsClient,
+		ManagerSubscriptionConnectionsClient:   &ManagerSubscriptionConnectionsClient,
+		ManagerScopeConnectionsClient:          &ManagerScopeConnectionsClient,
 		NatRuleClient:                          &NatRuleClient,
 		PointToSiteVpnGatewaysClient:           &pointToSiteVpnGatewaysClient,
 		ProfileClient:                          &ProfileClient,
@@ -285,7 +331,6 @@ func NewClient(o *common.ClientOptions) *Client {
 		VnetPeeringsClient:                     &VnetPeeringsClient,
 		VirtualWanClient:                       &VirtualWanClient,
 		VirtualHubClient:                       &VirtualHubClient,
-		VirtualNetworkManagersClient:           &VirtualNetworkManagersClient,
 		VpnConnectionsClient:                   &vpnConnectionsClient,
 		VpnGatewaysClient:                      &vpnGatewaysClient,
 		VpnServerConfigurationsClient:          &vpnServerConfigurationsClient,
