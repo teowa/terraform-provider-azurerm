@@ -2,52 +2,55 @@ package network
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"regexp"
+	"github.com/hashicorp/terraform-provider-azurerm/utils"
 	"time"
 
-	"github.com/hashicorp/go-azure-helpers/lang/response"
-	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
-	"github.com/hashicorp/go-azure-helpers/resourcemanager/identity"
-	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
-	tagsHelper "github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2022-01-01/adminrulecollections"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2022-01-01/adminrules"
-	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
-	azValidate "github.com/hashicorp/terraform-provider-azurerm/helpers/validate"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
+	virtualNetworkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/tags"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/timeouts"
-	"github.com/hashicorp/terraform-provider-azurerm/utils"
 )
 
-type NetworkAdminRuleModel struct {
-	Name                    string                   `tfschema:"name"`
-	NetworkRuleCollectionId string                   `tfschema:"network_rule_collection_id"`
-	Kind                    adminrules.AdminRuleKind `tfschema:"kind"`
+type ManagerAdminRuleModel struct {
+	Name                    string                                                   `tfschema:"name"`
+	NetworkRuleCollectionId string                                                   `tfschema:"network_rule_collection_id"`
+	Access                  virtualNetworkManager.SecurityConfigurationRuleAccess    `tfschema:"access"`
+	Description             string                                                   `tfschema:"description"`
+	DestinationPortRanges   []string                                                 `tfschema:"destination_port_ranges"`
+	Destinations            []AddressPrefixItemModel                                 `tfschema:"destinations"`
+	Direction               virtualNetworkManager.SecurityConfigurationRuleDirection `tfschema:"direction"`
+	Kind                    virtualNetworkManager.KindBasicBaseAdminRule             `tfschema:"kind"`
+	Priority                int32                                                    `tfschema:"priority"`
+	Protocol                virtualNetworkManager.SecurityConfigurationRuleProtocol  `tfschema:"protocol"`
+	SourcePortRanges        []string                                                 `tfschema:"source_port_ranges"`
+	Sources                 []AddressPrefixItemModel                                 `tfschema:"sources"`
 }
 
-type NetworkAdminRuleResource struct{}
-
-var _ sdk.ResourceWithUpdate = NetworkAdminRuleResource{}
-
-func (r NetworkAdminRuleResource) ResourceType() string {
-	return "azurerm_network_admin_rule"
+type AddressPrefixItemModel struct {
+	AddressPrefix     string                                  `tfschema:"address_prefix"`
+	AddressPrefixType virtualNetworkManager.AddressPrefixType `tfschema:"address_prefix_type"`
 }
 
-func (r NetworkAdminRuleResource) ModelObject() interface{} {
-	return &NetworkAdminRuleModel{}
+type ManagerAdminRuleResource struct{}
+
+var _ sdk.ResourceWithUpdate = ManagerAdminRuleResource{}
+
+func (r ManagerAdminRuleResource) ResourceType() string {
+	return "azurerm_network_manager_admin_rule"
 }
 
-func (r NetworkAdminRuleResource) IDValidationFunc() pluginsdk.SchemaValidateFunc {
-	return adminrules.ValidateAdminRuleID
+func (r ManagerAdminRuleResource) ModelObject() interface{} {
+	return &ManagerAdminRuleModel{}
 }
 
-func (r NetworkAdminRuleResource) Arguments() map[string]*pluginsdk.Schema {
+func (r ManagerAdminRuleResource) IDValidationFunc() pluginsdk.SchemaValidateFunc {
+	return validate.NetworkManagerAdminRuleID
+}
+
+func (r ManagerAdminRuleResource) Arguments() map[string]*pluginsdk.Schema {
 	return map[string]*pluginsdk.Schema{
 		"name": {
 			Type:         pluginsdk.TypeString,
@@ -60,54 +63,187 @@ func (r NetworkAdminRuleResource) Arguments() map[string]*pluginsdk.Schema {
 			Type:         pluginsdk.TypeString,
 			Required:     true,
 			ForceNew:     true,
-			ValidateFunc: adminrulecollections.ValidateRuleCollectionID,
+			ValidateFunc: validate.NetworkManagerAdminRuleCollectionID,
+		},
+
+		"access": {
+			Type:     pluginsdk.TypeString,
+			Required: true,
+			ValidateFunc: validation.StringInSlice([]string{
+				string(virtualNetworkManager.SecurityConfigurationRuleAccessAllow),
+				string(virtualNetworkManager.SecurityConfigurationRuleAccessDeny),
+				string(virtualNetworkManager.SecurityConfigurationRuleAccessAlwaysAllow),
+			}, false),
+		},
+
+		"description": {
+			Type:         pluginsdk.TypeString,
+			Optional:     true,
+			ValidateFunc: validation.StringIsNotEmpty,
+		},
+
+		"destination_port_ranges": {
+			Type:     pluginsdk.TypeList,
+			Optional: true,
+			Elem: &pluginsdk.Schema{
+				Type: pluginsdk.TypeString,
+			},
+		},
+
+		"destinations": {
+			Type:     pluginsdk.TypeList,
+			Optional: true,
+			Elem: &pluginsdk.Resource{
+				Schema: map[string]*pluginsdk.Schema{
+					"address_prefix": {
+						Type:         pluginsdk.TypeString,
+						Optional:     true,
+						ValidateFunc: validation.StringIsNotEmpty,
+					},
+
+					"address_prefix_type": {
+						Type:     pluginsdk.TypeString,
+						Optional: true,
+						ValidateFunc: validation.StringInSlice([]string{
+							string(virtualNetworkManager.AddressPrefixTypeIPPrefix),
+							string(virtualNetworkManager.AddressPrefixTypeServiceTag),
+						}, false),
+					},
+				},
+			},
+		},
+
+		"direction": {
+			Type:     pluginsdk.TypeString,
+			Required: true,
+			ValidateFunc: validation.StringInSlice([]string{
+				string(virtualNetworkManager.SecurityConfigurationRuleDirectionInbound),
+				string(virtualNetworkManager.SecurityConfigurationRuleDirectionOutbound),
+			}, false),
 		},
 
 		"kind": {
 			Type:     pluginsdk.TypeString,
 			Required: true,
 			ValidateFunc: validation.StringInSlice([]string{
-				string(adminrules.AdminRuleKindCustom),
-				string(adminrules.AdminRuleKindDefault),
+				string(virtualNetworkManager.KindDefault),
+				string(virtualNetworkManager.KindCustom),
+				string(virtualNetworkManager.KindActiveBaseSecurityAdminRule),
 			}, false),
+		},
+
+		"priority": {
+			Type:     pluginsdk.TypeInt,
+			Required: true,
+		},
+
+		"protocol": {
+			Type:     pluginsdk.TypeString,
+			Required: true,
+			ValidateFunc: validation.StringInSlice([]string{
+				string(virtualNetworkManager.SecurityConfigurationRuleProtocolTCP),
+				string(virtualNetworkManager.SecurityConfigurationRuleProtocolUDP),
+				string(virtualNetworkManager.SecurityConfigurationRuleProtocolIcmp),
+				string(virtualNetworkManager.SecurityConfigurationRuleProtocolEsp),
+				string(virtualNetworkManager.SecurityConfigurationRuleProtocolAny),
+				string(virtualNetworkManager.SecurityConfigurationRuleProtocolAh),
+			}, false),
+		},
+
+		"source_port_ranges": {
+			Type:     pluginsdk.TypeList,
+			Optional: true,
+			Elem: &pluginsdk.Schema{
+				Type: pluginsdk.TypeString,
+			},
+		},
+
+		"sources": {
+			Type:     pluginsdk.TypeList,
+			Optional: true,
+			Elem: &pluginsdk.Resource{
+				Schema: map[string]*pluginsdk.Schema{
+					"address_prefix": {
+						Type:         pluginsdk.TypeString,
+						Optional:     true,
+						ValidateFunc: validation.StringIsNotEmpty,
+					},
+
+					"address_prefix_type": {
+						Type:     pluginsdk.TypeString,
+						Optional: true,
+						ValidateFunc: validation.StringInSlice([]string{
+							string(virtualNetworkManager.AddressPrefixTypeIPPrefix),
+							string(virtualNetworkManager.AddressPrefixTypeServiceTag),
+						}, false),
+					},
+				},
+			},
 		},
 	}
 }
 
-func (r NetworkAdminRuleResource) Attributes() map[string]*pluginsdk.Schema {
+func (r ManagerAdminRuleResource) Attributes() map[string]*pluginsdk.Schema {
 	return map[string]*pluginsdk.Schema{}
 }
 
-func (r NetworkAdminRuleResource) Create() sdk.ResourceFunc {
+func (r ManagerAdminRuleResource) Create() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			var model NetworkAdminRuleModel
+			var model ManagerAdminRuleModel
 			if err := metadata.Decode(&model); err != nil {
 				return fmt.Errorf("decoding: %+v", err)
 			}
 
-			client := metadata.Client.Network.AdminRulesClient
-			ruleCollectionId, err := adminrulecollections.ParseRuleCollectionID(model.NetworkRuleCollectionId)
+			client := metadata.Client.Network.ManagerAdminRulesClient
+			ruleCollectionId, err := parse.NetworkManagerAdminRuleCollectionID(model.NetworkRuleCollectionId)
 			if err != nil {
 				return err
 			}
 
-			id := adminrules.NewRuleID(ruleCollectionId.SubscriptionId, ruleCollectionId.ResourceGroupName, ruleCollectionId.NetworkManagerName, ruleCollectionId.ConfigurationName, ruleCollectionId.RuleCollectionName, model.Name)
-			existing, err := client.Get(ctx, id)
-			if err != nil && !response.WasNotFound(existing.HttpResponse) {
+			id := parse.NewNetworkManagerAdminRuleID(ruleCollectionId.SubscriptionId, ruleCollectionId.ResourceGroup,
+				ruleCollectionId.NetworkManagerName, ruleCollectionId.SecurityAdminConfigurationName, ruleCollectionId.RuleCollectionName, model.Name)
+			existing, err := client.Get(ctx, id.ResourceGroup, id.NetworkManagerName, id.SecurityAdminConfigurationName, id.RuleCollectionName, id.RuleName)
+			if err != nil && !utils.ResponseWasNotFound(existing.Response) {
 				return fmt.Errorf("checking for existing %s: %+v", id, err)
 			}
 
-			if !response.WasNotFound(existing.HttpResponse) {
+			if !utils.ResponseWasNotFound(existing.Response) {
 				return metadata.ResourceRequiresImport(r.ResourceType(), id)
 			}
 
-			properties := &adminrules.BaseAdminRule{
+			rule := &virtualNetworkManager.AdminRule{
 				Kind: model.Kind,
+				AdminPropertiesFormat: &virtualNetworkManager.AdminPropertiesFormat{
+					Access:                model.Access,
+					DestinationPortRanges: &model.DestinationPortRanges,
+					Direction:             model.Direction,
+					Priority:              utils.Int32(model.Priority),
+					Protocol:              model.Protocol,
+					SourcePortRanges:      &model.SourcePortRanges,
+				},
 			}
 
-			if _, err := client.CreateOrUpdate(ctx, id, *properties); err != nil {
+			if model.Description != "" {
+				rule.AdminPropertiesFormat.Description = &model.Description
+			}
+
+			destinationsValue, err := expandAddressPrefixItemModel(model.Destinations)
+			if err != nil {
+				return err
+			}
+
+			rule.AdminPropertiesFormat.Destinations = destinationsValue
+
+			sourcesValue, err := expandAddressPrefixItemModel(model.Sources)
+			if err != nil {
+				return err
+			}
+
+			rule.AdminPropertiesFormat.Sources = sourcesValue
+
+			if _, err := client.CreateOrUpdate(ctx, *rule, id.ResourceGroup, id.NetworkManagerName, id.SecurityAdminConfigurationName, id.RuleCollectionName, id.RuleName); err != nil {
 				return fmt.Errorf("creating %s: %+v", id, err)
 			}
 
@@ -117,39 +253,94 @@ func (r NetworkAdminRuleResource) Create() sdk.ResourceFunc {
 	}
 }
 
-func (r NetworkAdminRuleResource) Update() sdk.ResourceFunc {
+func (r ManagerAdminRuleResource) Update() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.Network.AdminRulesClient
+			client := metadata.Client.Network.ManagerAdminRulesClient
 
-			id, err := adminrules.ParseRuleID(metadata.ResourceData.Id())
+			id, err := parse.NetworkManagerAdminRuleID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
 			}
 
-			var model NetworkAdminRuleModel
+			var model ManagerAdminRuleModel
 			if err := metadata.Decode(&model); err != nil {
 				return fmt.Errorf("decoding: %+v", err)
 			}
 
-			resp, err := client.Get(ctx, *id)
+			existing, err := client.Get(ctx, id.ResourceGroup, id.NetworkManagerName, id.SecurityAdminConfigurationName, id.RuleCollectionName, id.RuleName)
 			if err != nil {
 				return fmt.Errorf("retrieving %s: %+v", *id, err)
 			}
 
-			properties := resp.Model
+			var rule *virtualNetworkManager.AdminRule
+			if adminRule, ok := existing.Value.AsAdminRule(); ok {
+				rule = adminRule
+			}
+
+			properties := rule.AdminPropertiesFormat
 			if properties == nil {
 				return fmt.Errorf("retrieving %s: properties was nil", id)
 			}
 
 			if metadata.ResourceData.HasChange("kind") {
-				properties.Kind = model.Kind
+				rule.Kind = model.Kind
 			}
 
-			properties.SystemData = nil
+			if metadata.ResourceData.HasChange("access") {
+				properties.Access = model.Access
+			}
 
-			if _, err := client.CreateOrUpdate(ctx, *id, *properties); err != nil {
+			if metadata.ResourceData.HasChange("description") {
+				if model.Description != "" {
+					properties.Description = &model.Description
+				} else {
+					properties.Description = nil
+				}
+			}
+
+			if metadata.ResourceData.HasChange("destination_port_ranges") {
+				properties.DestinationPortRanges = &model.DestinationPortRanges
+			}
+
+			if metadata.ResourceData.HasChange("destinations") {
+				destinationsValue, err := expandAddressPrefixItemModel(model.Destinations)
+				if err != nil {
+					return err
+				}
+
+				properties.Destinations = destinationsValue
+			}
+
+			if metadata.ResourceData.HasChange("direction") {
+				properties.Direction = model.Direction
+			}
+
+			if metadata.ResourceData.HasChange("priority") {
+				properties.Priority = utils.Int32(model.Priority)
+			}
+
+			if metadata.ResourceData.HasChange("protocol") {
+				properties.Protocol = model.Protocol
+			}
+
+			if metadata.ResourceData.HasChange("source_port_ranges") {
+				properties.SourcePortRanges = &model.SourcePortRanges
+			}
+
+			if metadata.ResourceData.HasChange("sources") {
+				sourcesValue, err := expandAddressPrefixItemModel(model.Sources)
+				if err != nil {
+					return err
+				}
+
+				properties.Sources = sourcesValue
+			}
+
+			rule.SystemData = nil
+
+			if _, err := client.CreateOrUpdate(ctx, rule, id.ResourceGroup, id.NetworkManagerName, id.SecurityAdminConfigurationName, id.RuleCollectionName, id.RuleName); err != nil {
 				return fmt.Errorf("updating %s: %+v", *id, err)
 			}
 
@@ -158,58 +349,145 @@ func (r NetworkAdminRuleResource) Update() sdk.ResourceFunc {
 	}
 }
 
-func (r NetworkAdminRuleResource) Read() sdk.ResourceFunc {
+func (r ManagerAdminRuleResource) Read() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 5 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.Network.AdminRulesClient
+			client := metadata.Client.Network.ManagerAdminRulesClient
 
-			id, err := adminrules.ParseRuleID(metadata.ResourceData.Id())
+			id, err := parse.NetworkManagerAdminRuleID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
 			}
 
-			resp, err := client.Get(ctx, *id)
+			existing, err := client.Get(ctx, id.ResourceGroup, id.NetworkManagerName, id.SecurityAdminConfigurationName, id.RuleCollectionName, id.RuleName)
 			if err != nil {
-				if response.WasNotFound(resp.HttpResponse) {
+				if utils.ResponseWasNotFound(existing.Response) {
 					return metadata.MarkAsGone(id)
 				}
 
 				return fmt.Errorf("retrieving %s: %+v", *id, err)
 			}
 
-			model := resp.Model
-			if model == nil {
-				return fmt.Errorf("retrieving %s: model was nil", id)
+			var rule *virtualNetworkManager.AdminRule
+			if adminRule, ok := existing.Value.AsAdminRule(); ok {
+				rule = adminRule
 			}
 
-			state := NetworkAdminRuleModel{
-				Name:                    id.RuleName,
-				NetworkRuleCollectionId: adminrulecollections.NewRuleCollectionID(id.SubscriptionId, id.ResourceGroupName, id.NetworkManagerName, id.ConfigurationName, id.RuleCollectionName).ID(),
-				Kind:                    model.Kind,
+			properties := rule.AdminPropertiesFormat
+			if properties == nil {
+				return fmt.Errorf("retrieving %s: properties was nil", id)
 			}
+
+			state := ManagerAdminRuleModel{
+				Name: id.RuleName,
+				NetworkRuleCollectionId: parse.NewNetworkManagerAdminRuleCollectionID(id.SubscriptionId, id.ResourceGroup,
+					id.NetworkManagerName, id.SecurityAdminConfigurationName, id.RuleCollectionName).ID(),
+				Kind: rule.Kind,
+			}
+
+			state.Access = properties.Access
+
+			if properties.Description != nil {
+				state.Description = *properties.Description
+			}
+
+			if properties.DestinationPortRanges != nil {
+				state.DestinationPortRanges = *properties.DestinationPortRanges
+			}
+
+			destinationsValue, err := flattenAddressPrefixItemModel(properties.Destinations)
+			if err != nil {
+				return err
+			}
+
+			state.Destinations = destinationsValue
+
+			state.Direction = properties.Direction
+
+			state.Priority = 0
+			if properties.Priority != nil {
+				state.Priority = *properties.Priority
+			}
+
+			state.Protocol = properties.Protocol
+
+			if properties.SourcePortRanges != nil {
+				state.SourcePortRanges = *properties.SourcePortRanges
+			}
+
+			sourcesValue, err := flattenAddressPrefixItemModel(properties.Sources)
+			if err != nil {
+				return err
+			}
+
+			state.Sources = sourcesValue
 
 			return metadata.Encode(&state)
 		},
 	}
 }
 
-func (r NetworkAdminRuleResource) Delete() sdk.ResourceFunc {
+func (r ManagerAdminRuleResource) Delete() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.Network.AdminRulesClient
+			client := metadata.Client.Network.ManagerAdminRulesClient
 
-			id, err := adminrules.ParseRuleID(metadata.ResourceData.Id())
+			id, err := parse.NetworkManagerAdminRuleID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
 			}
 
-			if err := client.DeleteThenPoll(ctx, *id, adminrules.DeleteOperationOptions{}); err != nil {
+			future, err := client.Delete(ctx, id.ResourceGroup, id.NetworkManagerName, id.SecurityAdminConfigurationName, id.RuleCollectionName, id.RuleName, utils.Bool(true))
+			if err != nil {
 				return fmt.Errorf("deleting %s: %+v", id, err)
+			}
+
+			if err = future.WaitForCompletionRef(ctx, client.Client); err != nil {
+				return fmt.Errorf("waiting for deletion of %s: %+v", *id, err)
 			}
 
 			return nil
 		},
 	}
+}
+
+func expandAddressPrefixItemModel(inputList []AddressPrefixItemModel) (*[]virtualNetworkManager.AddressPrefixItem, error) {
+	var outputList []virtualNetworkManager.AddressPrefixItem
+	for _, v := range inputList {
+		input := v
+		output := virtualNetworkManager.AddressPrefixItem{
+			AddressPrefixType: input.AddressPrefixType,
+		}
+
+		if input.AddressPrefix != "" {
+			output.AddressPrefix = &input.AddressPrefix
+		}
+
+		outputList = append(outputList, output)
+	}
+
+	return &outputList, nil
+}
+
+func flattenAddressPrefixItemModel(inputList *[]virtualNetworkManager.AddressPrefixItem) ([]AddressPrefixItemModel, error) {
+	var outputList []AddressPrefixItemModel
+	if inputList == nil {
+		return outputList, nil
+	}
+
+	for _, input := range *inputList {
+		output := AddressPrefixItemModel{
+			AddressPrefixType: input.AddressPrefixType,
+		}
+
+		if input.AddressPrefix != nil {
+			output.AddressPrefix = *input.AddressPrefix
+		}
+
+		outputList = append(outputList, output)
+	}
+
+	return outputList, nil
 }

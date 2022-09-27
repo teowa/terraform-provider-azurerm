@@ -8,14 +8,14 @@ import (
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
 )
 
-func VirtualNetworkManagerID(input interface{}, key string) (warnings []string, errors []error) {
+func NetworkManagerAdminRuleCollectionID(input interface{}, key string) (warnings []string, errors []error) {
 	v, ok := input.(string)
 	if !ok {
 		errors = append(errors, fmt.Errorf("expected %q to be a string", key))
 		return
 	}
 
-	if _, err := parse.VirtualNetworkManagerID(v); err != nil {
+	if _, err := parse.NetworkManagerAdminRuleCollectionID(v); err != nil {
 		errors = append(errors, err)
 	}
 

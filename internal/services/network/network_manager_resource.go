@@ -21,7 +21,7 @@ import (
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
 )
 
-type NetworkManagerModel struct {
+type ManagerModel struct {
 	CrossTenantScopes []CrossTenantScope     `tfschema:"cross_tenant_scopes"`
 	Scope             []Scope                `tfschema:"scope"`
 	ScopeAccess       []string               `tfschema:"scope_access"`
@@ -43,21 +43,21 @@ type CrossTenantScope struct {
 	Subscriptions    []string `tfschema:"subscriptions"`
 }
 
-type NetworkManagerResource struct{}
+type ManagerResource struct{}
 
-func (r NetworkManagerResource) ResourceType() string {
+func (r ManagerResource) ResourceType() string {
 	return "azurerm_network_manager"
 }
 
-func (r NetworkManagerResource) IDValidationFunc() pluginsdk.SchemaValidateFunc {
-	return validate.VirtualNetworkManagerID
+func (r ManagerResource) IDValidationFunc() pluginsdk.SchemaValidateFunc {
+	return validate.NetworkManagerID
 }
 
-func (r NetworkManagerResource) ModelObject() interface{} {
-	return &NetworkManagerModel{}
+func (r ManagerResource) ModelObject() interface{} {
+	return &ManagerModel{}
 }
 
-func (r NetworkManagerResource) Arguments() map[string]*pluginsdk.Schema {
+func (r ManagerResource) Arguments() map[string]*pluginsdk.Schema {
 	return map[string]*pluginsdk.Schema{
 		"name": {
 			Type:         pluginsdk.TypeString,
@@ -121,7 +121,7 @@ func (r NetworkManagerResource) Arguments() map[string]*pluginsdk.Schema {
 	}
 }
 
-func (r NetworkManagerResource) Attributes() map[string]*pluginsdk.Schema {
+func (r ManagerResource) Attributes() map[string]*pluginsdk.Schema {
 	return map[string]*pluginsdk.Schema{
 		"cross_tenant_scopes": {
 			Type:     pluginsdk.TypeList,
@@ -152,11 +152,11 @@ func (r NetworkManagerResource) Attributes() map[string]*pluginsdk.Schema {
 	}
 }
 
-func (r NetworkManagerResource) Create() sdk.ResourceFunc {
+func (r ManagerResource) Create() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
 			metadata.Logger.Info("Decoding state..")
-			var state NetworkManagerModel
+			var state ManagerModel
 			if err := metadata.Decode(&state); err != nil {
 				return err
 			}
@@ -164,10 +164,10 @@ func (r NetworkManagerResource) Create() sdk.ResourceFunc {
 			client := metadata.Client.Network.ManagersClient
 			subscriptionId := metadata.Client.Account.SubscriptionId
 
-			id := parse.NewVirtualNetworkManagerID(subscriptionId, state.ResourceGroupName, state.Name)
+			id := parse.NewNetworkManagerID(subscriptionId, state.ResourceGroupName, state.Name)
 			metadata.Logger.Infof("creating %s", id)
 
-			existing, err := client.Get(ctx, id.ResourceGroup, id.NetworkManagerName)
+			existing, err := client.Get(ctx, id.ResourceGroup, id.Name)
 			if err != nil && !utils.ResponseWasNotFound(existing.Response) {
 				return fmt.Errorf("checking for the presence of an existing %s: %+v", id, err)
 			}
@@ -180,13 +180,13 @@ func (r NetworkManagerResource) Create() sdk.ResourceFunc {
 				Name:     utils.String(state.Name),
 				ManagerProperties: &virtualNetworkManager.ManagerProperties{
 					Description:                 utils.String(state.Description),
-					NetworkManagerScopes:        expandVirtualNetworkManagerScope(state.Scope),
-					NetworkManagerScopeAccesses: expandVirtualNetworkManagerScopeAccess(state.ScopeAccess),
+					NetworkManagerScopes:        expandNetworkManagerScope(state.Scope),
+					NetworkManagerScopeAccesses: expandNetworkManagerScopeAccess(state.ScopeAccess),
 				},
 				Tags: tags.Expand(state.Tags),
 			}
 
-			if _, err := client.CreateOrUpdate(ctx, input, id.ResourceGroup, id.NetworkManagerName); err != nil {
+			if _, err := client.CreateOrUpdate(ctx, input, id.ResourceGroup, id.Name); err != nil {
 				return fmt.Errorf("creating %s: %+v", id, err)
 			}
 
@@ -197,17 +197,17 @@ func (r NetworkManagerResource) Create() sdk.ResourceFunc {
 	}
 }
 
-func (r NetworkManagerResource) Read() sdk.ResourceFunc {
+func (r ManagerResource) Read() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
 			client := metadata.Client.Network.ManagersClient
-			id, err := parse.VirtualNetworkManagerID(metadata.ResourceData.Id())
+			id, err := parse.NetworkManagerID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
 			}
 
 			metadata.Logger.Infof("retrieving %s", *id)
-			resp, err := client.Get(ctx, id.ResourceGroup, id.NetworkManagerName)
+			resp, err := client.Get(ctx, id.ResourceGroup, id.Name)
 			if err != nil {
 				if utils.ResponseWasNotFound(resp.Response) {
 					metadata.Logger.Infof("%s was not found - removing from state!", *id)
@@ -223,14 +223,14 @@ func (r NetworkManagerResource) Read() sdk.ResourceFunc {
 				if prop.Description != nil {
 					description = *resp.Description
 				}
-				scope = flattenVirtualNetworkManagerScope(resp.NetworkManagerScopes)
-				scopeAccess = flattenVirtualNetworkManagerScopeAccess(resp.NetworkManagerScopeAccesses)
+				scope = flattenNetworkManagerScope(resp.NetworkManagerScopes)
+				scopeAccess = flattenNetworkManagerScopeAccess(resp.NetworkManagerScopeAccesses)
 			}
 
-			return metadata.Encode(&NetworkManagerModel{
+			return metadata.Encode(&ManagerModel{
 				Description:       description,
 				Location:          location.NormalizeNilable(resp.Location),
-				Name:              id.NetworkManagerName,
+				Name:              id.Name,
 				ResourceGroupName: id.ResourceGroup,
 				ScopeAccess:       scopeAccess,
 				Scope:             scope,
@@ -241,24 +241,24 @@ func (r NetworkManagerResource) Read() sdk.ResourceFunc {
 	}
 }
 
-func (r NetworkManagerResource) Update() sdk.ResourceFunc {
+func (r ManagerResource) Update() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			id, err := parse.VirtualNetworkManagerID(metadata.ResourceData.Id())
+			id, err := parse.NetworkManagerID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
 			}
 
 			metadata.Logger.Infof("updating %s..", *id)
 			client := metadata.Client.Network.ManagersClient
-			existing, err := client.Get(ctx, id.ResourceGroup, id.NetworkManagerName)
+			existing, err := client.Get(ctx, id.ResourceGroup, id.Name)
 			if err != nil {
 				return fmt.Errorf("retrieving %s: %+v", *id, err)
 			}
 			if existing.ManagerProperties == nil {
 				return fmt.Errorf("unexpected null properties of %s", *id)
 			}
-			var state NetworkManagerModel
+			var state ManagerModel
 			if err := metadata.Decode(&state); err != nil {
 				return err
 			}
@@ -268,18 +268,18 @@ func (r NetworkManagerResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("scope") {
-				existing.ManagerProperties.NetworkManagerScopes = expandVirtualNetworkManagerScope(state.Scope)
+				existing.ManagerProperties.NetworkManagerScopes = expandNetworkManagerScope(state.Scope)
 			}
 
 			if metadata.ResourceData.HasChange("scope_access") {
-				existing.ManagerProperties.NetworkManagerScopeAccesses = expandVirtualNetworkManagerScopeAccess(state.ScopeAccess)
+				existing.ManagerProperties.NetworkManagerScopeAccesses = expandNetworkManagerScopeAccess(state.ScopeAccess)
 			}
 
 			if metadata.ResourceData.HasChange("tags") {
 				existing.Tags = tags.Expand(state.Tags)
 			}
 
-			if _, err := client.CreateOrUpdate(ctx, existing, id.ResourceGroup, id.NetworkManagerName); err != nil {
+			if _, err := client.CreateOrUpdate(ctx, existing, id.ResourceGroup, id.Name); err != nil {
 				return fmt.Errorf("updating %s: %+v", *id, err)
 			}
 			return nil
@@ -289,17 +289,17 @@ func (r NetworkManagerResource) Update() sdk.ResourceFunc {
 	}
 }
 
-func (r NetworkManagerResource) Delete() sdk.ResourceFunc {
+func (r ManagerResource) Delete() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
 			client := metadata.Client.Network.ManagersClient
-			id, err := parse.VirtualNetworkManagerID(metadata.ResourceData.Id())
+			id, err := parse.NetworkManagerID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
 			}
 
 			metadata.Logger.Infof("deleting %s..", *id)
-			future, err := client.Delete(ctx, id.ResourceGroup, id.NetworkManagerName, utils.Bool(true))
+			future, err := client.Delete(ctx, id.ResourceGroup, id.Name, utils.Bool(true))
 			if err != nil {
 				return fmt.Errorf("deleting %s: %+v", *id, err)
 			}
@@ -317,7 +317,7 @@ func stringSlice(input []string) *[]string {
 	return &input
 }
 
-func expandVirtualNetworkManagerScope(input []Scope) *virtualNetworkManager.ManagerPropertiesNetworkManagerScopes {
+func expandNetworkManagerScope(input []Scope) *virtualNetworkManager.ManagerPropertiesNetworkManagerScopes {
 	if len(input) == 0 {
 		return nil
 	}
@@ -328,11 +328,7 @@ func expandVirtualNetworkManagerScope(input []Scope) *virtualNetworkManager.Mana
 	}
 }
 
-func expandVirtualNetworkManagerScopeAccess(input []string) *[]virtualNetworkManager.ConfigurationType {
-	if len(input) == 0 {
-		return nil
-	}
-
+func expandNetworkManagerScopeAccess(input []string) *[]virtualNetworkManager.ConfigurationType {
 	result := make([]virtualNetworkManager.ConfigurationType, 0)
 	for _, v := range input {
 		result = append(result, virtualNetworkManager.ConfigurationType(v))
@@ -347,7 +343,7 @@ func flattenStringSlicePtr(input *[]string) []string {
 	return *input
 }
 
-func flattenVirtualNetworkManagerScope(input *virtualNetworkManager.ManagerPropertiesNetworkManagerScopes) []Scope {
+func flattenNetworkManagerScope(input *virtualNetworkManager.ManagerPropertiesNetworkManagerScopes) []Scope {
 	if input == nil {
 		return make([]Scope, 0)
 	}
@@ -358,12 +354,12 @@ func flattenVirtualNetworkManagerScope(input *virtualNetworkManager.ManagerPrope
 	}}
 }
 
-func flattenVirtualNetworkManagerScopeAccess(input *[]virtualNetworkManager.ConfigurationType) []string {
+func flattenNetworkManagerScopeAccess(input *[]virtualNetworkManager.ConfigurationType) []string {
+	var result []string
 	if input == nil {
-		return make([]string, 0)
+		return result
 	}
 
-	result := make([]string, 0)
 	for _, v := range *input {
 		result = append(result, string(v))
 	}

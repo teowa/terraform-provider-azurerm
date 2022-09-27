@@ -13,11 +13,11 @@ import (
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
 )
 
-type NetworkManagerResource struct{}
+type ManagerResource struct{}
 
 func TestAccVirtualNetworkManager_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager", "test")
-	r := NetworkManagerResource{}
+	r := ManagerResource{}
 
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
@@ -32,7 +32,7 @@ func TestAccVirtualNetworkManager_basic(t *testing.T) {
 
 func TestAccVirtualNetworkManager_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager", "test")
-	r := NetworkManagerResource{}
+	r := ManagerResource{}
 
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
@@ -47,7 +47,7 @@ func TestAccVirtualNetworkManager_complete(t *testing.T) {
 
 func TestAccVirtualNetworkManager_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager", "test")
-	r := NetworkManagerResource{}
+	r := ManagerResource{}
 
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
@@ -76,7 +76,7 @@ func TestAccVirtualNetworkManager_update(t *testing.T) {
 
 func TestAccVirtualNetworkManager_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager", "test")
-	r := NetworkManagerResource{}
+	r := ManagerResource{}
 
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
@@ -89,20 +89,23 @@ func TestAccVirtualNetworkManager_requiresImport(t *testing.T) {
 	})
 }
 
-func (r NetworkManagerResource) Exists(ctx context.Context, clients *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
-	id, err := parse.VirtualNetworkManagerID(state.ID)
+func (r ManagerResource) Exists(ctx context.Context, clients *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
+	id, err := parse.NetworkManagerID(state.ID)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := clients.Network.ManagersClient.Get(ctx, id.ResourceGroup, id.NetworkManagerName)
+	resp, err := clients.Network.ManagersClient.Get(ctx, id.ResourceGroup, id.Name)
 	if err != nil {
+		if utils.ResponseWasNotFound(resp.Response) {
+			return utils.Bool(false), nil
+		}
 		return nil, fmt.Errorf("retrieving %s: %+v", *id, err)
 	}
 
 	return utils.Bool(resp.ID != nil), nil
 }
 
-func (r NetworkManagerResource) basic(data acceptance.TestData) string {
+func (r ManagerResource) basic(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 %s
 
@@ -118,7 +121,7 @@ resource "azurerm_network_manager" "test" {
 `, r.template(data), data.RandomInteger)
 }
 
-func (r NetworkManagerResource) requiresImport(data acceptance.TestData) string {
+func (r ManagerResource) requiresImport(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 %s
 
@@ -134,7 +137,7 @@ resource "azurerm_network_manager" "test" {
 `, r.template(data))
 }
 
-func (r NetworkManagerResource) complete(data acceptance.TestData) string {
+func (r ManagerResource) complete(data acceptance.TestData) string {
 
 	return fmt.Sprintf(`
 %s
@@ -155,7 +158,7 @@ resource "azurerm_network_manager" "test" {
 `, r.template(data), data.RandomInteger)
 }
 
-func (NetworkManagerResource) template(data acceptance.TestData) string {
+func (ManagerResource) template(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 provider "azurerm" {
   features {}

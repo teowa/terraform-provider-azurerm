@@ -4,7 +4,7 @@ package validate
 
 import "testing"
 
-func TestVirtualNetworkManagerID(t *testing.T) {
+func TestNetworkManagerNetworkGroupID(t *testing.T) {
 	cases := []struct {
 		Input string
 		Valid bool
@@ -53,20 +53,32 @@ func TestVirtualNetworkManagerID(t *testing.T) {
 		},
 
 		{
+			// missing NetworkGroupName
+			Input: "/subscriptions/12345678-1234-9876-4563-123456789012/resourceGroups/resGroup1/providers/Microsoft.Network/networkManagers/manager1/",
+			Valid: false,
+		},
+
+		{
+			// missing value for NetworkGroupName
+			Input: "/subscriptions/12345678-1234-9876-4563-123456789012/resourceGroups/resGroup1/providers/Microsoft.Network/networkManagers/manager1/networkGroups/",
+			Valid: false,
+		},
+
+		{
 			// valid
-			Input: "/subscriptions/12345678-1234-9876-4563-123456789012/resourceGroups/resGroup1/providers/Microsoft.Network/networkManagers/manager1",
+			Input: "/subscriptions/12345678-1234-9876-4563-123456789012/resourceGroups/resGroup1/providers/Microsoft.Network/networkManagers/manager1/networkGroups/group1",
 			Valid: true,
 		},
 
 		{
 			// upper-cased
-			Input: "/SUBSCRIPTIONS/12345678-1234-9876-4563-123456789012/RESOURCEGROUPS/RESGROUP1/PROVIDERS/MICROSOFT.NETWORK/NETWORKMANAGERS/MANAGER1",
+			Input: "/SUBSCRIPTIONS/12345678-1234-9876-4563-123456789012/RESOURCEGROUPS/RESGROUP1/PROVIDERS/MICROSOFT.NETWORK/NETWORKMANAGERS/MANAGER1/NETWORKGROUPS/GROUP1",
 			Valid: false,
 		},
 	}
 	for _, tc := range cases {
 		t.Logf("[DEBUG] Testing Value %s", tc.Input)
-		_, errors := VirtualNetworkManagerID(tc.Input, "test")
+		_, errors := NetworkManagerNetworkGroupID(tc.Input, "test")
 		valid := len(errors) == 0
 
 		if tc.Valid != valid {
