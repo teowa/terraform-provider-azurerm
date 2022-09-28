@@ -5,21 +5,19 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2022-01-01/networkmanagerconnections"
-
-	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
 )
 
-type NetworkSubscriptionNetworkManagerConnectionResource struct{}
+type ManagerSubscriptionConnectionResource struct{}
 
 func TestAccNetworkSubscriptionNetworkManagerConnection_basic(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_network_subscription_network_manager_connection", "test")
-	r := NetworkSubscriptionNetworkManagerConnectionResource{}
+	data := acceptance.BuildTestData(t, "azurerm_network_manager_subscription_connection", "test")
+	r := ManagerSubscriptionConnectionResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
@@ -32,8 +30,8 @@ func TestAccNetworkSubscriptionNetworkManagerConnection_basic(t *testing.T) {
 }
 
 func TestAccNetworkSubscriptionNetworkManagerConnection_requiresImport(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_network_subscription_network_manager_connection", "test")
-	r := NetworkSubscriptionNetworkManagerConnectionResource{}
+	data := acceptance.BuildTestData(t, "azurerm_network_manager_subscription_connection", "test")
+	r := ManagerSubscriptionConnectionResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
@@ -46,8 +44,8 @@ func TestAccNetworkSubscriptionNetworkManagerConnection_requiresImport(t *testin
 }
 
 func TestAccNetworkSubscriptionNetworkManagerConnection_complete(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_network_subscription_network_manager_connection", "test")
-	r := NetworkSubscriptionNetworkManagerConnectionResource{}
+	data := acceptance.BuildTestData(t, "azurerm_network_manager_subscription_connection", "test")
+	r := ManagerSubscriptionConnectionResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
@@ -60,8 +58,8 @@ func TestAccNetworkSubscriptionNetworkManagerConnection_complete(t *testing.T) {
 }
 
 func TestAccNetworkSubscriptionNetworkManagerConnection_update(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_network_subscription_network_manager_connection", "test")
-	r := NetworkSubscriptionNetworkManagerConnectionResource{}
+	data := acceptance.BuildTestData(t, "azurerm_network_manager_subscription_connection", "test")
+	r := ManagerSubscriptionConnectionResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
@@ -80,24 +78,24 @@ func TestAccNetworkSubscriptionNetworkManagerConnection_update(t *testing.T) {
 	})
 }
 
-func (r NetworkSubscriptionNetworkManagerConnectionResource) Exists(ctx context.Context, clients *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
-	id, err := networkmanagerconnections.ParseNetworkManagerConnectionID(state.ID)
+func (r ManagerSubscriptionConnectionResource) Exists(ctx context.Context, clients *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
+	id, err := parse.NetworkManagerSubscriptionConnectionID(state.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	client := clients.Network.NetworkManagerConnectionsClient
-	resp, err := client.SubscriptionNetworkManagerConnectionsGet(ctx, *id)
+	client := clients.Network.ManagerSubscriptionConnectionsClient
+	resp, err := client.Get(ctx, id.SubscriptionId, id.NetworkManagerConnectionName)
 	if err != nil {
-		if response.WasNotFound(resp.HttpResponse) {
+		if utils.ResponseWasNotFound(resp.Response) {
 			return utils.Bool(false), nil
 		}
 		return nil, fmt.Errorf("retrieving %s: %+v", id, err)
 	}
-	return utils.Bool(resp.Model != nil), nil
+	return utils.Bool(resp.ManagerConnectionProperties != nil), nil
 }
 
-func (r NetworkSubscriptionNetworkManagerConnectionResource) template(data acceptance.TestData) string {
+func (r ManagerSubscriptionConnectionResource) template(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 			provider "azurerm" {
 				features {}
@@ -107,34 +105,34 @@ func (r NetworkSubscriptionNetworkManagerConnectionResource) template(data accep
 `)
 }
 
-func (r NetworkSubscriptionNetworkManagerConnectionResource) basic(data acceptance.TestData) string {
+func (r ManagerSubscriptionConnectionResource) basic(data acceptance.TestData) string {
 	template := r.template(data)
 	return fmt.Sprintf(`
 				%s
 
-resource "azurerm_network_subscription_network_manager_connection" "test" {
+resource "azurerm_network_manager_subscription_connection" "test" {
   name = "acctest-nsnmc-%d"
 }
 `, template, data.RandomInteger)
 }
 
-func (r NetworkSubscriptionNetworkManagerConnectionResource) requiresImport(data acceptance.TestData) string {
+func (r ManagerSubscriptionConnectionResource) requiresImport(data acceptance.TestData) string {
 	config := r.basic(data)
 	return fmt.Sprintf(`
 			%s
 
-resource "azurerm_network_subscription_network_manager_connection" "import" {
-  name = azurerm_network_subscription_network_manager_connection.test.name
+resource "azurerm_network_manager_subscription_connection" "import" {
+  name = azurerm_network_manager_subscription_connection.test.name
 }
 `, config)
 }
 
-func (r NetworkSubscriptionNetworkManagerConnectionResource) complete(data acceptance.TestData) string {
+func (r ManagerSubscriptionConnectionResource) complete(data acceptance.TestData) string {
 	template := r.template(data)
 	return fmt.Sprintf(`
 			%s
 
-resource "azurerm_network_subscription_network_manager_connection" "test" {
+resource "azurerm_network_manager_subscription_connection" "test" {
   name               = "acctest-nsnmc-%d"
   connection_state   = ""
   description        = ""
@@ -144,12 +142,12 @@ resource "azurerm_network_subscription_network_manager_connection" "test" {
 `, template, data.RandomInteger)
 }
 
-func (r NetworkSubscriptionNetworkManagerConnectionResource) update(data acceptance.TestData) string {
+func (r ManagerSubscriptionConnectionResource) update(data acceptance.TestData) string {
 	template := r.template(data)
 	return fmt.Sprintf(`
 			%s
 
-resource "azurerm_network_subscription_network_manager_connection" "test" {
+resource "azurerm_network_manager_subscription_connection" "test" {
   name               = "acctest-nsnmc-%d"
   connection_state   = ""
   description        = ""

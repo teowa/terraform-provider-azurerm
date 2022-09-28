@@ -2,53 +2,45 @@ package network
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"regexp"
 	"time"
 
-	"github.com/hashicorp/go-azure-helpers/lang/response"
-	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
-	"github.com/hashicorp/go-azure-helpers/resourcemanager/identity"
-	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
-	tagsHelper "github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2022-01-01/networkmanagerconnections"
-	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
-	azValidate "github.com/hashicorp/terraform-provider-azurerm/helpers/validate"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
+	virtualNetworkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/tags"
+	managementParse "github.com/hashicorp/terraform-provider-azurerm/internal/services/managementgroup/parse"
+	managementValidate "github.com/hashicorp/terraform-provider-azurerm/internal/services/managementgroup/validate"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/timeouts"
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
 )
 
-type NetworkManagementGroupNetworkManagerConnectionModel struct {
-	Name              string                                         `tfschema:"name"`
-	ManagementGroupId string                                         `tfschema:"management_group_id"`
-	ConnectionState   networkmanagerconnections.ScopeConnectionState `tfschema:"connection_state"`
-	Description       string                                         `tfschema:"description"`
-	NetworkManagerId  string                                         `tfschema:"network_manager_id"`
+type ManagerManagementGroupConnectionModel struct {
+	Name              string `tfschema:"name"`
+	ManagementGroupId string `tfschema:"management_group_id"`
+	ConnectionState   string `tfschema:"connection_state"`
+	Description       string `tfschema:"description"`
+	NetworkManagerId  string `tfschema:"network_manager_id"`
 }
 
-type NetworkManagementGroupNetworkManagerConnectionResource struct{}
+type ManagerManagementGroupConnectionResource struct{}
 
-var _ sdk.ResourceWithUpdate = NetworkManagementGroupNetworkManagerConnectionResource{}
+var _ sdk.ResourceWithUpdate = ManagerManagementGroupConnectionResource{}
 
-func (r NetworkManagementGroupNetworkManagerConnectionResource) ResourceType() string {
-	return "azurerm_network_management_group_network_manager_connection"
+func (r ManagerManagementGroupConnectionResource) ResourceType() string {
+	return "azurerm_network_manager_management_group_connection"
 }
 
-func (r NetworkManagementGroupNetworkManagerConnectionResource) ModelObject() interface{} {
-	return &NetworkManagementGroupNetworkManagerConnectionModel{}
+func (r ManagerManagementGroupConnectionResource) ModelObject() interface{} {
+	return &ManagerManagementGroupConnectionModel{}
 }
 
-func (r NetworkManagementGroupNetworkManagerConnectionResource) IDValidationFunc() pluginsdk.SchemaValidateFunc {
-	return networkmanagerconnections.ValidateManagementGroupNetworkManagerConnectionID
+func (r ManagerManagementGroupConnectionResource) IDValidationFunc() pluginsdk.SchemaValidateFunc {
+	return validate.NetworkManagerManagementGroupConnectionID
 }
 
-func (r NetworkManagementGroupNetworkManagerConnectionResource) Arguments() map[string]*pluginsdk.Schema {
+func (r ManagerManagementGroupConnectionResource) Arguments() map[string]*pluginsdk.Schema {
 	return map[string]*pluginsdk.Schema{
 		"name": {
 			Type:         pluginsdk.TypeString,
@@ -61,19 +53,7 @@ func (r NetworkManagementGroupNetworkManagerConnectionResource) Arguments() map[
 			Type:         pluginsdk.TypeString,
 			Required:     true,
 			ForceNew:     true,
-			ValidateFunc: validation.StringIsNotEmpty,
-		},
-
-		"connection_state": {
-			Type:     pluginsdk.TypeString,
-			Optional: true,
-			ValidateFunc: validation.StringInSlice([]string{
-				string(networkmanagerconnections.ScopeConnectionStatePending),
-				string(networkmanagerconnections.ScopeConnectionStateConflict),
-				string(networkmanagerconnections.ScopeConnectionStateRevoked),
-				string(networkmanagerconnections.ScopeConnectionStateRejected),
-				string(networkmanagerconnections.ScopeConnectionStateConnected),
-			}, false),
+			ValidateFunc: managementValidate.ManagementGroupID,
 		},
 
 		"description": {
@@ -90,45 +70,53 @@ func (r NetworkManagementGroupNetworkManagerConnectionResource) Arguments() map[
 	}
 }
 
-func (r NetworkManagementGroupNetworkManagerConnectionResource) Attributes() map[string]*pluginsdk.Schema {
-	return map[string]*pluginsdk.Schema{}
+func (r ManagerManagementGroupConnectionResource) Attributes() map[string]*pluginsdk.Schema {
+	return map[string]*pluginsdk.Schema{
+		"connection_state": {
+			Type:     pluginsdk.TypeString,
+			Computed: true,
+		},
+	}
 }
 
-func (r NetworkManagementGroupNetworkManagerConnectionResource) Create() sdk.ResourceFunc {
+func (r ManagerManagementGroupConnectionResource) Create() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			var model NetworkManagementGroupNetworkManagerConnectionModel
+			var model ManagerManagementGroupConnectionModel
 			if err := metadata.Decode(&model); err != nil {
 				return fmt.Errorf("decoding: %+v", err)
 			}
 
-			client := metadata.Client.Network.NetworkManagerConnectionsClient
-			id := networkmanagerconnections.NewProviders2NetworkManagerConnectionID(model.ManagementGroupId, model.Name)
-			existing, err := client.ManagementGroupNetworkManagerConnectionsGet(ctx, id)
-			if err != nil && !response.WasNotFound(existing.HttpResponse) {
+			client := metadata.Client.Network.ManagerManagementGrpConnectionsClient
+			managementGroupId, err := managementParse.ManagementGroupID(model.ManagementGroupId)
+			if err != nil {
+				return err
+			}
+
+			id := parse.NewNetworkManagerManagementGroupConnectionID(managementGroupId.Name, model.Name)
+			existing, err := client.Get(ctx, id.ManagementGroupName, id.NetworkManagerConnectionName)
+			if err != nil && !utils.ResponseWasNotFound(existing.Response) {
 				return fmt.Errorf("checking for existing %s: %+v", id, err)
 			}
 
-			if !response.WasNotFound(existing.HttpResponse) {
+			if !utils.ResponseWasNotFound(existing.Response) {
 				return metadata.ResourceRequiresImport(r.ResourceType(), id)
 			}
 
-			properties := &networkmanagerconnections.NetworkManagerConnection{
-				Properties: &networkmanagerconnections.NetworkManagerConnectionProperties{
-					ConnectionState: &model.ConnectionState,
-				},
+			managerConnection := &virtualNetworkManager.ManagerConnection{
+				ManagerConnectionProperties: &virtualNetworkManager.ManagerConnectionProperties{},
 			}
 
 			if model.Description != "" {
-				properties.Properties.Description = &model.Description
+				managerConnection.ManagerConnectionProperties.Description = &model.Description
 			}
 
 			if model.NetworkManagerId != "" {
-				properties.Properties.NetworkManagerId = &model.NetworkManagerId
+				managerConnection.ManagerConnectionProperties.NetworkManagerID = &model.NetworkManagerId
 			}
 
-			if _, err := client.ManagementGroupNetworkManagerConnectionsCreateOrUpdate(ctx, id, *properties); err != nil {
+			if _, err := client.CreateOrUpdate(ctx, *managerConnection, id.ManagementGroupName, id.NetworkManagerConnectionName); err != nil {
 				return fmt.Errorf("creating %s: %+v", id, err)
 			}
 
@@ -138,55 +126,51 @@ func (r NetworkManagementGroupNetworkManagerConnectionResource) Create() sdk.Res
 	}
 }
 
-func (r NetworkManagementGroupNetworkManagerConnectionResource) Update() sdk.ResourceFunc {
+func (r ManagerManagementGroupConnectionResource) Update() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.Network.NetworkManagerConnectionsClient
+			client := metadata.Client.Network.ManagerManagementGrpConnectionsClient
 
-			id, err := networkmanagerconnections.ParseProviders2NetworkManagerConnectionID(metadata.ResourceData.Id())
+			id, err := parse.NetworkManagerManagementGroupConnectionID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
 			}
 
-			var model NetworkManagementGroupNetworkManagerConnectionModel
+			var model ManagerManagementGroupConnectionModel
 			if err := metadata.Decode(&model); err != nil {
 				return fmt.Errorf("decoding: %+v", err)
 			}
 
-			resp, err := client.ManagementGroupNetworkManagerConnectionsGet(ctx, *id)
+			existing, err := client.Get(ctx, id.ManagementGroupName, id.NetworkManagerConnectionName)
 			if err != nil {
 				return fmt.Errorf("retrieving %s: %+v", *id, err)
 			}
 
-			properties := resp.Model
+			properties := existing.ManagerConnectionProperties
 			if properties == nil {
 				return fmt.Errorf("retrieving %s: properties was nil", id)
 			}
 
-			if metadata.ResourceData.HasChange("connection_state") {
-				properties.Properties.ConnectionState = &model.ConnectionState
-			}
-
 			if metadata.ResourceData.HasChange("description") {
 				if model.Description != "" {
-					properties.Properties.Description = &model.Description
+					properties.Description = &model.Description
 				} else {
-					properties.Properties.Description = nil
+					properties.Description = nil
 				}
 			}
 
 			if metadata.ResourceData.HasChange("network_manager_id") {
 				if model.NetworkManagerId != "" {
-					properties.Properties.NetworkManagerId = &model.NetworkManagerId
+					properties.NetworkManagerID = &model.NetworkManagerId
 				} else {
-					properties.Properties.NetworkManagerId = nil
+					properties.NetworkManagerID = nil
 				}
 			}
 
-			properties.SystemData = nil
+			existing.SystemData = nil
 
-			if _, err := client.ManagementGroupNetworkManagerConnectionsCreateOrUpdate(ctx, *id, *properties); err != nil {
+			if _, err := client.CreateOrUpdate(ctx, existing, id.ManagementGroupName, id.NetworkManagerConnectionName); err != nil {
 				return fmt.Errorf("updating %s: %+v", *id, err)
 			}
 
@@ -195,48 +179,44 @@ func (r NetworkManagementGroupNetworkManagerConnectionResource) Update() sdk.Res
 	}
 }
 
-func (r NetworkManagementGroupNetworkManagerConnectionResource) Read() sdk.ResourceFunc {
+func (r ManagerManagementGroupConnectionResource) Read() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 5 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.Network.NetworkManagerConnectionsClient
+			client := metadata.Client.Network.ManagerManagementGrpConnectionsClient
 
-			id, err := networkmanagerconnections.ParseProviders2NetworkManagerConnectionID(metadata.ResourceData.Id())
+			id, err := parse.NetworkManagerManagementGroupConnectionID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
 			}
 
-			resp, err := client.ManagementGroupNetworkManagerConnectionsGet(ctx, *id)
+			existing, err := client.Get(ctx, id.ManagementGroupName, id.NetworkManagerConnectionName)
 			if err != nil {
-				if response.WasNotFound(resp.HttpResponse) {
+				if utils.ResponseWasNotFound(existing.Response) {
 					return metadata.MarkAsGone(id)
 				}
 
 				return fmt.Errorf("retrieving %s: %+v", *id, err)
 			}
 
-			model := resp.Model
-			if model == nil {
-				return fmt.Errorf("retrieving %s: model was nil", id)
+			properties := existing.ManagerConnectionProperties
+			if properties == nil {
+				return fmt.Errorf("retrieving %s: properties was nil", id)
 			}
 
-			state := NetworkManagementGroupNetworkManagerConnectionModel{
+			state := ManagerManagementGroupConnectionModel{
 				Name:              id.NetworkManagerConnectionName,
-				ManagementGroupId: id.ManagementGroupId,
+				ManagementGroupId: managementParse.NewManagementGroupId(id.ManagementGroupName).ID(),
 			}
 
-			if properties := model.Properties; properties != nil {
-				if properties.ConnectionState != nil {
-					state.ConnectionState = *properties.ConnectionState
-				}
+			state.ConnectionState = string(properties.ConnectionState)
 
-				if properties.Description != nil {
-					state.Description = *properties.Description
-				}
+			if properties.Description != nil {
+				state.Description = *properties.Description
+			}
 
-				if properties.NetworkManagerId != nil {
-					state.NetworkManagerId = *properties.NetworkManagerId
-				}
+			if properties.NetworkManagerID != nil {
+				state.NetworkManagerId = *properties.NetworkManagerID
 			}
 
 			return metadata.Encode(&state)
@@ -244,18 +224,18 @@ func (r NetworkManagementGroupNetworkManagerConnectionResource) Read() sdk.Resou
 	}
 }
 
-func (r NetworkManagementGroupNetworkManagerConnectionResource) Delete() sdk.ResourceFunc {
+func (r ManagerManagementGroupConnectionResource) Delete() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.Network.NetworkManagerConnectionsClient
+			client := metadata.Client.Network.ManagerManagementGrpConnectionsClient
 
-			id, err := networkmanagerconnections.ParseProviders2NetworkManagerConnectionID(metadata.ResourceData.Id())
+			id, err := parse.NetworkManagerManagementGroupConnectionID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
 			}
 
-			if _, err := client.ManagementGroupNetworkManagerConnectionsDelete(ctx, *id); err != nil {
+			if _, err := client.Delete(ctx, id.ManagementGroupName, id.NetworkManagerConnectionName); err != nil {
 				return fmt.Errorf("deleting %s: %+v", id, err)
 			}
 

@@ -3,8 +3,9 @@ package network_test
 import (
 	"context"
 	"fmt"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
 	"testing"
+
+	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
 
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"

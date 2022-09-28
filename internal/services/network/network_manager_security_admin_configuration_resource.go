@@ -3,8 +3,9 @@ package network
 import (
 	"context"
 	"fmt"
-	"github.com/hashicorp/terraform-provider-azurerm/utils"
 	"time"
+
+	"github.com/hashicorp/terraform-provider-azurerm/utils"
 
 	virtualNetworkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"

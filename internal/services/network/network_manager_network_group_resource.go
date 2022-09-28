@@ -2,52 +2,41 @@ package network
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"regexp"
 	"time"
 
-	"github.com/hashicorp/go-azure-helpers/lang/response"
-	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
-	"github.com/hashicorp/go-azure-helpers/resourcemanager/identity"
-	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
-	tagsHelper "github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2022-01-01/networkgroups"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2022-01-01/networkmanagers"
-	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
-	azValidate "github.com/hashicorp/terraform-provider-azurerm/helpers/validate"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
+	virtualNetworkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/tags"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/timeouts"
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
 )
 
-type NetworkNetworkGroupModel struct {
+type ManagerNetworkGroupModel struct {
 	Name                    string `tfschema:"name"`
 	NetworkNetworkManagerId string `tfschema:"network_network_manager_id"`
 	Description             string `tfschema:"description"`
 }
 
-type NetworkNetworkGroupResource struct{}
+type ManagerNetworkGroupResource struct{}
 
-var _ sdk.ResourceWithUpdate = NetworkNetworkGroupResource{}
+var _ sdk.ResourceWithUpdate = ManagerNetworkGroupResource{}
 
-func (r NetworkNetworkGroupResource) ResourceType() string {
-	return "azurerm_network_network_group"
+func (r ManagerNetworkGroupResource) ResourceType() string {
+	return "azurerm_network_manager_network_group"
 }
 
-func (r NetworkNetworkGroupResource) ModelObject() interface{} {
-	return &NetworkNetworkGroupModel{}
+func (r ManagerNetworkGroupResource) ModelObject() interface{} {
+	return &ManagerNetworkGroupModel{}
 }
 
-func (r NetworkNetworkGroupResource) IDValidationFunc() pluginsdk.SchemaValidateFunc {
-	return networkgroups.ValidateNetworkGroupID
+func (r ManagerNetworkGroupResource) IDValidationFunc() pluginsdk.SchemaValidateFunc {
+	return validate.NetworkManagerNetworkGroupID
 }
 
-func (r NetworkNetworkGroupResource) Arguments() map[string]*pluginsdk.Schema {
+func (r ManagerNetworkGroupResource) Arguments() map[string]*pluginsdk.Schema {
 	return map[string]*pluginsdk.Schema{
 		"name": {
 			Type:         pluginsdk.TypeString,
@@ -60,7 +49,7 @@ func (r NetworkNetworkGroupResource) Arguments() map[string]*pluginsdk.Schema {
 			Type:         pluginsdk.TypeString,
 			Required:     true,
 			ForceNew:     true,
-			ValidateFunc: networkmanagers.ValidateNetworkManagerID,
+			ValidateFunc: validate.NetworkManagerID,
 		},
 
 		"description": {
@@ -71,44 +60,44 @@ func (r NetworkNetworkGroupResource) Arguments() map[string]*pluginsdk.Schema {
 	}
 }
 
-func (r NetworkNetworkGroupResource) Attributes() map[string]*pluginsdk.Schema {
+func (r ManagerNetworkGroupResource) Attributes() map[string]*pluginsdk.Schema {
 	return map[string]*pluginsdk.Schema{}
 }
 
-func (r NetworkNetworkGroupResource) Create() sdk.ResourceFunc {
+func (r ManagerNetworkGroupResource) Create() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			var model NetworkNetworkGroupModel
+			var model ManagerNetworkGroupModel
 			if err := metadata.Decode(&model); err != nil {
 				return fmt.Errorf("decoding: %+v", err)
 			}
 
-			client := metadata.Client.Network.NetworkGroupsClient
-			networkManagerId, err := networkmanagers.ParseNetworkManagerID(model.NetworkNetworkManagerId)
+			client := metadata.Client.Network.ManagerNetworkGroupsClient
+			networkManagerId, err := parse.NetworkManagerID(model.NetworkNetworkManagerId)
 			if err != nil {
 				return err
 			}
 
-			id := networkgroups.NewNetworkGroupID(networkManagerId.SubscriptionId, networkManagerId.ResourceGroupName, networkManagerId.NetworkManagerName, model.Name)
-			existing, err := client.Get(ctx, id)
-			if err != nil && !response.WasNotFound(existing.HttpResponse) {
+			id := parse.NewNetworkManagerNetworkGroupID(networkManagerId.SubscriptionId, networkManagerId.ResourceGroup, networkManagerId.Name, model.Name)
+			existing, err := client.Get(ctx, id.ResourceGroup, id.NetworkManagerName, id.NetworkGroupName)
+			if err != nil && !utils.ResponseWasNotFound(existing.Response) {
 				return fmt.Errorf("checking for existing %s: %+v", id, err)
 			}
 
-			if !response.WasNotFound(existing.HttpResponse) {
+			if !utils.ResponseWasNotFound(existing.Response) {
 				return metadata.ResourceRequiresImport(r.ResourceType(), id)
 			}
 
-			properties := &networkgroups.NetworkGroup{
-				Properties: &networkgroups.NetworkGroupProperties{},
+			group := &virtualNetworkManager.Group{
+				GroupProperties: &virtualNetworkManager.GroupProperties{},
 			}
 
 			if model.Description != "" {
-				properties.Properties.Description = &model.Description
+				group.GroupProperties.Description = &model.Description
 			}
 
-			if _, err := client.CreateOrUpdate(ctx, id, *properties, networkgroups.CreateOrUpdateOperationOptions{}); err != nil {
+			if _, err := client.CreateOrUpdate(ctx, *group, id.ResourceGroup, id.NetworkManagerName, id.NetworkGroupName, ""); err != nil {
 				return fmt.Errorf("creating %s: %+v", id, err)
 			}
 
@@ -118,43 +107,43 @@ func (r NetworkNetworkGroupResource) Create() sdk.ResourceFunc {
 	}
 }
 
-func (r NetworkNetworkGroupResource) Update() sdk.ResourceFunc {
+func (r ManagerNetworkGroupResource) Update() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.Network.NetworkGroupsClient
+			client := metadata.Client.Network.ManagerNetworkGroupsClient
 
-			id, err := networkgroups.ParseNetworkGroupID(metadata.ResourceData.Id())
+			id, err := parse.NetworkManagerNetworkGroupID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
 			}
 
-			var model NetworkNetworkGroupModel
+			var model ManagerNetworkGroupModel
 			if err := metadata.Decode(&model); err != nil {
 				return fmt.Errorf("decoding: %+v", err)
 			}
 
-			resp, err := client.Get(ctx, *id)
+			existing, err := client.Get(ctx, id.ResourceGroup, id.NetworkManagerName, id.NetworkGroupName)
 			if err != nil {
 				return fmt.Errorf("retrieving %s: %+v", *id, err)
 			}
 
-			properties := resp.Model
+			properties := existing.GroupProperties
 			if properties == nil {
 				return fmt.Errorf("retrieving %s: properties was nil", id)
 			}
 
 			if metadata.ResourceData.HasChange("description") {
 				if model.Description != "" {
-					properties.Properties.Description = &model.Description
+					properties.Description = &model.Description
 				} else {
-					properties.Properties.Description = nil
+					properties.Description = nil
 				}
 			}
 
-			properties.SystemData = nil
+			existing.SystemData = nil
 
-			if _, err := client.CreateOrUpdate(ctx, *id, *properties, networkgroups.CreateOrUpdateOperationOptions{}); err != nil {
+			if _, err := client.CreateOrUpdate(ctx, existing, id.ResourceGroup, id.NetworkManagerName, id.NetworkGroupName, ""); err != nil {
 				return fmt.Errorf("updating %s: %+v", *id, err)
 			}
 
@@ -163,40 +152,38 @@ func (r NetworkNetworkGroupResource) Update() sdk.ResourceFunc {
 	}
 }
 
-func (r NetworkNetworkGroupResource) Read() sdk.ResourceFunc {
+func (r ManagerNetworkGroupResource) Read() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 5 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.Network.NetworkGroupsClient
+			client := metadata.Client.Network.ManagerNetworkGroupsClient
 
-			id, err := networkgroups.ParseNetworkGroupID(metadata.ResourceData.Id())
+			id, err := parse.NetworkManagerNetworkGroupID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
 			}
 
-			resp, err := client.Get(ctx, *id)
+			existing, err := client.Get(ctx, id.ResourceGroup, id.NetworkManagerName, id.NetworkGroupName)
 			if err != nil {
-				if response.WasNotFound(resp.HttpResponse) {
+				if utils.ResponseWasNotFound(existing.Response) {
 					return metadata.MarkAsGone(id)
 				}
 
 				return fmt.Errorf("retrieving %s: %+v", *id, err)
 			}
 
-			model := resp.Model
-			if model == nil {
-				return fmt.Errorf("retrieving %s: model was nil", id)
+			properties := existing.GroupProperties
+			if properties == nil {
+				return fmt.Errorf("retrieving %s: properties was nil", id)
 			}
 
-			state := NetworkNetworkGroupModel{
+			state := ManagerNetworkGroupModel{
 				Name:                    id.NetworkGroupName,
-				NetworkNetworkManagerId: networkmanagers.NewNetworkManagerID(id.SubscriptionId, id.ResourceGroupName, id.NetworkManagerName).ID(),
+				NetworkNetworkManagerId: parse.NewNetworkManagerID(id.SubscriptionId, id.ResourceGroup, id.NetworkManagerName).ID(),
 			}
 
-			if properties := model.Properties; properties != nil {
-				if properties.Description != nil {
-					state.Description = *properties.Description
-				}
+			if properties.Description != nil {
+				state.Description = *properties.Description
 			}
 
 			return metadata.Encode(&state)
@@ -204,19 +191,24 @@ func (r NetworkNetworkGroupResource) Read() sdk.ResourceFunc {
 	}
 }
 
-func (r NetworkNetworkGroupResource) Delete() sdk.ResourceFunc {
+func (r ManagerNetworkGroupResource) Delete() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.Network.NetworkGroupsClient
+			client := metadata.Client.Network.ManagerNetworkGroupsClient
 
-			id, err := networkgroups.ParseNetworkGroupID(metadata.ResourceData.Id())
+			id, err := parse.NetworkManagerNetworkGroupID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
 			}
 
-			if err := client.DeleteThenPoll(ctx, *id, networkgroups.DeleteOperationOptions{}); err != nil {
-				return fmt.Errorf("deleting %s: %+v", id, err)
+			future, err := client.Delete(ctx, id.ResourceGroup, id.NetworkManagerName, id.NetworkGroupName, utils.Bool(true))
+			if err != nil {
+				return fmt.Errorf("deleting %s: %+v", *id, err)
+			}
+
+			if err = future.WaitForCompletionRef(ctx, client.Client); err != nil {
+				return fmt.Errorf("waiting for deletion of %s: %+v", *id, err)
 			}
 
 			return nil

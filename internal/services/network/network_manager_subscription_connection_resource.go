@@ -2,52 +2,44 @@ package network
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"regexp"
 	"time"
 
-	"github.com/hashicorp/go-azure-helpers/lang/response"
-	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
-	"github.com/hashicorp/go-azure-helpers/resourcemanager/identity"
-	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
-	tagsHelper "github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2022-01-01/networkmanagerconnections"
-	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
-	azValidate "github.com/hashicorp/terraform-provider-azurerm/helpers/validate"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
+	virtualNetworkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
+	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/tags"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/timeouts"
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
 )
 
-type NetworkSubscriptionNetworkManagerConnectionModel struct {
-	Name             string                                         `tfschema:"name"`
-	ConnectionState  networkmanagerconnections.ScopeConnectionState `tfschema:"connection_state"`
-	Description      string                                         `tfschema:"description"`
-	NetworkManagerId string                                         `tfschema:"network_manager_id"`
+type ManagerSubscriptionConnectionModel struct {
+	Name             string `tfschema:"name"`
+	SubscriptionId   string `tfschema:"subscription_id"`
+	ConnectionState  string `tfschema:"connection_state"`
+	Description      string `tfschema:"description"`
+	NetworkManagerId string `tfschema:"network_manager_id"`
 }
 
-type NetworkSubscriptionNetworkManagerConnectionResource struct{}
+type ManagerSubscriptionConnectionResource struct{}
 
-var _ sdk.ResourceWithUpdate = NetworkSubscriptionNetworkManagerConnectionResource{}
+var _ sdk.ResourceWithUpdate = ManagerSubscriptionConnectionResource{}
 
-func (r NetworkSubscriptionNetworkManagerConnectionResource) ResourceType() string {
-	return "azurerm_network_subscription_network_manager_connection"
+func (r ManagerSubscriptionConnectionResource) ResourceType() string {
+	return "azurerm_network_manager_subscription_connection"
 }
 
-func (r NetworkSubscriptionNetworkManagerConnectionResource) ModelObject() interface{} {
-	return &NetworkSubscriptionNetworkManagerConnectionModel{}
+func (r ManagerSubscriptionConnectionResource) ModelObject() interface{} {
+	return &ManagerSubscriptionConnectionModel{}
 }
 
-func (r NetworkSubscriptionNetworkManagerConnectionResource) IDValidationFunc() pluginsdk.SchemaValidateFunc {
-	return networkmanagerconnections.ValidateSubscriptionNetworkManagerConnectionID
+func (r ManagerSubscriptionConnectionResource) IDValidationFunc() pluginsdk.SchemaValidateFunc {
+	return validate.NetworkManagerSubscriptionConnectionID
 }
 
-func (r NetworkSubscriptionNetworkManagerConnectionResource) Arguments() map[string]*pluginsdk.Schema {
+func (r ManagerSubscriptionConnectionResource) Arguments() map[string]*pluginsdk.Schema {
 	return map[string]*pluginsdk.Schema{
 		"name": {
 			Type:         pluginsdk.TypeString,
@@ -56,16 +48,11 @@ func (r NetworkSubscriptionNetworkManagerConnectionResource) Arguments() map[str
 			ValidateFunc: validation.StringIsNotEmpty,
 		},
 
-		"connection_state": {
-			Type:     pluginsdk.TypeString,
-			Optional: true,
-			ValidateFunc: validation.StringInSlice([]string{
-				string(networkmanagerconnections.ScopeConnectionStateConnected),
-				string(networkmanagerconnections.ScopeConnectionStatePending),
-				string(networkmanagerconnections.ScopeConnectionStateConflict),
-				string(networkmanagerconnections.ScopeConnectionStateRevoked),
-				string(networkmanagerconnections.ScopeConnectionStateRejected),
-			}, false),
+		"subscription_id": {
+			Type:         pluginsdk.TypeString,
+			Required:     true,
+			ForceNew:     true,
+			ValidateFunc: commonids.ValidateSubscriptionID,
 		},
 
 		"description": {
@@ -82,46 +69,53 @@ func (r NetworkSubscriptionNetworkManagerConnectionResource) Arguments() map[str
 	}
 }
 
-func (r NetworkSubscriptionNetworkManagerConnectionResource) Attributes() map[string]*pluginsdk.Schema {
-	return map[string]*pluginsdk.Schema{}
+func (r ManagerSubscriptionConnectionResource) Attributes() map[string]*pluginsdk.Schema {
+	return map[string]*pluginsdk.Schema{
+		"connection_state": {
+			Type:     pluginsdk.TypeString,
+			Computed: true,
+		},
+	}
 }
 
-func (r NetworkSubscriptionNetworkManagerConnectionResource) Create() sdk.ResourceFunc {
+func (r ManagerSubscriptionConnectionResource) Create() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			var model NetworkSubscriptionNetworkManagerConnectionModel
+			var model ManagerSubscriptionConnectionModel
 			if err := metadata.Decode(&model); err != nil {
 				return fmt.Errorf("decoding: %+v", err)
 			}
 
-			client := metadata.Client.Network.NetworkManagerConnectionsClient
-			subscriptionId := metadata.Client.Account.SubscriptionId
-			id := networkmanagerconnections.NewNetworkManagerConnectionID(subscriptionId, model.Name)
-			existing, err := client.SubscriptionNetworkManagerConnectionsGet(ctx, id)
-			if err != nil && !response.WasNotFound(existing.HttpResponse) {
+			client := metadata.Client.Network.ManagerSubscriptionConnectionsClient
+			subscriptionId, err := commonids.ParseSubscriptionID(model.SubscriptionId)
+			if err != nil {
+				return err
+			}
+
+			id := parse.NewNetworkManagerSubscriptionConnectionID(subscriptionId.SubscriptionId, model.Name)
+			existing, err := client.Get(ctx, id.SubscriptionId, id.NetworkManagerConnectionName)
+			if err != nil && !utils.ResponseWasNotFound(existing.Response) {
 				return fmt.Errorf("checking for existing %s: %+v", id, err)
 			}
 
-			if !response.WasNotFound(existing.HttpResponse) {
+			if !utils.ResponseWasNotFound(existing.Response) {
 				return metadata.ResourceRequiresImport(r.ResourceType(), id)
 			}
 
-			properties := &networkmanagerconnections.NetworkManagerConnection{
-				Properties: &networkmanagerconnections.NetworkManagerConnectionProperties{
-					ConnectionState: &model.ConnectionState,
-				},
+			managerConnection := &virtualNetworkManager.ManagerConnection{
+				ManagerConnectionProperties: &virtualNetworkManager.ManagerConnectionProperties{},
 			}
 
 			if model.Description != "" {
-				properties.Properties.Description = &model.Description
+				managerConnection.ManagerConnectionProperties.Description = &model.Description
 			}
 
 			if model.NetworkManagerId != "" {
-				properties.Properties.NetworkManagerId = &model.NetworkManagerId
+				managerConnection.ManagerConnectionProperties.NetworkManagerID = &model.NetworkManagerId
 			}
 
-			if _, err := client.SubscriptionNetworkManagerConnectionsCreateOrUpdate(ctx, id, *properties); err != nil {
+			if _, err := client.CreateOrUpdate(ctx, *managerConnection, id.SubscriptionId, id.NetworkManagerConnectionName); err != nil {
 				return fmt.Errorf("creating %s: %+v", id, err)
 			}
 
@@ -131,55 +125,51 @@ func (r NetworkSubscriptionNetworkManagerConnectionResource) Create() sdk.Resour
 	}
 }
 
-func (r NetworkSubscriptionNetworkManagerConnectionResource) Update() sdk.ResourceFunc {
+func (r ManagerSubscriptionConnectionResource) Update() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.Network.NetworkManagerConnectionsClient
+			client := metadata.Client.Network.ManagerSubscriptionConnectionsClient
 
-			id, err := networkmanagerconnections.ParseNetworkManagerConnectionID(metadata.ResourceData.Id())
+			id, err := parse.NetworkManagerSubscriptionConnectionID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
 			}
 
-			var model NetworkSubscriptionNetworkManagerConnectionModel
+			var model ManagerSubscriptionConnectionModel
 			if err := metadata.Decode(&model); err != nil {
 				return fmt.Errorf("decoding: %+v", err)
 			}
 
-			resp, err := client.SubscriptionNetworkManagerConnectionsGet(ctx, *id)
+			existing, err := client.Get(ctx, id.SubscriptionId, id.NetworkManagerConnectionName)
 			if err != nil {
 				return fmt.Errorf("retrieving %s: %+v", *id, err)
 			}
 
-			properties := resp.Model
+			properties := existing.ManagerConnectionProperties
 			if properties == nil {
 				return fmt.Errorf("retrieving %s: properties was nil", id)
 			}
 
-			if metadata.ResourceData.HasChange("connection_state") {
-				properties.Properties.ConnectionState = &model.ConnectionState
-			}
-
 			if metadata.ResourceData.HasChange("description") {
 				if model.Description != "" {
-					properties.Properties.Description = &model.Description
+					properties.Description = &model.Description
 				} else {
-					properties.Properties.Description = nil
+					properties.Description = nil
 				}
 			}
 
 			if metadata.ResourceData.HasChange("network_manager_id") {
 				if model.NetworkManagerId != "" {
-					properties.Properties.NetworkManagerId = &model.NetworkManagerId
+					properties.NetworkManagerID = &model.NetworkManagerId
 				} else {
-					properties.Properties.NetworkManagerId = nil
+					properties.NetworkManagerID = nil
 				}
 			}
 
-			properties.SystemData = nil
+			existing.SystemData = nil
 
-			if _, err := client.SubscriptionNetworkManagerConnectionsCreateOrUpdate(ctx, *id, *properties); err != nil {
+			if _, err := client.CreateOrUpdate(ctx, existing, id.SubscriptionId, id.NetworkManagerConnectionName); err != nil {
 				return fmt.Errorf("updating %s: %+v", *id, err)
 			}
 
@@ -188,47 +178,44 @@ func (r NetworkSubscriptionNetworkManagerConnectionResource) Update() sdk.Resour
 	}
 }
 
-func (r NetworkSubscriptionNetworkManagerConnectionResource) Read() sdk.ResourceFunc {
+func (r ManagerSubscriptionConnectionResource) Read() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 5 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.Network.NetworkManagerConnectionsClient
+			client := metadata.Client.Network.ManagerSubscriptionConnectionsClient
 
-			id, err := networkmanagerconnections.ParseNetworkManagerConnectionID(metadata.ResourceData.Id())
+			id, err := parse.NetworkManagerSubscriptionConnectionID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
 			}
 
-			resp, err := client.SubscriptionNetworkManagerConnectionsGet(ctx, *id)
+			existing, err := client.Get(ctx, id.SubscriptionId, id.NetworkManagerConnectionName)
 			if err != nil {
-				if response.WasNotFound(resp.HttpResponse) {
+				if utils.ResponseWasNotFound(existing.Response) {
 					return metadata.MarkAsGone(id)
 				}
 
 				return fmt.Errorf("retrieving %s: %+v", *id, err)
 			}
 
-			model := resp.Model
-			if model == nil {
-				return fmt.Errorf("retrieving %s: model was nil", id)
+			properties := existing.ManagerConnectionProperties
+			if properties == nil {
+				return fmt.Errorf("retrieving %s: properties was nil", id)
 			}
 
-			state := NetworkSubscriptionNetworkManagerConnectionModel{
-				Name: id.NetworkManagerConnectionName,
+			state := ManagerSubscriptionConnectionModel{
+				Name:           id.NetworkManagerConnectionName,
+				SubscriptionId: commonids.NewSubscriptionID(id.SubscriptionId).ID(),
 			}
 
-			if properties := model.Properties; properties != nil {
-				if properties.ConnectionState != nil {
-					state.ConnectionState = *properties.ConnectionState
-				}
+			state.ConnectionState = string(properties.ConnectionState)
 
-				if properties.Description != nil {
-					state.Description = *properties.Description
-				}
+			if properties.Description != nil {
+				state.Description = *properties.Description
+			}
 
-				if properties.NetworkManagerId != nil {
-					state.NetworkManagerId = *properties.NetworkManagerId
-				}
+			if properties.NetworkManagerID != nil {
+				state.NetworkManagerId = *properties.NetworkManagerID
 			}
 
 			return metadata.Encode(&state)
@@ -236,18 +223,18 @@ func (r NetworkSubscriptionNetworkManagerConnectionResource) Read() sdk.Resource
 	}
 }
 
-func (r NetworkSubscriptionNetworkManagerConnectionResource) Delete() sdk.ResourceFunc {
+func (r ManagerSubscriptionConnectionResource) Delete() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.Network.NetworkManagerConnectionsClient
+			client := metadata.Client.Network.ManagerSubscriptionConnectionsClient
 
-			id, err := networkmanagerconnections.ParseNetworkManagerConnectionID(metadata.ResourceData.Id())
+			id, err := parse.NetworkManagerSubscriptionConnectionID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
 			}
 
-			if _, err := client.SubscriptionNetworkManagerConnectionsDelete(ctx, *id); err != nil {
+			if _, err := client.Delete(ctx, id.SubscriptionId, id.NetworkManagerConnectionName); err != nil {
 				return fmt.Errorf("deleting %s: %+v", id, err)
 			}
 

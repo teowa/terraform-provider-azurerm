@@ -5,21 +5,19 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2022-01-01/scopeconnections"
-
-	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
 )
 
-type NetworkScopeConnectionResource struct{}
+type ManagerScopeConnectionResource struct{}
 
 func TestAccNetworkScopeConnection_basic(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_network_scope_connection", "test")
-	r := NetworkScopeConnectionResource{}
+	data := acceptance.BuildTestData(t, "azurerm_network_manager_scope_connection", "test")
+	r := ManagerScopeConnectionResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
@@ -32,8 +30,8 @@ func TestAccNetworkScopeConnection_basic(t *testing.T) {
 }
 
 func TestAccNetworkScopeConnection_requiresImport(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_network_scope_connection", "test")
-	r := NetworkScopeConnectionResource{}
+	data := acceptance.BuildTestData(t, "azurerm_network_manager_scope_connection", "test")
+	r := ManagerScopeConnectionResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
@@ -46,8 +44,8 @@ func TestAccNetworkScopeConnection_requiresImport(t *testing.T) {
 }
 
 func TestAccNetworkScopeConnection_complete(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_network_scope_connection", "test")
-	r := NetworkScopeConnectionResource{}
+	data := acceptance.BuildTestData(t, "azurerm_network_manager_scope_connection", "test")
+	r := ManagerScopeConnectionResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
@@ -60,8 +58,8 @@ func TestAccNetworkScopeConnection_complete(t *testing.T) {
 }
 
 func TestAccNetworkScopeConnection_update(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_network_scope_connection", "test")
-	r := NetworkScopeConnectionResource{}
+	data := acceptance.BuildTestData(t, "azurerm_network_manager_scope_connection", "test")
+	r := ManagerScopeConnectionResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
@@ -80,24 +78,24 @@ func TestAccNetworkScopeConnection_update(t *testing.T) {
 	})
 }
 
-func (r NetworkScopeConnectionResource) Exists(ctx context.Context, clients *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
-	id, err := scopeconnections.ParseScopeConnectionID(state.ID)
+func (r ManagerScopeConnectionResource) Exists(ctx context.Context, clients *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
+	id, err := parse.NetworkManagerScopeConnectionID(state.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	client := clients.Network.ScopeConnectionsClient
-	resp, err := client.Get(ctx, *id)
+	client := clients.Network.ManagerScopeConnectionsClient
+	resp, err := client.Get(ctx, id.ResourceGroup, id.NetworkManagerName, id.ScopeConnectionName)
 	if err != nil {
-		if response.WasNotFound(resp.HttpResponse) {
+		if utils.ResponseWasNotFound(resp.Response) {
 			return utils.Bool(false), nil
 		}
 		return nil, fmt.Errorf("retrieving %s: %+v", id, err)
 	}
-	return utils.Bool(resp.Model != nil), nil
+	return utils.Bool(resp.ScopeConnectionProperties != nil), nil
 }
 
-func (r NetworkScopeConnectionResource) template(data acceptance.TestData) string {
+func (r ManagerScopeConnectionResource) template(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 provider "azurerm" {
   features {}
@@ -114,36 +112,36 @@ resource "azurerm_network_network_manager" "test" {
 `, data.RandomInteger, data.Locations.Primary, data.RandomInteger)
 }
 
-func (r NetworkScopeConnectionResource) basic(data acceptance.TestData) string {
+func (r ManagerScopeConnectionResource) basic(data acceptance.TestData) string {
 	template := r.template(data)
 	return fmt.Sprintf(`
 				%s
 
-resource "azurerm_network_scope_connection" "test" {
+resource "azurerm_network_manager_scope_connection" "test" {
   name                       = "acctest-nsc-%d"
   network_network_manager_id = azurerm_network_network_manager.test.id
 }
 `, template, data.RandomInteger)
 }
 
-func (r NetworkScopeConnectionResource) requiresImport(data acceptance.TestData) string {
+func (r ManagerScopeConnectionResource) requiresImport(data acceptance.TestData) string {
 	config := r.basic(data)
 	return fmt.Sprintf(`
 			%s
 
-resource "azurerm_network_scope_connection" "import" {
-  name                       = azurerm_network_scope_connection.test.name
+resource "azurerm_network_manager_scope_connection" "import" {
+  name                       = azurerm_network_manager_scope_connection.test.name
   network_network_manager_id = azurerm_network_network_manager.test.id
 }
 `, config)
 }
 
-func (r NetworkScopeConnectionResource) complete(data acceptance.TestData) string {
+func (r ManagerScopeConnectionResource) complete(data acceptance.TestData) string {
 	template := r.template(data)
 	return fmt.Sprintf(`
 			%s
 
-resource "azurerm_network_scope_connection" "test" {
+resource "azurerm_network_manager_scope_connection" "test" {
   name                       = "acctest-nsc-%d"
   network_network_manager_id = azurerm_network_network_manager.test.id
   connection_state           = ""
@@ -155,12 +153,12 @@ resource "azurerm_network_scope_connection" "test" {
 `, template, data.RandomInteger)
 }
 
-func (r NetworkScopeConnectionResource) update(data acceptance.TestData) string {
+func (r ManagerScopeConnectionResource) update(data acceptance.TestData) string {
 	template := r.template(data)
 	return fmt.Sprintf(`
 			%s
 
-resource "azurerm_network_scope_connection" "test" {
+resource "azurerm_network_manager_scope_connection" "test" {
   name                       = "acctest-nsc-%d"
   network_network_manager_id = azurerm_network_network_manager.test.id
   connection_state           = ""
