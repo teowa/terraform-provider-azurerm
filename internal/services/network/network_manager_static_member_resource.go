@@ -54,9 +54,8 @@ func (r ManagerStaticMemberResource) Arguments() map[string]*pluginsdk.Schema {
 		},
 
 		"resource_id": {
-			Type:         pluginsdk.TypeString,
-			Optional:     true,
-			ValidateFunc: validation.StringIsNotEmpty,
+			Type:     pluginsdk.TypeString,
+			Optional: true,
 		},
 	}
 }

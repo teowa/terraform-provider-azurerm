@@ -105,8 +105,8 @@ resource "azurerm_resource_group" "test" {
   name     = "acctest-rg-%d"
   location = "%s"
 }
-resource "azurerm_network_network_manager" "test" {
-  name                = "acctest-nnm-%d"
+resource "azurerm_network_manager" "test" {
+  name                = "acctest-nm-%d"
   resource_group_name = azurerm_resource_group.test.name
 }
 `, data.RandomInteger, data.Locations.Primary, data.RandomInteger)
@@ -118,8 +118,8 @@ func (r ManagerScopeConnectionResource) basic(data acceptance.TestData) string {
 				%s
 
 resource "azurerm_network_manager_scope_connection" "test" {
-  name                       = "acctest-nsc-%d"
-  network_network_manager_id = azurerm_network_network_manager.test.id
+  name               = "acctest-nsc-%d"
+  network_manager_id = azurerm_network_manager.test.id
 }
 `, template, data.RandomInteger)
 }
@@ -130,8 +130,8 @@ func (r ManagerScopeConnectionResource) requiresImport(data acceptance.TestData)
 			%s
 
 resource "azurerm_network_manager_scope_connection" "import" {
-  name                       = azurerm_network_manager_scope_connection.test.name
-  network_network_manager_id = azurerm_network_network_manager.test.id
+  name               = azurerm_network_manager_scope_connection.test.name
+  network_manager_id = azurerm_network_manager.test.id
 }
 `, config)
 }
@@ -142,12 +142,12 @@ func (r ManagerScopeConnectionResource) complete(data acceptance.TestData) strin
 			%s
 
 resource "azurerm_network_manager_scope_connection" "test" {
-  name                       = "acctest-nsc-%d"
-  network_network_manager_id = azurerm_network_network_manager.test.id
-  connection_state           = ""
-  description                = ""
-  resource_id                = ""
-  tenant_id                  = ""
+  name               = "acctest-nsc-%d"
+  network_manager_id = azurerm_network_manager.test.id
+  connection_state   = ""
+  description        = ""
+  resource_id        = ""
+  tenant_id          = ""
 
 }
 `, template, data.RandomInteger)
@@ -159,12 +159,12 @@ func (r ManagerScopeConnectionResource) update(data acceptance.TestData) string 
 			%s
 
 resource "azurerm_network_manager_scope_connection" "test" {
-  name                       = "acctest-nsc-%d"
-  network_network_manager_id = azurerm_network_network_manager.test.id
-  connection_state           = ""
-  description                = ""
-  resource_id                = ""
-  tenant_id                  = ""
+  name               = "acctest-nsc-%d"
+  network_manager_id = azurerm_network_manager.test.id
+  connection_state   = ""
+  description        = ""
+  resource_id        = ""
+  tenant_id          = ""
 
 }
 `, template, data.RandomInteger)

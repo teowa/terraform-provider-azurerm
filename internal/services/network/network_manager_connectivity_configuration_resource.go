@@ -15,14 +15,14 @@ import (
 )
 
 type ManagerConnectivityConfigurationModel struct {
-	Name                    string                                     `tfschema:"name"`
-	NetworkNetworkManagerId string                                     `tfschema:"network_network_manager_id"`
-	AppliesToGroups         []ConnectivityGroupItemModel               `tfschema:"applies_to_groups"`
-	ConnectivityTopology    virtualNetworkManager.ConnectivityTopology `tfschema:"connectivity_topology"`
-	DeleteExistingPeering   bool                                       `tfschema:"delete_existing_peering"`
-	Description             string                                     `tfschema:"description"`
-	Hubs                    []HubModel                                 `tfschema:"hubs"`
-	IsGlobal                bool                                       `tfschema:"is_global"`
+	Name                  string                                     `tfschema:"name"`
+	NetworkManagerId      string                                     `tfschema:"network_manager_id"`
+	AppliesToGroups       []ConnectivityGroupItemModel               `tfschema:"applies_to_groups"`
+	ConnectivityTopology  virtualNetworkManager.ConnectivityTopology `tfschema:"connectivity_topology"`
+	DeleteExistingPeering bool                                       `tfschema:"delete_existing_peering"`
+	Description           string                                     `tfschema:"description"`
+	Hubs                  []HubModel                                 `tfschema:"hubs"`
+	IsGlobal              bool                                       `tfschema:"is_global"`
 }
 
 type ConnectivityGroupItemModel struct {
@@ -62,7 +62,7 @@ func (r ManagerConnectivityConfigurationResource) Arguments() map[string]*plugin
 			ValidateFunc: validation.StringIsNotEmpty,
 		},
 
-		"network_network_manager_id": {
+		"network_manager_id": {
 			Type:         pluginsdk.TypeString,
 			Required:     true,
 			ForceNew:     true,
@@ -179,7 +179,7 @@ func (r ManagerConnectivityConfigurationResource) Create() sdk.ResourceFunc {
 			}
 
 			client := metadata.Client.Network.ManagerConnectivityConfClient
-			networkManagerId, err := parse.NetworkManagerID(model.NetworkNetworkManagerId)
+			networkManagerId, err := parse.NetworkManagerID(model.NetworkManagerId)
 			if err != nil {
 				return err
 			}
@@ -331,8 +331,8 @@ func (r ManagerConnectivityConfigurationResource) Read() sdk.ResourceFunc {
 			}
 
 			state := ManagerConnectivityConfigurationModel{
-				Name:                    id.ConnectivityConfigurationName,
-				NetworkNetworkManagerId: parse.NewNetworkManagerID(id.SubscriptionId, id.ResourceGroup, id.NetworkManagerName).ID(),
+				Name:             id.ConnectivityConfigurationName,
+				NetworkManagerId: parse.NewNetworkManagerID(id.SubscriptionId, id.ResourceGroup, id.NetworkManagerName).ID(),
 			}
 
 			appliesToGroupsValue, err := flattenConnectivityGroupItemModel(properties.AppliesToGroups)

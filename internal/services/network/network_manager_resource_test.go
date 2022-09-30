@@ -15,7 +15,7 @@ import (
 
 type ManagerResource struct{}
 
-func TestAccVirtualNetworkManager_basic(t *testing.T) {
+func TestAccNetworkManager_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager", "test")
 	r := ManagerResource{}
 
@@ -30,7 +30,7 @@ func TestAccVirtualNetworkManager_basic(t *testing.T) {
 	})
 }
 
-func TestAccVirtualNetworkManager_complete(t *testing.T) {
+func TestAccNetworkManager_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager", "test")
 	r := ManagerResource{}
 
@@ -45,7 +45,7 @@ func TestAccVirtualNetworkManager_complete(t *testing.T) {
 	})
 }
 
-func TestAccVirtualNetworkManager_update(t *testing.T) {
+func TestAccNetworkManager_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager", "test")
 	r := ManagerResource{}
 
@@ -74,7 +74,7 @@ func TestAccVirtualNetworkManager_update(t *testing.T) {
 	})
 }
 
-func TestAccVirtualNetworkManager_requiresImport(t *testing.T) {
+func TestAccNetworkManager_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager", "test")
 	r := ManagerResource{}
 
@@ -110,11 +110,11 @@ func (r ManagerResource) basic(data acceptance.TestData) string {
 %s
 
 resource "azurerm_network_manager" "test" {
-  name                    = "acctest-vnetmanager-%d"
-  location                = azurerm_resource_group.test.location
-  resource_group_name     = azurerm_resource_group.test.name
+  name                = "acctest-vnetmanager-%d"
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
   scope {
-	subscription_ids  = [data.azurerm_subscription.current.id]
+    subscription_ids = [data.azurerm_subscription.current.id]
   }
   scope_access = ["SecurityAdmin"]
 }
@@ -126,9 +126,9 @@ func (r ManagerResource) requiresImport(data acceptance.TestData) string {
 %s
 
 resource "azurerm_network_manager" "test" {
-  name                    = azurerm_network_manager.test.name
-  location                = azurerm_network_manager.test.location
-  resource_group_name     = azruerm_virtual_network_manager.test.resource_group_name
+  name                = azurerm_network_manager.test.name
+  location            = azurerm_network_manager.test.location
+  resource_group_name = azruerm_virtual_network_manager.test.resource_group_name
   scope {
     subscription_ids = azurerm_network_manager.scope.0.subscription_ids
   }
@@ -143,14 +143,14 @@ func (r ManagerResource) complete(data acceptance.TestData) string {
 %s
 
 resource "azurerm_network_manager" "test" {
-  name                    = "acctest-vnetmanager-%d"
-  location                = azurerm_resource_group.test.location
-  resource_group_name     = azurerm_resource_group.test.name
+  name                = "acctest-vnetmanager-%d"
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
   scope {
-	subscription_ids  = [data.azurerm_subscription.current.id]
+    subscription_ids = [data.azurerm_subscription.current.id]
   }
   scope_access = ["Connectivity", "SecurityAdmin"]
-  description = "test network manager"
+  description  = "test network manager"
   tags = {
     foo = "bar"
   }
@@ -165,7 +165,7 @@ provider "azurerm" {
 }
 
 resource "azurerm_resource_group" "test" {
-  name = "acctestRG-network-manager-%d"
+  name     = "acctestRG-network-manager-%d"
   location = "%s"
 }
 

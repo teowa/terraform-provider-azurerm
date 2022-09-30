@@ -105,13 +105,13 @@ resource "azurerm_resource_group" "test" {
   name     = "acctest-rg-%d"
   location = "%s"
 }
-resource "azurerm_network_network_manager" "test" {
-  name                = "acctest-nnm-%d"
+resource "azurerm_network_manager" "test" {
+  name                = "acctest-nm-%d"
   resource_group_name = azurerm_resource_group.test.name
 }
 resource "azurerm_network_manager_security_admin_configuration" "test" {
-  name                       = "acctest-nsac-%d"
-  network_network_manager_id = azurerm_network_network_manager.test.id
+  name               = "acctest-nsac-%d"
+  network_manager_id = azurerm_network_manager.test.id
 }
 `, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger)
 }

@@ -15,7 +15,7 @@ import (
 
 type ManagerNetworkGroupResource struct{}
 
-func TestAccNetworkNetworkGroup_basic(t *testing.T) {
+func TestAccNetworkManagerNetworkGroup_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_network_group", "test")
 	r := ManagerNetworkGroupResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -29,7 +29,7 @@ func TestAccNetworkNetworkGroup_basic(t *testing.T) {
 	})
 }
 
-func TestAccNetworkNetworkGroup_requiresImport(t *testing.T) {
+func TestAccNetworkManagerNetworkGroup_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_network_group", "test")
 	r := ManagerNetworkGroupResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -43,7 +43,7 @@ func TestAccNetworkNetworkGroup_requiresImport(t *testing.T) {
 	})
 }
 
-func TestAccNetworkNetworkGroup_complete(t *testing.T) {
+func TestAccNetworkManagerNetworkGroup_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_network_group", "test")
 	r := ManagerNetworkGroupResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -57,7 +57,7 @@ func TestAccNetworkNetworkGroup_complete(t *testing.T) {
 	})
 }
 
-func TestAccNetworkNetworkGroup_update(t *testing.T) {
+func TestAccNetworkManagerNetworkGroup_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_network_group", "test")
 	r := ManagerNetworkGroupResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -102,12 +102,21 @@ provider "azurerm" {
 }
 
 resource "azurerm_resource_group" "test" {
-  name     = "acctest-rg-%d"
+  name     = "acctest-nmng-%d"
   location = "%s"
 }
-resource "azurerm_network_network_manager" "test" {
-  name                = "acctest-nnm-%d"
+
+data "azurerm_subscription" "current" {
+}
+
+resource "azurerm_network_manager" "test" {
+  name                = "acctest-nm-%d"
   resource_group_name = azurerm_resource_group.test.name
+  location            = azurerm_resource_group.test.location
+  scope {
+    subscription_ids = [data.azurerm_subscription.current.id]
+  }
+  scope_access = ["SecurityAdmin"]
 }
 `, data.RandomInteger, data.Locations.Primary, data.RandomInteger)
 }
@@ -118,8 +127,8 @@ func (r ManagerNetworkGroupResource) basic(data acceptance.TestData) string {
 				%s
 
 resource "azurerm_network_manager_network_group" "test" {
-  name                       = "acctest-nng-%d"
-  network_network_manager_id = azurerm_network_network_manager.test.id
+  name               = "acctest-nmng-%d"
+  network_manager_id = azurerm_network_manager.test.id
 }
 `, template, data.RandomInteger)
 }
@@ -130,8 +139,8 @@ func (r ManagerNetworkGroupResource) requiresImport(data acceptance.TestData) st
 			%s
 
 resource "azurerm_network_manager_network_group" "import" {
-  name                       = azurerm_network_manager_network_group.test.name
-  network_network_manager_id = azurerm_network_network_manager.test.id
+  name               = azurerm_network_manager_network_group.test.name
+  network_manager_id = azurerm_network_manager.test.id
 }
 `, config)
 }
@@ -142,10 +151,9 @@ func (r ManagerNetworkGroupResource) complete(data acceptance.TestData) string {
 			%s
 
 resource "azurerm_network_manager_network_group" "test" {
-  name                       = "acctest-nng-%d"
-  network_network_manager_id = azurerm_network_network_manager.test.id
-  description                = ""
-
+  name               = "acctest-nmng-%d"
+  network_manager_id = azurerm_network_manager.test.id
+  description        = "test complete"
 }
 `, template, data.RandomInteger)
 }
@@ -156,9 +164,9 @@ func (r ManagerNetworkGroupResource) update(data acceptance.TestData) string {
 			%s
 
 resource "azurerm_network_manager_network_group" "test" {
-  name                       = "acctest-nng-%d"
-  network_network_manager_id = azurerm_network_network_manager.test.id
-  description                = ""
+  name               = "acctest-nmng-%d"
+  network_manager_id = azurerm_network_manager.test.id
+  description        = "test update"
 
 }
 `, template, data.RandomInteger)

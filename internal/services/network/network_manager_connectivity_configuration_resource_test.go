@@ -105,8 +105,8 @@ resource "azurerm_resource_group" "test" {
   name     = "acctest-rg-%d"
   location = "%s"
 }
-resource "azurerm_network_network_manager" "test" {
-  name                = "acctest-nnm-%d"
+resource "azurerm_network_manager" "test" {
+  name                = "acctest-nm-%d"
   resource_group_name = azurerm_resource_group.test.name
 }
 `, data.RandomInteger, data.Locations.Primary, data.RandomInteger)
@@ -118,9 +118,9 @@ func (r ManagerConnectivityConfigurationResource) basic(data acceptance.TestData
 				%s
 
 resource "azurerm_network_manager_connectivity_configuration" "test" {
-  name                       = "acctest-ncc-%d"
-  network_network_manager_id = azurerm_network_network_manager.test.id
-  connectivity_topology      = ""
+  name                  = "acctest-ncc-%d"
+  network_manager_id    = azurerm_network_manager.test.id
+  connectivity_topology = ""
   applies_to_groups {
     group_connectivity = ""
     is_global          = ""
@@ -137,9 +137,9 @@ func (r ManagerConnectivityConfigurationResource) requiresImport(data acceptance
 			%s
 
 resource "azurerm_network_manager_connectivity_configuration" "import" {
-  name                       = azurerm_network_manager_connectivity_configuration.test.name
-  network_network_manager_id = azurerm_network_network_manager.test.id
-  connectivity_topology      = ""
+  name                  = azurerm_network_manager_connectivity_configuration.test.name
+  network_manager_id    = azurerm_network_manager.test.id
+  connectivity_topology = ""
   applies_to_groups {
     group_connectivity = ""
     is_global          = ""
@@ -156,12 +156,12 @@ func (r ManagerConnectivityConfigurationResource) complete(data acceptance.TestD
 			%s
 
 resource "azurerm_network_manager_connectivity_configuration" "test" {
-  name                       = "acctest-ncc-%d"
-  network_network_manager_id = azurerm_network_network_manager.test.id
-  connectivity_topology      = ""
-  delete_existing_peering    = ""
-  description                = ""
-  is_global                  = ""
+  name                    = "acctest-ncc-%d"
+  network_manager_id      = azurerm_network_manager.test.id
+  connectivity_topology   = ""
+  delete_existing_peering = ""
+  description             = ""
+  is_global               = ""
   applies_to_groups {
     group_connectivity = ""
     is_global          = ""
@@ -183,12 +183,12 @@ func (r ManagerConnectivityConfigurationResource) update(data acceptance.TestDat
 			%s
 
 resource "azurerm_network_manager_connectivity_configuration" "test" {
-  name                       = "acctest-ncc-%d"
-  network_network_manager_id = azurerm_network_network_manager.test.id
-  connectivity_topology      = ""
-  delete_existing_peering    = ""
-  description                = ""
-  is_global                  = ""
+  name                    = "acctest-ncc-%d"
+  network_manager_id      = azurerm_network_manager.test.id
+  connectivity_topology   = ""
+  delete_existing_peering = ""
+  description             = ""
+  is_global               = ""
   applies_to_groups {
     group_connectivity = ""
     is_global          = ""

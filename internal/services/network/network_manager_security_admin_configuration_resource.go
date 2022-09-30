@@ -17,7 +17,7 @@ import (
 
 type ManagerSecurityAdminConfigurationModel struct {
 	Name                                    string   `tfschema:"name"`
-	NetworkNetworkManagerId                 string   `tfschema:"network_network_manager_id"`
+	NetworkManagerId                        string   `tfschema:"network_manager_id"`
 	ApplyOnNetworkIntentPolicyBasedServices []string `tfschema:"apply_on_network_intent_policy_based_services"`
 	Description                             string   `tfschema:"description"`
 }
@@ -47,7 +47,7 @@ func (r ManagerSecurityAdminConfigurationResource) Arguments() map[string]*plugi
 			ValidateFunc: validation.StringIsNotEmpty,
 		},
 
-		"network_network_manager_id": {
+		"network_manager_id": {
 			Type:         pluginsdk.TypeString,
 			Required:     true,
 			ForceNew:     true,
@@ -88,7 +88,7 @@ func (r ManagerSecurityAdminConfigurationResource) Create() sdk.ResourceFunc {
 			}
 
 			client := metadata.Client.Network.ManagerSecurityAdminConfClient
-			networkManagerId, err := parse.NetworkManagerID(model.NetworkNetworkManagerId)
+			networkManagerId, err := parse.NetworkManagerID(model.NetworkManagerId)
 			if err != nil {
 				return err
 			}
@@ -212,8 +212,8 @@ func (r ManagerSecurityAdminConfigurationResource) Read() sdk.ResourceFunc {
 			}
 
 			state := ManagerSecurityAdminConfigurationModel{
-				Name:                    id.SecurityAdminConfigurationName,
-				NetworkNetworkManagerId: parse.NewNetworkManagerID(id.SubscriptionId, id.ResourceGroup, id.NetworkManagerName).ID(),
+				Name:             id.SecurityAdminConfigurationName,
+				NetworkManagerId: parse.NewNetworkManagerID(id.SubscriptionId, id.ResourceGroup, id.NetworkManagerName).ID(),
 			}
 
 			applyOnNetworkIntentPolicyBasedServicesValue, err := flattenNetworkIntentPolicyBasedServiceModel(properties.ApplyOnNetworkIntentPolicyBasedServices)

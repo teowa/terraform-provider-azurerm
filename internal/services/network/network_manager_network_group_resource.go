@@ -15,9 +15,9 @@ import (
 )
 
 type ManagerNetworkGroupModel struct {
-	Name                    string `tfschema:"name"`
-	NetworkNetworkManagerId string `tfschema:"network_network_manager_id"`
-	Description             string `tfschema:"description"`
+	Name             string `tfschema:"name"`
+	NetworkManagerId string `tfschema:"network_manager_id"`
+	Description      string `tfschema:"description"`
 }
 
 type ManagerNetworkGroupResource struct{}
@@ -45,7 +45,7 @@ func (r ManagerNetworkGroupResource) Arguments() map[string]*pluginsdk.Schema {
 			ValidateFunc: validation.StringIsNotEmpty,
 		},
 
-		"network_network_manager_id": {
+		"network_manager_id": {
 			Type:         pluginsdk.TypeString,
 			Required:     true,
 			ForceNew:     true,
@@ -53,9 +53,8 @@ func (r ManagerNetworkGroupResource) Arguments() map[string]*pluginsdk.Schema {
 		},
 
 		"description": {
-			Type:         pluginsdk.TypeString,
-			Optional:     true,
-			ValidateFunc: validation.StringIsNotEmpty,
+			Type:     pluginsdk.TypeString,
+			Optional: true,
 		},
 	}
 }
@@ -74,7 +73,7 @@ func (r ManagerNetworkGroupResource) Create() sdk.ResourceFunc {
 			}
 
 			client := metadata.Client.Network.ManagerNetworkGroupsClient
-			networkManagerId, err := parse.NetworkManagerID(model.NetworkNetworkManagerId)
+			networkManagerId, err := parse.NetworkManagerID(model.NetworkManagerId)
 			if err != nil {
 				return err
 			}
@@ -178,8 +177,8 @@ func (r ManagerNetworkGroupResource) Read() sdk.ResourceFunc {
 			}
 
 			state := ManagerNetworkGroupModel{
-				Name:                    id.NetworkGroupName,
-				NetworkNetworkManagerId: parse.NewNetworkManagerID(id.SubscriptionId, id.ResourceGroup, id.NetworkManagerName).ID(),
+				Name:             id.NetworkGroupName,
+				NetworkManagerId: parse.NewNetworkManagerID(id.SubscriptionId, id.ResourceGroup, id.NetworkManagerName).ID(),
 			}
 
 			if properties.Description != nil {

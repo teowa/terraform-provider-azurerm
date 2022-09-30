@@ -15,12 +15,12 @@ import (
 )
 
 type ManagerScopeConnectionModel struct {
-	Name                    string `tfschema:"name"`
-	NetworkNetworkManagerId string `tfschema:"network_network_manager_id"`
-	ConnectionState         string `tfschema:"connection_state"`
-	Description             string `tfschema:"description"`
-	ResourceId              string `tfschema:"resource_id"`
-	TenantId                string `tfschema:"tenant_id"`
+	Name             string `tfschema:"name"`
+	NetworkManagerId string `tfschema:"network_manager_id"`
+	ConnectionState  string `tfschema:"connection_state"`
+	Description      string `tfschema:"description"`
+	ResourceId       string `tfschema:"resource_id"`
+	TenantId         string `tfschema:"tenant_id"`
 }
 
 type ManagerScopeConnectionResource struct{}
@@ -48,7 +48,7 @@ func (r ManagerScopeConnectionResource) Arguments() map[string]*pluginsdk.Schema
 			ValidateFunc: validation.StringIsNotEmpty,
 		},
 
-		"network_network_manager_id": {
+		"network_manager_id": {
 			Type:         pluginsdk.TypeString,
 			Required:     true,
 			ForceNew:     true,
@@ -95,7 +95,7 @@ func (r ManagerScopeConnectionResource) Create() sdk.ResourceFunc {
 			}
 
 			client := metadata.Client.Network.ManagerScopeConnectionsClient
-			networkManagerId, err := parse.NetworkManagerID(model.NetworkNetworkManagerId)
+			networkManagerId, err := parse.NetworkManagerID(model.NetworkManagerId)
 			if err != nil {
 				return err
 			}
@@ -223,8 +223,8 @@ func (r ManagerScopeConnectionResource) Read() sdk.ResourceFunc {
 			}
 
 			state := ManagerScopeConnectionModel{
-				Name:                    id.ScopeConnectionName,
-				NetworkNetworkManagerId: parse.NewNetworkManagerID(id.SubscriptionId, id.ResourceGroup, id.NetworkManagerName).ID(),
+				Name:             id.ScopeConnectionName,
+				NetworkManagerId: parse.NewNetworkManagerID(id.SubscriptionId, id.ResourceGroup, id.NetworkManagerName).ID(),
 			}
 
 			state.ConnectionState = string(properties.ConnectionState)

@@ -106,8 +106,8 @@ resource "azurerm_resource_group" "test" {
   name     = "acctest-rg-%d"
   location = "%s"
 }
-resource "azurerm_network_network_manager" "test" {
-  name                = "acctest-nnm-%d"
+resource "azurerm_network_manager" "test" {
+  name                = "acctest-nm-%d"
   resource_group_name = azurerm_resource_group.test.name
 }
 `, data.RandomInteger, data.Locations.Primary, data.RandomInteger)
@@ -119,8 +119,8 @@ func (r ManagerSecurityAdminConfigurationResource) basic(data acceptance.TestDat
 				%s
 
 resource "azurerm_network_manager_security_admin_configuration" "test" {
-  name                       = "acctest-nsac-%d"
-  network_network_manager_id = azurerm_network_network_manager.test.id
+  name               = "acctest-nsac-%d"
+  network_manager_id = azurerm_network_manager.test.id
 }
 `, template, data.RandomInteger)
 }
@@ -131,8 +131,8 @@ func (r ManagerSecurityAdminConfigurationResource) requiresImport(data acceptanc
 			%s
 
 resource "azurerm_network_manager_security_admin_configuration" "import" {
-  name                       = azurerm_network_manager_security_admin_configuration.test.name
-  network_network_manager_id = azurerm_network_network_manager.test.id
+  name               = azurerm_network_manager_security_admin_configuration.test.name
+  network_manager_id = azurerm_network_manager.test.id
 }
 `, config)
 }
@@ -143,9 +143,9 @@ func (r ManagerSecurityAdminConfigurationResource) complete(data acceptance.Test
 			%s
 
 resource "azurerm_network_manager_security_admin_configuration" "test" {
-  name                       = "acctest-nsac-%d"
-  network_network_manager_id = azurerm_network_network_manager.test.id
-  description                = ""
+  name               = "acctest-nsac-%d"
+  network_manager_id = azurerm_network_manager.test.id
+  description        = ""
   apply_on_network_intent_policy_based_services {
 
   }
@@ -160,9 +160,9 @@ func (r ManagerSecurityAdminConfigurationResource) update(data acceptance.TestDa
 			%s
 
 resource "azurerm_network_manager_security_admin_configuration" "test" {
-  name                       = "acctest-nsac-%d"
-  network_network_manager_id = azurerm_network_network_manager.test.id
-  description                = ""
+  name               = "acctest-nsac-%d"
+  network_manager_id = azurerm_network_manager.test.id
+  description        = ""
   apply_on_network_intent_policy_based_services {
 
   }

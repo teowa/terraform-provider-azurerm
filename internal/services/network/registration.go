@@ -28,6 +28,15 @@ func (r Registration) DataSources() []sdk.DataSource {
 func (r Registration) Resources() []sdk.Resource {
 	return []sdk.Resource{
 		ManagerResource{},
+		ManagerNetworkGroupResource{},
+		ManagerStaticMemberResource{},
+		ManagerConnectivityConfigurationResource{},
+		ManagerSecurityAdminConfigurationResource{},
+		ManagerAdminRuleCollectionResource{},
+		ManagerAdminRuleResource{},
+		ManagerManagementGroupConnectionResource{},
+		ManagerSubscriptionConnectionResource{},
+		ManagerScopeConnectionResource{},
 	}
 }
 

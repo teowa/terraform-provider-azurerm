@@ -22,22 +22,22 @@ import (
 )
 
 type ManagerModel struct {
-	CrossTenantScopes []CrossTenantScope     `tfschema:"cross_tenant_scopes"`
-	Scope             []Scope                `tfschema:"scope"`
-	ScopeAccess       []string               `tfschema:"scope_access"`
-	Description       string                 `tfschema:"description"`
-	Name              string                 `tfschema:"name"`
-	Location          string                 `tfschema:"location"`
-	ResourceGroupName string                 `tfschema:"resource_group_name"`
-	Tags              map[string]interface{} `tfschema:"tags"`
+	CrossTenantScopes []ManagerCrossTenantScopeModel `tfschema:"cross_tenant_scopes"`
+	Scope             []ManagerScopeModel            `tfschema:"scope"`
+	ScopeAccess       []string                       `tfschema:"scope_access"`
+	Description       string                         `tfschema:"description"`
+	Name              string                         `tfschema:"name"`
+	Location          string                         `tfschema:"location"`
+	ResourceGroupName string                         `tfschema:"resource_group_name"`
+	Tags              map[string]interface{}         `tfschema:"tags"`
 }
 
-type Scope struct {
+type ManagerScopeModel struct {
 	ManagementGroups []string `tfschema:"management_group_ids"`
 	Subscriptions    []string `tfschema:"subscription_ids"`
 }
 
-type CrossTenantScope struct {
+type ManagerCrossTenantScopeModel struct {
 	TenantId         string   `tfschema:"tenant_id"`
 	ManagementGroups []string `tfschema:"management_groups"`
 	Subscriptions    []string `tfschema:"subscriptions"`
@@ -217,7 +217,7 @@ func (r ManagerResource) Read() sdk.ResourceFunc {
 			}
 
 			var description string
-			var scope []Scope
+			var scope []ManagerScopeModel
 			var scopeAccess []string
 			if prop := resp.ManagerProperties; prop != nil {
 				if prop.Description != nil {
@@ -317,7 +317,7 @@ func stringSlice(input []string) *[]string {
 	return &input
 }
 
-func expandNetworkManagerScope(input []Scope) *virtualNetworkManager.ManagerPropertiesNetworkManagerScopes {
+func expandNetworkManagerScope(input []ManagerScopeModel) *virtualNetworkManager.ManagerPropertiesNetworkManagerScopes {
 	if len(input) == 0 {
 		return nil
 	}
@@ -343,12 +343,12 @@ func flattenStringSlicePtr(input *[]string) []string {
 	return *input
 }
 
-func flattenNetworkManagerScope(input *virtualNetworkManager.ManagerPropertiesNetworkManagerScopes) []Scope {
+func flattenNetworkManagerScope(input *virtualNetworkManager.ManagerPropertiesNetworkManagerScopes) []ManagerScopeModel {
 	if input == nil {
-		return make([]Scope, 0)
+		return make([]ManagerScopeModel, 0)
 	}
 
-	return []Scope{{
+	return []ManagerScopeModel{{
 		ManagementGroups: flattenStringSlicePtr(input.ManagementGroups),
 		Subscriptions:    flattenStringSlicePtr(input.Subscriptions),
 	}}
