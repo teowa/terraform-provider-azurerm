@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	virtualNetworkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
+	networkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/validate"
@@ -110,8 +110,8 @@ func (r ManagerScopeConnectionResource) Create() sdk.ResourceFunc {
 				return metadata.ResourceRequiresImport(r.ResourceType(), id)
 			}
 
-			scopeConnection := &virtualNetworkManager.ScopeConnection{
-				ScopeConnectionProperties: &virtualNetworkManager.ScopeConnectionProperties{},
+			scopeConnection := &networkManager.ScopeConnection{
+				ScopeConnectionProperties: &networkManager.ScopeConnectionProperties{},
 			}
 
 			if model.Description != "" {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	virtualNetworkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
+	networkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/validate"
@@ -16,7 +16,7 @@ import (
 
 type ManagerAdminRuleCollectionModel struct {
 	Name                                string   `tfschema:"name"`
-	NetworkSecurityAdminConfigurationId string   `tfschema:"network_security_admin_configuration_id"`
+	NetworkSecurityAdminConfigurationId string   `tfschema:"security_admin_configuration_id"`
 	NetworkGroupIds                     []string `tfschema:"network_group_ids"`
 	Description                         string   `tfschema:"description"`
 }
@@ -34,7 +34,7 @@ func (r ManagerAdminRuleCollectionResource) ModelObject() interface{} {
 }
 
 func (r ManagerAdminRuleCollectionResource) IDValidationFunc() pluginsdk.SchemaValidateFunc {
-	return validate.NetworkManagerAdminRuleID
+	return validate.NetworkManagerAdminRuleCollectionID
 }
 
 func (r ManagerAdminRuleCollectionResource) Arguments() map[string]*pluginsdk.Schema {
@@ -46,7 +46,7 @@ func (r ManagerAdminRuleCollectionResource) Arguments() map[string]*pluginsdk.Sc
 			ValidateFunc: validation.StringIsNotEmpty,
 		},
 
-		"network_security_admin_configuration_id": {
+		"security_admin_configuration_id": {
 			Type:         pluginsdk.TypeString,
 			Required:     true,
 			ForceNew:     true,
@@ -100,8 +100,8 @@ func (r ManagerAdminRuleCollectionResource) Create() sdk.ResourceFunc {
 				return metadata.ResourceRequiresImport(r.ResourceType(), id)
 			}
 
-			adminRuleCollection := &virtualNetworkManager.AdminRuleCollection{
-				AdminRuleCollectionPropertiesFormat: &virtualNetworkManager.AdminRuleCollectionPropertiesFormat{},
+			adminRuleCollection := &networkManager.AdminRuleCollection{
+				AdminRuleCollectionPropertiesFormat: &networkManager.AdminRuleCollectionPropertiesFormat{},
 			}
 
 			appliesToGroupsValue, err := expandNetworkManagerNetworkGroupIds(model.NetworkGroupIds)
@@ -253,11 +253,11 @@ func (r ManagerAdminRuleCollectionResource) Delete() sdk.ResourceFunc {
 	}
 }
 
-func expandNetworkManagerNetworkGroupIds(inputList []string) (*[]virtualNetworkManager.ManagerSecurityGroupItem, error) {
-	var outputList []virtualNetworkManager.ManagerSecurityGroupItem
+func expandNetworkManagerNetworkGroupIds(inputList []string) (*[]networkManager.ManagerSecurityGroupItem, error) {
+	var outputList []networkManager.ManagerSecurityGroupItem
 	for _, v := range inputList {
 		input := v
-		output := virtualNetworkManager.ManagerSecurityGroupItem{
+		output := networkManager.ManagerSecurityGroupItem{
 			NetworkGroupID: utils.String(input),
 		}
 
@@ -267,7 +267,7 @@ func expandNetworkManagerNetworkGroupIds(inputList []string) (*[]virtualNetworkM
 	return &outputList, nil
 }
 
-func flattenNetworkManagerNetworkGroupIds(inputList *[]virtualNetworkManager.ManagerSecurityGroupItem) ([]string, error) {
+func flattenNetworkManagerNetworkGroupIds(inputList *[]networkManager.ManagerSecurityGroupItem) ([]string, error) {
 	var outputList []string
 	if inputList == nil {
 		return outputList, nil

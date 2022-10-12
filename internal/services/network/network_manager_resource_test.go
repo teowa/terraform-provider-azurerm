@@ -110,13 +110,13 @@ func (r ManagerResource) basic(data acceptance.TestData) string {
 %s
 
 resource "azurerm_network_manager" "test" {
-  name                = "acctest-vnetmanager-%d"
+  name                = "acctest-networkmanager-%d"
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
   scope {
     subscription_ids = [data.azurerm_subscription.current.id]
   }
-  scope_access = ["SecurityAdmin"]
+  scope_accesses = ["SecurityAdmin"]
 }
 `, r.template(data), data.RandomInteger)
 }
@@ -128,11 +128,11 @@ func (r ManagerResource) requiresImport(data acceptance.TestData) string {
 resource "azurerm_network_manager" "test" {
   name                = azurerm_network_manager.test.name
   location            = azurerm_network_manager.test.location
-  resource_group_name = azruerm_virtual_network_manager.test.resource_group_name
+  resource_group_name = azruerm_network_manager.test.resource_group_name
   scope {
     subscription_ids = azurerm_network_manager.scope.0.subscription_ids
   }
-  scope_access = azurerm_network_manager.scope.0.scope_access
+  scope_accesses = azurerm_network_manager.scope.0.scope_accesses
 }
 `, r.template(data))
 }
@@ -143,14 +143,14 @@ func (r ManagerResource) complete(data acceptance.TestData) string {
 %s
 
 resource "azurerm_network_manager" "test" {
-  name                = "acctest-vnetmanager-%d"
+  name                = "acctest-networkmanager-%d"
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
   scope {
     subscription_ids = [data.azurerm_subscription.current.id]
   }
-  scope_access = ["Connectivity", "SecurityAdmin"]
-  description  = "test network manager"
+  scope_accesses = ["Connectivity", "SecurityAdmin"]
+  description    = "test network manager"
   tags = {
     foo = "bar"
   }

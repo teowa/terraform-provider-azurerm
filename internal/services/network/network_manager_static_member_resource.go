@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	virtualNetworkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
+	networkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/validate"
@@ -15,10 +15,10 @@ import (
 )
 
 type ManagerStaticMemberModel struct {
-	Name                  string `tfschema:"name"`
-	NetworkNetworkGroupId string `tfschema:"network_network_group_id"`
-	ResourceId            string `tfschema:"resource_id"`
-	Region                string `tfschema:"region"`
+	Name           string `tfschema:"name"`
+	NetworkGroupId string `tfschema:"network_group_id"`
+	ResourceId     string `tfschema:"resource_id"`
+	Region         string `tfschema:"region"`
 }
 
 type ManagerStaticMemberResource struct{}
@@ -46,7 +46,7 @@ func (r ManagerStaticMemberResource) Arguments() map[string]*pluginsdk.Schema {
 			ValidateFunc: validation.StringIsNotEmpty,
 		},
 
-		"network_network_group_id": {
+		"network_group_id": {
 			Type:         pluginsdk.TypeString,
 			Required:     true,
 			ForceNew:     true,
@@ -79,7 +79,7 @@ func (r ManagerStaticMemberResource) Create() sdk.ResourceFunc {
 			}
 
 			client := metadata.Client.Network.ManagerStaticMembersClient
-			networkGroupId, err := parse.NetworkManagerNetworkGroupID(model.NetworkNetworkGroupId)
+			networkGroupId, err := parse.NetworkManagerNetworkGroupID(model.NetworkGroupId)
 			if err != nil {
 				return err
 			}
@@ -94,8 +94,8 @@ func (r ManagerStaticMemberResource) Create() sdk.ResourceFunc {
 				return metadata.ResourceRequiresImport(r.ResourceType(), id)
 			}
 
-			staticMember := &virtualNetworkManager.StaticMember{
-				StaticMemberProperties: &virtualNetworkManager.StaticMemberProperties{},
+			staticMember := &networkManager.StaticMember{
+				StaticMemberProperties: &networkManager.StaticMemberProperties{},
 			}
 
 			if model.ResourceId != "" {
@@ -183,8 +183,8 @@ func (r ManagerStaticMemberResource) Read() sdk.ResourceFunc {
 			}
 
 			state := ManagerStaticMemberModel{
-				Name:                  id.StaticMemberName,
-				NetworkNetworkGroupId: parse.NewNetworkManagerNetworkGroupID(id.SubscriptionId, id.ResourceGroup, id.NetworkManagerName, id.NetworkGroupName).ID(),
+				Name:           id.StaticMemberName,
+				NetworkGroupId: parse.NewNetworkManagerNetworkGroupID(id.SubscriptionId, id.ResourceGroup, id.NetworkManagerName, id.NetworkGroupName).ID(),
 			}
 
 			if properties.Region != nil {

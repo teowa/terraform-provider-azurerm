@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	virtualNetworkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
+	networkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/validate"
@@ -15,21 +15,21 @@ import (
 )
 
 type ManagerConnectivityConfigurationModel struct {
-	Name                  string                                     `tfschema:"name"`
-	NetworkManagerId      string                                     `tfschema:"network_manager_id"`
-	AppliesToGroups       []ConnectivityGroupItemModel               `tfschema:"applies_to_groups"`
-	ConnectivityTopology  virtualNetworkManager.ConnectivityTopology `tfschema:"connectivity_topology"`
-	DeleteExistingPeering bool                                       `tfschema:"delete_existing_peering"`
-	Description           string                                     `tfschema:"description"`
-	Hubs                  []HubModel                                 `tfschema:"hubs"`
-	IsGlobal              bool                                       `tfschema:"is_global"`
+	Name                  string                              `tfschema:"name"`
+	NetworkManagerId      string                              `tfschema:"network_manager_id"`
+	AppliesToGroups       []ConnectivityGroupItemModel        `tfschema:"applies_to_group"`
+	ConnectivityTopology  networkManager.ConnectivityTopology `tfschema:"connectivity_topology"`
+	DeleteExistingPeering bool                                `tfschema:"delete_existing_peering"`
+	Description           string                              `tfschema:"description"`
+	Hubs                  []HubModel                          `tfschema:"hub"`
+	IsGlobal              bool                                `tfschema:"is_global"`
 }
 
 type ConnectivityGroupItemModel struct {
-	GroupConnectivity virtualNetworkManager.GroupConnectivity `tfschema:"group_connectivity"`
-	IsGlobal          bool                                    `tfschema:"is_global"`
-	NetworkGroupId    string                                  `tfschema:"network_group_id"`
-	UseHubGateway     bool                                    `tfschema:"use_hub_gateway"`
+	GroupConnectivity networkManager.GroupConnectivity `tfschema:"group_connectivity"`
+	IsGlobal          bool                             `tfschema:"is_global"`
+	NetworkGroupId    string                           `tfschema:"network_group_id"`
+	UseHubGateway     bool                             `tfschema:"use_hub_gateway"`
 }
 
 type HubModel struct {
@@ -69,7 +69,7 @@ func (r ManagerConnectivityConfigurationResource) Arguments() map[string]*plugin
 			ValidateFunc: validate.NetworkManagerID,
 		},
 
-		"applies_to_groups": {
+		"applies_to_group": {
 			Type:     pluginsdk.TypeList,
 			Required: true,
 			Elem: &pluginsdk.Resource{
@@ -78,18 +78,14 @@ func (r ManagerConnectivityConfigurationResource) Arguments() map[string]*plugin
 						Type:     pluginsdk.TypeString,
 						Required: true,
 						ValidateFunc: validation.StringInSlice([]string{
-							string(virtualNetworkManager.GroupConnectivityNone),
-							string(virtualNetworkManager.GroupConnectivityDirectlyConnected),
+							string(networkManager.GroupConnectivityNone),
+							string(networkManager.GroupConnectivityDirectlyConnected),
 						}, false),
 					},
 
 					"is_global": {
 						Type:     pluginsdk.TypeBool,
 						Optional: true,
-						ValidateFunc: validation.StringInSlice([]string{
-							string(virtualNetworkManager.IsGlobalTrue),
-							string(virtualNetworkManager.IsGlobalFalse),
-						}, false),
 					},
 
 					"network_group_id": {
@@ -101,10 +97,6 @@ func (r ManagerConnectivityConfigurationResource) Arguments() map[string]*plugin
 					"use_hub_gateway": {
 						Type:     pluginsdk.TypeBool,
 						Optional: true,
-						ValidateFunc: validation.StringInSlice([]string{
-							string(virtualNetworkManager.UseHubGatewayFalse),
-							string(virtualNetworkManager.UseHubGatewayTrue),
-						}, false),
 					},
 				},
 			},
@@ -114,18 +106,14 @@ func (r ManagerConnectivityConfigurationResource) Arguments() map[string]*plugin
 			Type:     pluginsdk.TypeString,
 			Required: true,
 			ValidateFunc: validation.StringInSlice([]string{
-				string(virtualNetworkManager.ConnectivityTopologyHubAndSpoke),
-				string(virtualNetworkManager.ConnectivityTopologyMesh),
+				string(networkManager.ConnectivityTopologyHubAndSpoke),
+				string(networkManager.ConnectivityTopologyMesh),
 			}, false),
 		},
 
 		"delete_existing_peering": {
-			Type:     pluginsdk.TypeString,
+			Type:     pluginsdk.TypeBool,
 			Optional: true,
-			ValidateFunc: validation.StringInSlice([]string{
-				string(virtualNetworkManager.DeleteExistingPeeringFalse),
-				string(virtualNetworkManager.DeleteExistingPeeringTrue),
-			}, false),
 		},
 
 		"description": {
@@ -134,7 +122,7 @@ func (r ManagerConnectivityConfigurationResource) Arguments() map[string]*plugin
 			ValidateFunc: validation.StringIsNotEmpty,
 		},
 
-		"hubs": {
+		"hub": {
 			Type:     pluginsdk.TypeList,
 			Optional: true,
 			Elem: &pluginsdk.Resource{
@@ -155,12 +143,8 @@ func (r ManagerConnectivityConfigurationResource) Arguments() map[string]*plugin
 		},
 
 		"is_global": {
-			Type:     pluginsdk.TypeString,
+			Type:     pluginsdk.TypeBool,
 			Optional: true,
-			ValidateFunc: validation.StringInSlice([]string{
-				string(virtualNetworkManager.IsGlobalFalse),
-				string(virtualNetworkManager.IsGlobalTrue),
-			}, false),
 		},
 	}
 }
@@ -194,8 +178,8 @@ func (r ManagerConnectivityConfigurationResource) Create() sdk.ResourceFunc {
 				return metadata.ResourceRequiresImport(r.ResourceType(), id)
 			}
 
-			conf := &virtualNetworkManager.ConnectivityConfiguration{
-				ConnectivityConfigurationProperties: &virtualNetworkManager.ConnectivityConfigurationProperties{
+			conf := &networkManager.ConnectivityConfiguration{
+				ConnectivityConfigurationProperties: &networkManager.ConnectivityConfigurationProperties{
 					ConnectivityTopology:  model.ConnectivityTopology,
 					DeleteExistingPeering: expandDeleteExistingPeering(model.DeleteExistingPeering),
 					IsGlobal:              expandConnectivityConfIsGlobal(model.IsGlobal),
@@ -256,7 +240,7 @@ func (r ManagerConnectivityConfigurationResource) Update() sdk.ResourceFunc {
 				return fmt.Errorf("retrieving %s: properties was nil", id)
 			}
 
-			if metadata.ResourceData.HasChange("applies_to_groups") {
+			if metadata.ResourceData.HasChange("applies_to_group") {
 				appliesToGroupsValue, err := expandConnectivityGroupItemModel(model.AppliesToGroups)
 				if err != nil {
 					return err
@@ -281,7 +265,7 @@ func (r ManagerConnectivityConfigurationResource) Update() sdk.ResourceFunc {
 				}
 			}
 
-			if metadata.ResourceData.HasChange("hubs") {
+			if metadata.ResourceData.HasChange("hub") {
 				hubsValue, err := expandHubModel(model.Hubs)
 				if err != nil {
 					return err
@@ -386,25 +370,25 @@ func (r ManagerConnectivityConfigurationResource) Delete() sdk.ResourceFunc {
 	}
 }
 
-func expandDeleteExistingPeering(input bool) virtualNetworkManager.DeleteExistingPeering {
+func expandDeleteExistingPeering(input bool) networkManager.DeleteExistingPeering {
 	if input {
-		return virtualNetworkManager.DeleteExistingPeeringTrue
+		return networkManager.DeleteExistingPeeringTrue
 	}
-	return virtualNetworkManager.DeleteExistingPeeringFalse
+	return networkManager.DeleteExistingPeeringFalse
 }
 
-func expandConnectivityConfIsGlobal(input bool) virtualNetworkManager.IsGlobal {
+func expandConnectivityConfIsGlobal(input bool) networkManager.IsGlobal {
 	if input {
-		return virtualNetworkManager.IsGlobalTrue
+		return networkManager.IsGlobalTrue
 	}
-	return virtualNetworkManager.IsGlobalFalse
+	return networkManager.IsGlobalFalse
 }
 
-func expandConnectivityGroupItemModel(inputList []ConnectivityGroupItemModel) (*[]virtualNetworkManager.ConnectivityGroupItem, error) {
-	var outputList []virtualNetworkManager.ConnectivityGroupItem
+func expandConnectivityGroupItemModel(inputList []ConnectivityGroupItemModel) (*[]networkManager.ConnectivityGroupItem, error) {
+	var outputList []networkManager.ConnectivityGroupItem
 	for _, v := range inputList {
 		input := v
-		output := virtualNetworkManager.ConnectivityGroupItem{
+		output := networkManager.ConnectivityGroupItem{
 			GroupConnectivity: input.GroupConnectivity,
 			IsGlobal:          expandConnectivityConfIsGlobal(input.IsGlobal),
 			NetworkGroupID:    utils.String(input.NetworkGroupId),
@@ -417,18 +401,18 @@ func expandConnectivityGroupItemModel(inputList []ConnectivityGroupItemModel) (*
 	return &outputList, nil
 }
 
-func expandUseHubGateWay(input bool) virtualNetworkManager.UseHubGateway {
+func expandUseHubGateWay(input bool) networkManager.UseHubGateway {
 	if input {
-		return virtualNetworkManager.UseHubGatewayTrue
+		return networkManager.UseHubGatewayTrue
 	}
-	return virtualNetworkManager.UseHubGatewayFalse
+	return networkManager.UseHubGatewayFalse
 }
 
-func expandHubModel(inputList []HubModel) (*[]virtualNetworkManager.Hub, error) {
-	var outputList []virtualNetworkManager.Hub
+func expandHubModel(inputList []HubModel) (*[]networkManager.Hub, error) {
+	var outputList []networkManager.Hub
 	for _, v := range inputList {
 		input := v
-		output := virtualNetworkManager.Hub{}
+		output := networkManager.Hub{}
 
 		if input.ResourceId != "" {
 			output.ResourceID = &input.ResourceId
@@ -444,21 +428,21 @@ func expandHubModel(inputList []HubModel) (*[]virtualNetworkManager.Hub, error) 
 	return &outputList, nil
 }
 
-func flattenDeleteExistingPeering(input virtualNetworkManager.DeleteExistingPeering) bool {
-	if input == virtualNetworkManager.DeleteExistingPeeringTrue {
+func flattenDeleteExistingPeering(input networkManager.DeleteExistingPeering) bool {
+	if input == networkManager.DeleteExistingPeeringTrue {
 		return true
 	}
 	return false
 }
 
-func flattenConnectivityConfIsGlobal(input virtualNetworkManager.IsGlobal) bool {
-	if input == virtualNetworkManager.IsGlobalTrue {
+func flattenConnectivityConfIsGlobal(input networkManager.IsGlobal) bool {
+	if input == networkManager.IsGlobalTrue {
 		return true
 	}
 	return false
 }
 
-func flattenConnectivityGroupItemModel(inputList *[]virtualNetworkManager.ConnectivityGroupItem) ([]ConnectivityGroupItemModel, error) {
+func flattenConnectivityGroupItemModel(inputList *[]networkManager.ConnectivityGroupItem) ([]ConnectivityGroupItemModel, error) {
 	var outputList []ConnectivityGroupItemModel
 	if inputList == nil {
 		return outputList, nil
@@ -481,14 +465,14 @@ func flattenConnectivityGroupItemModel(inputList *[]virtualNetworkManager.Connec
 	return outputList, nil
 }
 
-func flattenUseHubGateWay(input virtualNetworkManager.UseHubGateway) bool {
-	if input == virtualNetworkManager.UseHubGatewayTrue {
+func flattenUseHubGateWay(input networkManager.UseHubGateway) bool {
+	if input == networkManager.UseHubGatewayTrue {
 		return true
 	}
 	return false
 }
 
-func flattenHubModel(inputList *[]virtualNetworkManager.Hub) ([]HubModel, error) {
+func flattenHubModel(inputList *[]networkManager.Hub) ([]HubModel, error) {
 	var outputList []HubModel
 	if inputList == nil {
 		return outputList, nil

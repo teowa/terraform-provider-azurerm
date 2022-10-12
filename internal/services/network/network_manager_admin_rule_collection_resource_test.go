@@ -15,7 +15,7 @@ import (
 
 type NetworkAdminRuleCollectionResource struct{}
 
-func TestAccNetworkAdminRuleCollection_basic(t *testing.T) {
+func TestAccNetworkManagerAdminRuleCollection_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_admin_rule_collection", "test")
 	r := NetworkAdminRuleCollectionResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -29,7 +29,7 @@ func TestAccNetworkAdminRuleCollection_basic(t *testing.T) {
 	})
 }
 
-func TestAccNetworkAdminRuleCollection_requiresImport(t *testing.T) {
+func TestAccNetworkManagerAdminRuleCollection_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_admin_rule_collection", "test")
 	r := NetworkAdminRuleCollectionResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -43,7 +43,7 @@ func TestAccNetworkAdminRuleCollection_requiresImport(t *testing.T) {
 	})
 }
 
-func TestAccNetworkAdminRuleCollection_complete(t *testing.T) {
+func TestAccNetworkManagerAdminRuleCollection_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_admin_rule_collection", "test")
 	r := NetworkAdminRuleCollectionResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -57,12 +57,12 @@ func TestAccNetworkAdminRuleCollection_complete(t *testing.T) {
 	})
 }
 
-func TestAccNetworkAdminRuleCollection_update(t *testing.T) {
+func TestAccNetworkManagerAdminRuleCollection_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_admin_rule_collection", "test")
 	r := NetworkAdminRuleCollectionResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
-			Config: r.complete(data),
+			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 			),
@@ -85,7 +85,7 @@ func (r NetworkAdminRuleCollectionResource) Exists(ctx context.Context, clients 
 	}
 
 	client := clients.Network.ManagerAdminRuleCollectionsClient
-	resp, err := client.Get(ctx, id.ResourceGroup, id.NetworkManagerName, id.RuleCollectionName, id.NetworkManagerName)
+	resp, err := client.Get(ctx, id.ResourceGroup, id.NetworkManagerName, id.SecurityAdminConfigurationName, id.RuleCollectionName)
 	if err != nil {
 		if utils.ResponseWasNotFound(resp.Response) {
 			return utils.Bool(false), nil
@@ -102,18 +102,33 @@ provider "azurerm" {
 }
 
 resource "azurerm_resource_group" "test" {
-  name     = "acctest-rg-%d"
+  name     = "acctest-nmng-%d"
   location = "%s"
 }
+
+data "azurerm_subscription" "current" {
+}
+
 resource "azurerm_network_manager" "test" {
   name                = "acctest-nm-%d"
   resource_group_name = azurerm_resource_group.test.name
+  location            = azurerm_resource_group.test.location
+  scope {
+    subscription_ids = [data.azurerm_subscription.current.id]
+  }
+  scope_accesses = ["SecurityAdmin"]
 }
-resource "azurerm_network_manager_security_admin_configuration" "test" {
-  name               = "acctest-nsac-%d"
+
+resource "azurerm_network_manager_network_group" "test" {
+  name               = "acctest-nmng-%d"
   network_manager_id = azurerm_network_manager.test.id
 }
-`, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger)
+
+resource "azurerm_network_manager_security_admin_configuration" "test" {
+  name               = "acctest-nmsac-%d"
+  network_manager_id = azurerm_network_manager.test.id
+}
+`, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger, data.RandomInteger)
 }
 
 func (r NetworkAdminRuleCollectionResource) basic(data acceptance.TestData) string {
@@ -122,11 +137,9 @@ func (r NetworkAdminRuleCollectionResource) basic(data acceptance.TestData) stri
 				%s
 
 resource "azurerm_network_manager_admin_rule_collection" "test" {
-  name                                    = "acctest-narc-%d"
-  network_security_admin_configuration_id = azurerm_network_manager_security_admin_configuration.test.id
-  applies_to_groups {
-    network_group_id = ""
-  }
+  name                            = "acctest-nmarc-%d"
+  security_admin_configuration_id = azurerm_network_manager_security_admin_configuration.test.id
+  network_group_ids               = [azurerm_network_manager_network_group.test.id]
 }
 `, template, data.RandomInteger)
 }
@@ -137,11 +150,9 @@ func (r NetworkAdminRuleCollectionResource) requiresImport(data acceptance.TestD
 			%s
 
 resource "azurerm_network_manager_admin_rule_collection" "import" {
-  name                                    = azurerm_network_manager_admin_rule_collection.test.name
-  network_security_admin_configuration_id = azurerm_network_manager_security_admin_configuration.test.id
-  applies_to_groups {
-    network_group_id = ""
-  }
+  name                            = azurerm_network_manager_admin_rule_collection.test.name
+  security_admin_configuration_id = azurerm_network_manager_security_admin_configuration.test.id
+  network_group_id                = [azurerm_network_manager_network_group.test.id]
 }
 `, config)
 }
@@ -150,17 +161,18 @@ func (r NetworkAdminRuleCollectionResource) complete(data acceptance.TestData) s
 	template := r.template(data)
 	return fmt.Sprintf(`
 			%s
+resource "azurerm_network_manager_network_group" "test2" {
+  name               = "acctest-nmng2-%d"
+  network_manager_id = azurerm_network_manager.test.id
+}
 
 resource "azurerm_network_manager_admin_rule_collection" "test" {
-  name                                    = "acctest-narc-%d"
-  network_security_admin_configuration_id = azurerm_network_manager_security_admin_configuration.test.id
-  description                             = ""
-  applies_to_groups {
-    network_group_id = ""
-  }
-
+  name                            = "acctest-nmarc-%d"
+  security_admin_configuration_id = azurerm_network_manager_security_admin_configuration.test.id
+  description                     = "test admin rule collection"
+  network_group_id                = [azurerm_network_manager_network_group.test.id, azurerm_network_manager_network_group.test2.id]
 }
-`, template, data.RandomInteger)
+`, template, data.RandomInteger, data.RandomInteger)
 }
 
 func (r NetworkAdminRuleCollectionResource) update(data acceptance.TestData) string {
@@ -169,13 +181,9 @@ func (r NetworkAdminRuleCollectionResource) update(data acceptance.TestData) str
 			%s
 
 resource "azurerm_network_manager_admin_rule_collection" "test" {
-  name                                    = "acctest-narc-%d"
-  network_security_admin_configuration_id = azurerm_network_manager_security_admin_configuration.test.id
-  description                             = ""
-  applies_to_groups {
-    network_group_id = ""
-  }
-
+  name                            = "acctest-nmarc-%d"
+  security_admin_configuration_id = azurerm_network_manager_security_admin_configuration.test.id
+  network_group_ids               = [azurerm_network_manager_network_group.test.id]
 }
 `, template, data.RandomInteger)
 }

@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
 
-	virtualNetworkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
+	networkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/validate"
@@ -60,8 +60,8 @@ func (r ManagerSecurityAdminConfigurationResource) Arguments() map[string]*plugi
 			Elem: &pluginsdk.Schema{
 				Type: pluginsdk.TypeString,
 				ValidateFunc: validation.StringInSlice([]string{
-					string(virtualNetworkManager.IntentPolicyBasedServiceNone),
-					string(virtualNetworkManager.IntentPolicyBasedServiceAll),
+					string(networkManager.IntentPolicyBasedServiceNone),
+					string(networkManager.IntentPolicyBasedServiceAll),
 				}, false),
 			},
 		},
@@ -103,8 +103,8 @@ func (r ManagerSecurityAdminConfigurationResource) Create() sdk.ResourceFunc {
 				return metadata.ResourceRequiresImport(r.ResourceType(), id)
 			}
 
-			conf := &virtualNetworkManager.SecurityAdminConfiguration{
-				SecurityAdminConfigurationPropertiesFormat: &virtualNetworkManager.SecurityAdminConfigurationPropertiesFormat{},
+			conf := &networkManager.SecurityAdminConfiguration{
+				SecurityAdminConfigurationPropertiesFormat: &networkManager.SecurityAdminConfigurationPropertiesFormat{},
 			}
 
 			applyOnNetworkIntentPolicyBasedServicesValue, err := expandNetworkIntentPolicyBasedServiceModel(model.ApplyOnNetworkIntentPolicyBasedServices)
@@ -257,10 +257,10 @@ func (r ManagerSecurityAdminConfigurationResource) Delete() sdk.ResourceFunc {
 	}
 }
 
-func expandNetworkIntentPolicyBasedServiceModel(inputList []string) (*[]virtualNetworkManager.IntentPolicyBasedService, error) {
-	var outputList []virtualNetworkManager.IntentPolicyBasedService
+func expandNetworkIntentPolicyBasedServiceModel(inputList []string) (*[]networkManager.IntentPolicyBasedService, error) {
+	var outputList []networkManager.IntentPolicyBasedService
 	for _, input := range inputList {
-		output := virtualNetworkManager.IntentPolicyBasedService(input)
+		output := networkManager.IntentPolicyBasedService(input)
 
 		outputList = append(outputList, output)
 	}
@@ -268,7 +268,7 @@ func expandNetworkIntentPolicyBasedServiceModel(inputList []string) (*[]virtualN
 	return &outputList, nil
 }
 
-func flattenNetworkIntentPolicyBasedServiceModel(inputList *[]virtualNetworkManager.IntentPolicyBasedService) ([]string, error) {
+func flattenNetworkIntentPolicyBasedServiceModel(inputList *[]networkManager.IntentPolicyBasedService) ([]string, error) {
 	var outputList []string
 	if inputList == nil {
 		return outputList, nil

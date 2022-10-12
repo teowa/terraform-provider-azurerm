@@ -36,9 +36,8 @@ func NewSubscriptionNetworkManagerConnectionsClientWithBaseURI(baseURI string, s
 // CreateOrUpdate create a network manager connection on this subscription.
 // Parameters:
 // parameters - network manager connection to be created/updated.
-// subscriptionID - the subscription Id which uniquely identify the Microsoft Azure subscription.
 // networkManagerConnectionName - name for the network manager connection.
-func (client SubscriptionNetworkManagerConnectionsClient) CreateOrUpdate(ctx context.Context, parameters ManagerConnection, subscriptionID string, networkManagerConnectionName string) (result ManagerConnection, err error) {
+func (client SubscriptionNetworkManagerConnectionsClient) CreateOrUpdate(ctx context.Context, parameters ManagerConnection, networkManagerConnectionName string) (result ManagerConnection, err error) {
 	if tracing.IsEnabled() {
 		ctx = tracing.StartSpan(ctx, fqdn+"/SubscriptionNetworkManagerConnectionsClient.CreateOrUpdate")
 		defer func() {
@@ -49,7 +48,7 @@ func (client SubscriptionNetworkManagerConnectionsClient) CreateOrUpdate(ctx con
 			tracing.EndSpan(ctx, sc, err)
 		}()
 	}
-	req, err := client.CreateOrUpdatePreparer(ctx, parameters, subscriptionID, networkManagerConnectionName)
+	req, err := client.CreateOrUpdatePreparer(ctx, parameters, networkManagerConnectionName)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.SubscriptionNetworkManagerConnectionsClient", "CreateOrUpdate", nil, "Failure preparing request")
 		return
@@ -72,10 +71,10 @@ func (client SubscriptionNetworkManagerConnectionsClient) CreateOrUpdate(ctx con
 }
 
 // CreateOrUpdatePreparer prepares the CreateOrUpdate request.
-func (client SubscriptionNetworkManagerConnectionsClient) CreateOrUpdatePreparer(ctx context.Context, parameters ManagerConnection, subscriptionID string, networkManagerConnectionName string) (*http.Request, error) {
+func (client SubscriptionNetworkManagerConnectionsClient) CreateOrUpdatePreparer(ctx context.Context, parameters ManagerConnection, networkManagerConnectionName string) (*http.Request, error) {
 	pathParameters := map[string]interface{}{
 		"networkManagerConnectionName": autorest.Encode("path", networkManagerConnectionName),
-		"subscriptionID":               autorest.Encode("path", subscriptionID),
+		"subscriptionId":               autorest.Encode("path", client.SubscriptionID),
 	}
 
 	const APIVersion = "2022-01-01"
@@ -88,7 +87,7 @@ func (client SubscriptionNetworkManagerConnectionsClient) CreateOrUpdatePreparer
 		autorest.AsContentType("application/json; charset=utf-8"),
 		autorest.AsPut(),
 		autorest.WithBaseURL(client.BaseURI),
-		autorest.WithPathParameters("/subscriptions/{subscriptionID}/providers/Microsoft.Network/networkManagerConnections/{networkManagerConnectionName}", pathParameters),
+		autorest.WithPathParameters("/subscriptions/{subscriptionId}/providers/Microsoft.Network/networkManagerConnections/{networkManagerConnectionName}", pathParameters),
 		autorest.WithJSON(parameters),
 		autorest.WithQueryParameters(queryParameters))
 	return preparer.Prepare((&http.Request{}).WithContext(ctx))
@@ -114,9 +113,8 @@ func (client SubscriptionNetworkManagerConnectionsClient) CreateOrUpdateResponde
 
 // Delete delete specified connection created by this subscription.
 // Parameters:
-// subscriptionID - the subscription Id which uniquely identify the Microsoft Azure subscription.
 // networkManagerConnectionName - name for the network manager connection.
-func (client SubscriptionNetworkManagerConnectionsClient) Delete(ctx context.Context, subscriptionID string, networkManagerConnectionName string) (result autorest.Response, err error) {
+func (client SubscriptionNetworkManagerConnectionsClient) Delete(ctx context.Context, networkManagerConnectionName string) (result autorest.Response, err error) {
 	if tracing.IsEnabled() {
 		ctx = tracing.StartSpan(ctx, fqdn+"/SubscriptionNetworkManagerConnectionsClient.Delete")
 		defer func() {
@@ -127,7 +125,7 @@ func (client SubscriptionNetworkManagerConnectionsClient) Delete(ctx context.Con
 			tracing.EndSpan(ctx, sc, err)
 		}()
 	}
-	req, err := client.DeletePreparer(ctx, subscriptionID, networkManagerConnectionName)
+	req, err := client.DeletePreparer(ctx, networkManagerConnectionName)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.SubscriptionNetworkManagerConnectionsClient", "Delete", nil, "Failure preparing request")
 		return
@@ -150,10 +148,10 @@ func (client SubscriptionNetworkManagerConnectionsClient) Delete(ctx context.Con
 }
 
 // DeletePreparer prepares the Delete request.
-func (client SubscriptionNetworkManagerConnectionsClient) DeletePreparer(ctx context.Context, subscriptionID string, networkManagerConnectionName string) (*http.Request, error) {
+func (client SubscriptionNetworkManagerConnectionsClient) DeletePreparer(ctx context.Context, networkManagerConnectionName string) (*http.Request, error) {
 	pathParameters := map[string]interface{}{
 		"networkManagerConnectionName": autorest.Encode("path", networkManagerConnectionName),
-		"subscriptionID":               autorest.Encode("path", subscriptionID),
+		"subscriptionId":               autorest.Encode("path", client.SubscriptionID),
 	}
 
 	const APIVersion = "2022-01-01"
@@ -164,7 +162,7 @@ func (client SubscriptionNetworkManagerConnectionsClient) DeletePreparer(ctx con
 	preparer := autorest.CreatePreparer(
 		autorest.AsDelete(),
 		autorest.WithBaseURL(client.BaseURI),
-		autorest.WithPathParameters("/subscriptions/{subscriptionID}/providers/Microsoft.Network/networkManagerConnections/{networkManagerConnectionName}", pathParameters),
+		autorest.WithPathParameters("/subscriptions/{subscriptionId}/providers/Microsoft.Network/networkManagerConnections/{networkManagerConnectionName}", pathParameters),
 		autorest.WithQueryParameters(queryParameters))
 	return preparer.Prepare((&http.Request{}).WithContext(ctx))
 }
@@ -188,9 +186,8 @@ func (client SubscriptionNetworkManagerConnectionsClient) DeleteResponder(resp *
 
 // Get get a specified connection created by this subscription.
 // Parameters:
-// subscriptionID - the subscription Id which uniquely identify the Microsoft Azure subscription.
 // networkManagerConnectionName - name for the network manager connection.
-func (client SubscriptionNetworkManagerConnectionsClient) Get(ctx context.Context, subscriptionID string, networkManagerConnectionName string) (result ManagerConnection, err error) {
+func (client SubscriptionNetworkManagerConnectionsClient) Get(ctx context.Context, networkManagerConnectionName string) (result ManagerConnection, err error) {
 	if tracing.IsEnabled() {
 		ctx = tracing.StartSpan(ctx, fqdn+"/SubscriptionNetworkManagerConnectionsClient.Get")
 		defer func() {
@@ -201,7 +198,7 @@ func (client SubscriptionNetworkManagerConnectionsClient) Get(ctx context.Contex
 			tracing.EndSpan(ctx, sc, err)
 		}()
 	}
-	req, err := client.GetPreparer(ctx, subscriptionID, networkManagerConnectionName)
+	req, err := client.GetPreparer(ctx, networkManagerConnectionName)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.SubscriptionNetworkManagerConnectionsClient", "Get", nil, "Failure preparing request")
 		return
@@ -224,10 +221,10 @@ func (client SubscriptionNetworkManagerConnectionsClient) Get(ctx context.Contex
 }
 
 // GetPreparer prepares the Get request.
-func (client SubscriptionNetworkManagerConnectionsClient) GetPreparer(ctx context.Context, subscriptionID string, networkManagerConnectionName string) (*http.Request, error) {
+func (client SubscriptionNetworkManagerConnectionsClient) GetPreparer(ctx context.Context, networkManagerConnectionName string) (*http.Request, error) {
 	pathParameters := map[string]interface{}{
 		"networkManagerConnectionName": autorest.Encode("path", networkManagerConnectionName),
-		"subscriptionID":               autorest.Encode("path", subscriptionID),
+		"subscriptionId":               autorest.Encode("path", client.SubscriptionID),
 	}
 
 	const APIVersion = "2022-01-01"
@@ -238,7 +235,7 @@ func (client SubscriptionNetworkManagerConnectionsClient) GetPreparer(ctx contex
 	preparer := autorest.CreatePreparer(
 		autorest.AsGet(),
 		autorest.WithBaseURL(client.BaseURI),
-		autorest.WithPathParameters("/subscriptions/{subscriptionID}/providers/Microsoft.Network/networkManagerConnections/{networkManagerConnectionName}", pathParameters),
+		autorest.WithPathParameters("/subscriptions/{subscriptionId}/providers/Microsoft.Network/networkManagerConnections/{networkManagerConnectionName}", pathParameters),
 		autorest.WithQueryParameters(queryParameters))
 	return preparer.Prepare((&http.Request{}).WithContext(ctx))
 }
@@ -263,13 +260,12 @@ func (client SubscriptionNetworkManagerConnectionsClient) GetResponder(resp *htt
 
 // List list all network manager connections created by this subscription.
 // Parameters:
-// subscriptionID - the subscription Id which uniquely identify the Microsoft Azure subscription.
 // top - an optional query parameter which specifies the maximum number of records to be returned by the
 // server.
 // skipToken - skipToken is only used if a previous operation returned a partial result. If a previous response
 // contains a nextLink element, the value of the nextLink element will include a skipToken parameter that
 // specifies a starting point to use for subsequent calls.
-func (client SubscriptionNetworkManagerConnectionsClient) List(ctx context.Context, subscriptionID string, top *int32, skipToken string) (result ManagerConnectionListResultPage, err error) {
+func (client SubscriptionNetworkManagerConnectionsClient) List(ctx context.Context, top *int32, skipToken string) (result ManagerConnectionListResultPage, err error) {
 	if tracing.IsEnabled() {
 		ctx = tracing.StartSpan(ctx, fqdn+"/SubscriptionNetworkManagerConnectionsClient.List")
 		defer func() {
@@ -290,7 +286,7 @@ func (client SubscriptionNetworkManagerConnectionsClient) List(ctx context.Conte
 	}
 
 	result.fn = client.listNextResults
-	req, err := client.ListPreparer(ctx, subscriptionID, top, skipToken)
+	req, err := client.ListPreparer(ctx, top, skipToken)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.SubscriptionNetworkManagerConnectionsClient", "List", nil, "Failure preparing request")
 		return
@@ -317,9 +313,9 @@ func (client SubscriptionNetworkManagerConnectionsClient) List(ctx context.Conte
 }
 
 // ListPreparer prepares the List request.
-func (client SubscriptionNetworkManagerConnectionsClient) ListPreparer(ctx context.Context, subscriptionID string, top *int32, skipToken string) (*http.Request, error) {
+func (client SubscriptionNetworkManagerConnectionsClient) ListPreparer(ctx context.Context, top *int32, skipToken string) (*http.Request, error) {
 	pathParameters := map[string]interface{}{
-		"subscriptionID": autorest.Encode("path", subscriptionID),
+		"subscriptionId": autorest.Encode("path", client.SubscriptionID),
 	}
 
 	const APIVersion = "2022-01-01"
@@ -336,7 +332,7 @@ func (client SubscriptionNetworkManagerConnectionsClient) ListPreparer(ctx conte
 	preparer := autorest.CreatePreparer(
 		autorest.AsGet(),
 		autorest.WithBaseURL(client.BaseURI),
-		autorest.WithPathParameters("/subscriptions/{subscriptionID}/providers/Microsoft.Network/networkManagerConnections", pathParameters),
+		autorest.WithPathParameters("/subscriptions/{subscriptionId}/providers/Microsoft.Network/networkManagerConnections", pathParameters),
 		autorest.WithQueryParameters(queryParameters))
 	return preparer.Prepare((&http.Request{}).WithContext(ctx))
 }
@@ -381,7 +377,7 @@ func (client SubscriptionNetworkManagerConnectionsClient) listNextResults(ctx co
 }
 
 // ListComplete enumerates all values, automatically crossing page boundaries as required.
-func (client SubscriptionNetworkManagerConnectionsClient) ListComplete(ctx context.Context, subscriptionID string, top *int32, skipToken string) (result ManagerConnectionListResultIterator, err error) {
+func (client SubscriptionNetworkManagerConnectionsClient) ListComplete(ctx context.Context, top *int32, skipToken string) (result ManagerConnectionListResultIterator, err error) {
 	if tracing.IsEnabled() {
 		ctx = tracing.StartSpan(ctx, fqdn+"/SubscriptionNetworkManagerConnectionsClient.List")
 		defer func() {
@@ -392,6 +388,6 @@ func (client SubscriptionNetworkManagerConnectionsClient) ListComplete(ctx conte
 			tracing.EndSpan(ctx, sc, err)
 		}()
 	}
-	result.page, err = client.List(ctx, subscriptionID, top, skipToken)
+	result.page, err = client.List(ctx, top, skipToken)
 	return
 }

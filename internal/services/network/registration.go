@@ -37,6 +37,7 @@ func (r Registration) Resources() []sdk.Resource {
 		ManagerManagementGroupConnectionResource{},
 		ManagerSubscriptionConnectionResource{},
 		ManagerScopeConnectionResource{},
+		ManagerCommitResource{},
 	}
 }
 

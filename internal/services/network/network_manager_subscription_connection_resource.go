@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	virtualNetworkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
+	networkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
@@ -94,7 +94,7 @@ func (r ManagerSubscriptionConnectionResource) Create() sdk.ResourceFunc {
 			}
 
 			id := parse.NewNetworkManagerSubscriptionConnectionID(subscriptionId.SubscriptionId, model.Name)
-			existing, err := client.Get(ctx, id.SubscriptionId, id.NetworkManagerConnectionName)
+			existing, err := client.Get(ctx, id.NetworkManagerConnectionName)
 			if err != nil && !utils.ResponseWasNotFound(existing.Response) {
 				return fmt.Errorf("checking for existing %s: %+v", id, err)
 			}
@@ -103,8 +103,8 @@ func (r ManagerSubscriptionConnectionResource) Create() sdk.ResourceFunc {
 				return metadata.ResourceRequiresImport(r.ResourceType(), id)
 			}
 
-			managerConnection := &virtualNetworkManager.ManagerConnection{
-				ManagerConnectionProperties: &virtualNetworkManager.ManagerConnectionProperties{},
+			managerConnection := &networkManager.ManagerConnection{
+				ManagerConnectionProperties: &networkManager.ManagerConnectionProperties{},
 			}
 
 			if model.Description != "" {
@@ -115,7 +115,7 @@ func (r ManagerSubscriptionConnectionResource) Create() sdk.ResourceFunc {
 				managerConnection.ManagerConnectionProperties.NetworkManagerID = &model.NetworkManagerId
 			}
 
-			if _, err := client.CreateOrUpdate(ctx, *managerConnection, id.SubscriptionId, id.NetworkManagerConnectionName); err != nil {
+			if _, err := client.CreateOrUpdate(ctx, *managerConnection, id.NetworkManagerConnectionName); err != nil {
 				return fmt.Errorf("creating %s: %+v", id, err)
 			}
 
@@ -141,7 +141,7 @@ func (r ManagerSubscriptionConnectionResource) Update() sdk.ResourceFunc {
 				return fmt.Errorf("decoding: %+v", err)
 			}
 
-			existing, err := client.Get(ctx, id.SubscriptionId, id.NetworkManagerConnectionName)
+			existing, err := client.Get(ctx, id.NetworkManagerConnectionName)
 			if err != nil {
 				return fmt.Errorf("retrieving %s: %+v", *id, err)
 			}
@@ -169,7 +169,7 @@ func (r ManagerSubscriptionConnectionResource) Update() sdk.ResourceFunc {
 
 			existing.SystemData = nil
 
-			if _, err := client.CreateOrUpdate(ctx, existing, id.SubscriptionId, id.NetworkManagerConnectionName); err != nil {
+			if _, err := client.CreateOrUpdate(ctx, existing, id.NetworkManagerConnectionName); err != nil {
 				return fmt.Errorf("updating %s: %+v", *id, err)
 			}
 
@@ -189,7 +189,7 @@ func (r ManagerSubscriptionConnectionResource) Read() sdk.ResourceFunc {
 				return err
 			}
 
-			existing, err := client.Get(ctx, id.SubscriptionId, id.NetworkManagerConnectionName)
+			existing, err := client.Get(ctx, id.NetworkManagerConnectionName)
 			if err != nil {
 				if utils.ResponseWasNotFound(existing.Response) {
 					return metadata.MarkAsGone(id)
@@ -234,7 +234,7 @@ func (r ManagerSubscriptionConnectionResource) Delete() sdk.ResourceFunc {
 				return err
 			}
 
-			if _, err := client.Delete(ctx, id.SubscriptionId, id.NetworkManagerConnectionName); err != nil {
+			if _, err := client.Delete(ctx, id.NetworkManagerConnectionName); err != nil {
 				return fmt.Errorf("deleting %s: %+v", id, err)
 			}
 

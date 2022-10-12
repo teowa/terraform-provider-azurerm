@@ -62,7 +62,7 @@ func TestAccNetworkManagerNetworkGroup_update(t *testing.T) {
 	r := ManagerNetworkGroupResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
-			Config: r.complete(data),
+			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 			),
@@ -116,7 +116,7 @@ resource "azurerm_network_manager" "test" {
   scope {
     subscription_ids = [data.azurerm_subscription.current.id]
   }
-  scope_access = ["SecurityAdmin"]
+  scope_accesses = ["SecurityAdmin"]
 }
 `, data.RandomInteger, data.Locations.Primary, data.RandomInteger)
 }
@@ -140,7 +140,7 @@ func (r ManagerNetworkGroupResource) requiresImport(data acceptance.TestData) st
 
 resource "azurerm_network_manager_network_group" "import" {
   name               = azurerm_network_manager_network_group.test.name
-  network_manager_id = azurerm_network_manager.test.id
+  network_manager_id = azurerm_network_manager_network_group.test.network_manager_id
 }
 `, config)
 }

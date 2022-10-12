@@ -15,7 +15,7 @@ import (
 
 type ManagerAdminRuleResource struct{}
 
-func TestAccNetworkAdminRule_basic(t *testing.T) {
+func TestAccNetworkManagerAdminRule_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_admin_rule", "test")
 	r := ManagerAdminRuleResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -29,7 +29,7 @@ func TestAccNetworkAdminRule_basic(t *testing.T) {
 	})
 }
 
-func TestAccNetworkAdminRule_requiresImport(t *testing.T) {
+func TestAccNetworkManagerAdminRule_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_admin_rule", "test")
 	r := ManagerAdminRuleResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -43,7 +43,7 @@ func TestAccNetworkAdminRule_requiresImport(t *testing.T) {
 	})
 }
 
-func TestAccNetworkAdminRule_complete(t *testing.T) {
+func TestAccNetworkManagerAdminRule_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_admin_rule", "test")
 	r := ManagerAdminRuleResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -57,12 +57,12 @@ func TestAccNetworkAdminRule_complete(t *testing.T) {
 	})
 }
 
-func TestAccNetworkAdminRule_update(t *testing.T) {
+func TestAccNetworkManagerAdminRule_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_admin_rule", "test")
 	r := ManagerAdminRuleResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
-			Config: r.complete(data),
+			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 			),
@@ -85,7 +85,7 @@ func (r ManagerAdminRuleResource) Exists(ctx context.Context, clients *clients.C
 	}
 
 	client := clients.Network.ManagerAdminRulesClient
-	resp, err := client.Get(ctx, id.ResourceGroup, id.NetworkManagerName, id.RuleCollectionName, id.NetworkManagerName, id.RuleName)
+	resp, err := client.Get(ctx, id.ResourceGroup, id.NetworkManagerName, id.SecurityAdminConfigurationName, id.RuleCollectionName, id.RuleName)
 	if err != nil {
 		if utils.ResponseWasNotFound(resp.Response) {
 			return utils.Bool(false), nil
@@ -103,22 +103,39 @@ provider "azurerm" {
 }
 
 resource "azurerm_resource_group" "test" {
-  name     = "acctest-rg-%d"
+  name     = "acctest-nmng-%d"
   location = "%s"
 }
+
+data "azurerm_subscription" "current" {
+}
+
 resource "azurerm_network_manager" "test" {
   name                = "acctest-nm-%d"
   resource_group_name = azurerm_resource_group.test.name
+  location            = azurerm_resource_group.test.location
+  scope {
+    subscription_ids = [data.azurerm_subscription.current.id]
+  }
+  scope_accesses = ["SecurityAdmin"]
 }
-resource "azurerm_network_manager_security_admin_configuration" "test" {
-  name               = "acctest-nsac-%d"
+
+resource "azurerm_network_manager_network_group" "test" {
+  name               = "acctest-nmng-%d"
   network_manager_id = azurerm_network_manager.test.id
 }
-resource "azurerm_network_manager_admin_rule_collection" "test" {
-  name                                    = "acctest-narc-%d"
-  network_security_admin_configuration_id = azurerm_network_manager_security_admin_configuration.test.id
+
+resource "azurerm_network_manager_security_admin_configuration" "test" {
+  name               = "acctest-nmsac-%d"
+  network_manager_id = azurerm_network_manager.test.id
 }
-`, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger, data.RandomInteger)
+
+resource "azurerm_network_manager_admin_rule_collection" "test" {
+  name                            = "acctest-nmarc-%d"
+  security_admin_configuration_id = azurerm_network_manager_security_admin_configuration.test.id
+  network_group_ids               = [azurerm_network_manager_network_group.test.id]
+}
+`, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger, data.RandomInteger, data.RandomInteger)
 }
 
 func (r ManagerAdminRuleResource) basic(data acceptance.TestData) string {
@@ -127,13 +144,13 @@ func (r ManagerAdminRuleResource) basic(data acceptance.TestData) string {
 				%s
 
 resource "azurerm_network_manager_admin_rule" "test" {
-  name                             = "acctest-nar-%d"
-  network_admin_rule_collection_id = azurerm_network_manager_admin_rule_collection.test.id
-  access                           = ""
-  direction                        = ""
-  kind                             = ""
-  priority                         = 0
-  protocol                         = ""
+  name                     = "acctest-nmar-%d"
+  admin_rule_collection_id = azurerm_network_manager_admin_rule_collection.test.id
+  access                   = "Deny"
+  direction                = "Outbound"
+  protocol                 = "Tcp"
+  priority                 = 1
+
 }
 `, template, data.RandomInteger)
 }
@@ -144,13 +161,12 @@ func (r ManagerAdminRuleResource) requiresImport(data acceptance.TestData) strin
 			%s
 
 resource "azurerm_network_manager_admin_rule" "import" {
-  name                             = azurerm_network_manager_admin_rule.test.name
-  network_admin_rule_collection_id = azurerm_network_manager_admin_rule_collection.test.id
-  access                           = ""
-  direction                        = ""
-  kind                             = ""
-  priority                         = 0
-  protocol                         = ""
+  name                     = azurerm_network_manager_admin_rule.test.name
+  admin_rule_collection_id = azurerm_network_manager_admin_rule.test.admin_rule_collection_id
+  access                   = azurerm_network_manager_admin_rule.test.access
+  direction                = azurerm_network_manager_admin_rule.test.direction
+  priority                 = azurerm_network_manager_admin_rule.test.priority
+  protocol                 = azurerm_network_manager_admin_rule.test.protocol
 }
 `, config)
 }
@@ -161,25 +177,23 @@ func (r ManagerAdminRuleResource) complete(data acceptance.TestData) string {
 			%s
 
 resource "azurerm_network_manager_admin_rule" "test" {
-  name                             = "acctest-nar-%d"
-  network_admin_rule_collection_id = azurerm_network_manager_admin_rule_collection.test.id
-  access                           = ""
-  description                      = ""
-  direction                        = ""
-  kind                             = ""
-  priority                         = 0
-  protocol                         = ""
-  destination_port_ranges          = []
-  source_port_ranges               = []
-  destinations {
-    address_prefix      = ""
-    address_prefix_type = ""
+  name                     = "acctest-nmar-%d"
+  admin_rule_collection_id = azurerm_network_manager_admin_rule_collection.test.id
+  access                   = "Deny"
+  description              = "test admin rule"
+  direction                = "Outbound"
+  priority                 = 1
+  protocol                 = "Tcp"
+  source_port_ranges       = ["80", "22"]
+  destination_port_ranges  = ["80", "22"]
+  source {
+    address_prefix_type = "ServiceTag"
+    address_prefix      = "Internet"
   }
-  sources {
-    address_prefix      = ""
-    address_prefix_type = ""
+  destination {
+    address_prefix_type = "IPPrefix"
+    address_prefix      = "*"
   }
-
 }
 `, template, data.RandomInteger)
 }
@@ -190,25 +204,24 @@ func (r ManagerAdminRuleResource) update(data acceptance.TestData) string {
 			%s
 
 resource "azurerm_network_manager_admin_rule" "test" {
-  name                             = "acctest-nar-%d"
-  network_admin_rule_collection_id = azurerm_network_manager_admin_rule_collection.test.id
-  access                           = ""
-  description                      = ""
-  direction                        = ""
-  kind                             = ""
-  priority                         = 0
-  protocol                         = ""
-  destination_port_ranges          = []
-  source_port_ranges               = []
-  destinations {
-    address_prefix      = ""
-    address_prefix_type = ""
+  name                     = "acctest-nmar-%d"
+  admin_rule_collection_id = azurerm_network_manager_admin_rule_collection.test.id
+  access                   = "Deny"
+  description              = "test"
+  direction                = "Inbound"
+  priority                 = 1234
+  protocol                 = "Ah"
+  source_port_ranges       = ["80"]
+  destination_port_ranges  = ["80"]
+  source {
+    address_prefix_type = "ServiceTag"
+    address_prefix      = "Internet"
   }
-  sources {
-    address_prefix      = ""
-    address_prefix_type = ""
+  destination {
+    address_prefix_type = "IPPrefix"
+    address_prefix      = "*"
   }
-
 }
+
 `, template, data.RandomInteger)
 }

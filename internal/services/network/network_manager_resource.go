@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	virtualNetworkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
+	networkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
@@ -24,7 +24,7 @@ import (
 type ManagerModel struct {
 	CrossTenantScopes []ManagerCrossTenantScopeModel `tfschema:"cross_tenant_scopes"`
 	Scope             []ManagerScopeModel            `tfschema:"scope"`
-	ScopeAccess       []string                       `tfschema:"scope_access"`
+	ScopeAccesses     []string                       `tfschema:"scope_accesses"`
 	Description       string                         `tfschema:"description"`
 	Name              string                         `tfschema:"name"`
 	Location          string                         `tfschema:"location"`
@@ -99,15 +99,15 @@ func (r ManagerResource) Arguments() map[string]*pluginsdk.Schema {
 			},
 		},
 
-		"scope_access": {
+		"scope_accesses": {
 			Type:     pluginsdk.TypeList,
 			Required: true,
 			MinItems: 1,
 			Elem: &pluginsdk.Schema{
 				Type: pluginsdk.TypeString,
 				ValidateFunc: validation.StringInSlice([]string{
-					string(virtualNetworkManager.ConfigurationTypeConnectivity),
-					string(virtualNetworkManager.ConfigurationTypeSecurityAdmin),
+					string(networkManager.ConfigurationTypeConnectivity),
+					string(networkManager.ConfigurationTypeSecurityAdmin),
 				}, false),
 			},
 		},
@@ -175,13 +175,13 @@ func (r ManagerResource) Create() sdk.ResourceFunc {
 				return metadata.ResourceRequiresImport(r.ResourceType(), id)
 			}
 
-			input := virtualNetworkManager.Manager{
+			input := networkManager.Manager{
 				Location: utils.String(azure.NormalizeLocation(state.Location)),
 				Name:     utils.String(state.Name),
-				ManagerProperties: &virtualNetworkManager.ManagerProperties{
+				ManagerProperties: &networkManager.ManagerProperties{
 					Description:                 utils.String(state.Description),
 					NetworkManagerScopes:        expandNetworkManagerScope(state.Scope),
-					NetworkManagerScopeAccesses: expandNetworkManagerScopeAccess(state.ScopeAccess),
+					NetworkManagerScopeAccesses: expandNetworkManagerScopeAccesses(state.ScopeAccesses),
 				},
 				Tags: tags.Expand(state.Tags),
 			}
@@ -218,13 +218,13 @@ func (r ManagerResource) Read() sdk.ResourceFunc {
 
 			var description string
 			var scope []ManagerScopeModel
-			var scopeAccess []string
+			var ScopeAccesses []string
 			if prop := resp.ManagerProperties; prop != nil {
 				if prop.Description != nil {
 					description = *resp.Description
 				}
 				scope = flattenNetworkManagerScope(resp.NetworkManagerScopes)
-				scopeAccess = flattenNetworkManagerScopeAccess(resp.NetworkManagerScopeAccesses)
+				ScopeAccesses = flattenNetworkManagerScopeAccesses(resp.NetworkManagerScopeAccesses)
 			}
 
 			return metadata.Encode(&ManagerModel{
@@ -232,7 +232,7 @@ func (r ManagerResource) Read() sdk.ResourceFunc {
 				Location:          location.NormalizeNilable(resp.Location),
 				Name:              id.Name,
 				ResourceGroupName: id.ResourceGroup,
-				ScopeAccess:       scopeAccess,
+				ScopeAccesses:     ScopeAccesses,
 				Scope:             scope,
 				Tags:              tags.Flatten(resp.Tags),
 			})
@@ -271,8 +271,8 @@ func (r ManagerResource) Update() sdk.ResourceFunc {
 				existing.ManagerProperties.NetworkManagerScopes = expandNetworkManagerScope(state.Scope)
 			}
 
-			if metadata.ResourceData.HasChange("scope_access") {
-				existing.ManagerProperties.NetworkManagerScopeAccesses = expandNetworkManagerScopeAccess(state.ScopeAccess)
+			if metadata.ResourceData.HasChange("scope_accesses") {
+				existing.ManagerProperties.NetworkManagerScopeAccesses = expandNetworkManagerScopeAccesses(state.ScopeAccesses)
 			}
 
 			if metadata.ResourceData.HasChange("tags") {
@@ -317,21 +317,21 @@ func stringSlice(input []string) *[]string {
 	return &input
 }
 
-func expandNetworkManagerScope(input []ManagerScopeModel) *virtualNetworkManager.ManagerPropertiesNetworkManagerScopes {
+func expandNetworkManagerScope(input []ManagerScopeModel) *networkManager.ManagerPropertiesNetworkManagerScopes {
 	if len(input) == 0 {
 		return nil
 	}
 
-	return &virtualNetworkManager.ManagerPropertiesNetworkManagerScopes{
+	return &networkManager.ManagerPropertiesNetworkManagerScopes{
 		ManagementGroups: stringSlice(input[0].ManagementGroups),
 		Subscriptions:    stringSlice(input[0].Subscriptions),
 	}
 }
 
-func expandNetworkManagerScopeAccess(input []string) *[]virtualNetworkManager.ConfigurationType {
-	result := make([]virtualNetworkManager.ConfigurationType, 0)
+func expandNetworkManagerScopeAccesses(input []string) *[]networkManager.ConfigurationType {
+	result := make([]networkManager.ConfigurationType, 0)
 	for _, v := range input {
-		result = append(result, virtualNetworkManager.ConfigurationType(v))
+		result = append(result, networkManager.ConfigurationType(v))
 	}
 	return &result
 }
@@ -343,7 +343,7 @@ func flattenStringSlicePtr(input *[]string) []string {
 	return *input
 }
 
-func flattenNetworkManagerScope(input *virtualNetworkManager.ManagerPropertiesNetworkManagerScopes) []ManagerScopeModel {
+func flattenNetworkManagerScope(input *networkManager.ManagerPropertiesNetworkManagerScopes) []ManagerScopeModel {
 	if input == nil {
 		return make([]ManagerScopeModel, 0)
 	}
@@ -354,7 +354,7 @@ func flattenNetworkManagerScope(input *virtualNetworkManager.ManagerPropertiesNe
 	}}
 }
 
-func flattenNetworkManagerScopeAccess(input *[]virtualNetworkManager.ConfigurationType) []string {
+func flattenNetworkManagerScopeAccesses(input *[]networkManager.ConfigurationType) []string {
 	var result []string
 	if input == nil {
 		return result

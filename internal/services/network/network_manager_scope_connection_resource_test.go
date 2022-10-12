@@ -15,7 +15,7 @@ import (
 
 type ManagerScopeConnectionResource struct{}
 
-func TestAccNetworkScopeConnection_basic(t *testing.T) {
+func TestAccNetworkManagerScopeConnection_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_scope_connection", "test")
 	r := ManagerScopeConnectionResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -29,7 +29,7 @@ func TestAccNetworkScopeConnection_basic(t *testing.T) {
 	})
 }
 
-func TestAccNetworkScopeConnection_requiresImport(t *testing.T) {
+func TestAccNetworkManagerScopeConnection_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_scope_connection", "test")
 	r := ManagerScopeConnectionResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -43,7 +43,7 @@ func TestAccNetworkScopeConnection_requiresImport(t *testing.T) {
 	})
 }
 
-func TestAccNetworkScopeConnection_complete(t *testing.T) {
+func TestAccNetworkManagerScopeConnection_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_scope_connection", "test")
 	r := ManagerScopeConnectionResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -57,7 +57,7 @@ func TestAccNetworkScopeConnection_complete(t *testing.T) {
 	})
 }
 
-func TestAccNetworkScopeConnection_update(t *testing.T) {
+func TestAccNetworkManagerScopeConnection_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_scope_connection", "test")
 	r := ManagerScopeConnectionResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{

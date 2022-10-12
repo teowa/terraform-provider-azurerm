@@ -5,18 +5,17 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
-
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
 )
 
 type ManagerSecurityAdminConfigurationResource struct{}
 
-func TestAccNetworkSecurityAdminConfiguration_basic(t *testing.T) {
+func TestAccNetworkManagerSecurityAdminConfiguration_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_security_admin_configuration", "test")
 	r := ManagerSecurityAdminConfigurationResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -30,7 +29,7 @@ func TestAccNetworkSecurityAdminConfiguration_basic(t *testing.T) {
 	})
 }
 
-func TestAccNetworkSecurityAdminConfiguration_requiresImport(t *testing.T) {
+func TestAccNetworkManagerSecurityAdminConfiguration_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_security_admin_configuration", "test")
 	r := ManagerSecurityAdminConfigurationResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -44,7 +43,7 @@ func TestAccNetworkSecurityAdminConfiguration_requiresImport(t *testing.T) {
 	})
 }
 
-func TestAccNetworkSecurityAdminConfiguration_complete(t *testing.T) {
+func TestAccNetworkManagerSecurityAdminConfiguration_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_security_admin_configuration", "test")
 	r := ManagerSecurityAdminConfigurationResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -58,7 +57,7 @@ func TestAccNetworkSecurityAdminConfiguration_complete(t *testing.T) {
 	})
 }
 
-func TestAccNetworkSecurityAdminConfiguration_update(t *testing.T) {
+func TestAccNetworkManagerSecurityAdminConfiguration_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_security_admin_configuration", "test")
 	r := ManagerSecurityAdminConfigurationResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -103,14 +102,37 @@ provider "azurerm" {
 }
 
 resource "azurerm_resource_group" "test" {
-  name     = "acctest-rg-%d"
+  name     = "acctest-nmng-%d"
   location = "%s"
 }
+
+data "azurerm_subscription" "current" {
+}
+
 resource "azurerm_network_manager" "test" {
   name                = "acctest-nm-%d"
   resource_group_name = azurerm_resource_group.test.name
+  location            = azurerm_resource_group.test.location
+  scope {
+    subscription_ids = [data.azurerm_subscription.current.id]
+  }
+  scope_accesses = ["SecurityAdmin"]
 }
-`, data.RandomInteger, data.Locations.Primary, data.RandomInteger)
+
+resource "azurerm_network_manager_network_group" "test" {
+  name               = "acctest-nmng-%d"
+  network_manager_id = azurerm_network_manager.test.id
+}
+
+resource "azurerm_virtual_network" "test" {
+  name                    = "acctest-vnet-%d"
+  location                = azurerm_resource_group.test.location
+  resource_group_name     = azurerm_resource_group.test.name
+  address_space           = ["10.0.0.0/16"]
+  flow_timeout_in_minutes = 10
+}
+
+`, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger, data.RandomInteger)
 }
 
 func (r ManagerSecurityAdminConfigurationResource) basic(data acceptance.TestData) string {
@@ -119,7 +141,7 @@ func (r ManagerSecurityAdminConfigurationResource) basic(data acceptance.TestDat
 				%s
 
 resource "azurerm_network_manager_security_admin_configuration" "test" {
-  name               = "acctest-nsac-%d"
+  name               = "acctest-nmsac-%d"
   network_manager_id = azurerm_network_manager.test.id
 }
 `, template, data.RandomInteger)
@@ -132,7 +154,7 @@ func (r ManagerSecurityAdminConfigurationResource) requiresImport(data acceptanc
 
 resource "azurerm_network_manager_security_admin_configuration" "import" {
   name               = azurerm_network_manager_security_admin_configuration.test.name
-  network_manager_id = azurerm_network_manager.test.id
+  network_manager_id = azurerm_network_manager_security_admin_configuration.test.network_manager_id
 }
 `, config)
 }
@@ -143,13 +165,10 @@ func (r ManagerSecurityAdminConfigurationResource) complete(data acceptance.Test
 			%s
 
 resource "azurerm_network_manager_security_admin_configuration" "test" {
-  name               = "acctest-nsac-%d"
-  network_manager_id = azurerm_network_manager.test.id
-  description        = ""
-  apply_on_network_intent_policy_based_services {
-
-  }
-
+  name                                          = "acctest-nmsac-%d"
+  network_manager_id                            = azurerm_network_manager.test.id
+  description                                   = "test"
+  apply_on_network_intent_policy_based_services = ["None"]
 }
 `, template, data.RandomInteger)
 }
@@ -160,13 +179,10 @@ func (r ManagerSecurityAdminConfigurationResource) update(data acceptance.TestDa
 			%s
 
 resource "azurerm_network_manager_security_admin_configuration" "test" {
-  name               = "acctest-nsac-%d"
-  network_manager_id = azurerm_network_manager.test.id
-  description        = ""
-  apply_on_network_intent_policy_based_services {
-
-  }
-
+  name                                          = "acctest-nmsac-%d"
+  network_manager_id                            = azurerm_network_manager.test.id
+  description                                   = "test security admin configuration"
+  apply_on_network_intent_policy_based_services = ["None"]
 }
 `, template, data.RandomInteger)
 }

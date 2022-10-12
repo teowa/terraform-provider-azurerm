@@ -43,26 +43,12 @@ func TestAccNetworkManagerStaticMember_requiresImport(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerStaticMember_complete(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_network_manager_static_member", "test")
-	r := ManagerStaticMemberResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
-		{
-			Config: r.complete(data),
-			Check: acceptance.ComposeTestCheckFunc(
-				check.That(data.ResourceName).ExistsInAzure(r),
-			),
-		},
-		data.ImportStep(),
-	})
-}
-
 func TestAccNetworkManagerStaticMember_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_static_member", "test")
 	r := ManagerStaticMemberResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
-			Config: r.complete(data),
+			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 			),
@@ -116,7 +102,7 @@ resource "azurerm_network_manager" "test" {
   scope {
     subscription_ids = [data.azurerm_subscription.current.id]
   }
-  scope_access = ["SecurityAdmin"]
+  scope_accesses = ["SecurityAdmin"]
 }
 
 resource "azurerm_network_manager_network_group" "test" {
@@ -139,9 +125,9 @@ func (r ManagerStaticMemberResource) basic(data acceptance.TestData) string {
 %s
 
 resource "azurerm_network_manager_static_member" "test" {
-  name                     = "acctest-nmsm-%d"
-  network_network_group_id = azurerm_network_manager_network_group.test.id
-  resource_id              = azurerm_virtual_network.test.id
+  name             = "acctest-nmsm-%d"
+  network_group_id = azurerm_network_manager_network_group.test.id
+  resource_id      = azurerm_virtual_network.test.id
 }
 `, template, data.RandomInteger)
 }
@@ -152,24 +138,11 @@ func (r ManagerStaticMemberResource) requiresImport(data acceptance.TestData) st
 %s
 
 resource "azurerm_network_manager_static_member" "import" {
-  name                     = azurerm_network_manager_static_member.test.name
-  network_network_group_id = azurerm_network_manager_network_group.test.id
-  resource_id              = azurerm_network_manager_static_member.test.name
+  name             = azurerm_network_manager_static_member.test.name
+  network_group_id = azurerm_network_manager_static_member.test.network_group_id
+  resource_id      = azurerm_network_manager_static_member.test.resource_id
 }
 `, config)
-}
-
-func (r ManagerStaticMemberResource) complete(data acceptance.TestData) string {
-	template := r.template(data)
-	return fmt.Sprintf(`
-			%s
-
-resource "azurerm_network_manager_static_member" "test" {
-  name                     = "acctest-nmsm-%d"
-  network_network_group_id = azurerm_network_manager_network_group.test.id
-  resource_id              = ""
-}
-`, template, data.RandomInteger)
 }
 
 func (r ManagerStaticMemberResource) update(data acceptance.TestData) string {
@@ -177,10 +150,17 @@ func (r ManagerStaticMemberResource) update(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 			%s
 
-resource "azurerm_network_manager_static_member" "test" {
-  name                     = "acctest-nmsm-%d"
-  network_network_group_id = azurerm_network_manager_network_group.test.id
-  resource_id              = ""
+resource "azurerm_virtual_network" "test2" {
+  name                = "acctest-vnet2-%d"
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
+  address_space       = ["10.1.0.0/22"]
 }
-`, template, data.RandomInteger)
+
+resource "azurerm_network_manager_static_member" "test" {
+  name             = "acctest-nmsm-%d"
+  network_group_id = azurerm_network_manager_network_group.test.id
+  resource_id      = azurerm_virtual_network.test2.id
+}
+`, template, data.RandomInteger, data.RandomInteger)
 }
