@@ -27,6 +27,10 @@ func Default() UserFeatures {
 		LogAnalyticsWorkspace: LogAnalyticsWorkspaceFeatures{
 			PermanentlyDeleteOnDestroy: true,
 		},
+		Network: NetworkFeatures{
+			ManagerKeepCommittedOnDestroy: true,
+			ManagerOverwriteCommitted:     true,
+		},
 		ResourceGroup: ResourceGroupFeatures{
 			PreventDeletionIfContainsResources: true,
 		},

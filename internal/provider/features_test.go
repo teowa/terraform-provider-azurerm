@@ -42,6 +42,9 @@ func TestExpandFeatures(t *testing.T) {
 				LogAnalyticsWorkspace: features.LogAnalyticsWorkspaceFeatures{
 					PermanentlyDeleteOnDestroy: true,
 				},
+				Network: features.NetworkFeatures{
+					ManagerKeepCommittedOnDestroy: false,
+				},
 				TemplateDeployment: features.TemplateDeploymentFeatures{
 					DeleteNestedItemsDuringDeletion: true,
 				},
@@ -100,7 +103,8 @@ func TestExpandFeatures(t *testing.T) {
 					},
 					"network": []interface{}{
 						map[string]interface{}{
-							"relaxed_locking": true,
+							"relaxed_locking":                   true,
+							"manager_keep_committed_on_destroy": true,
 						},
 					},
 					"resource_group": []interface{}{
@@ -153,6 +157,9 @@ func TestExpandFeatures(t *testing.T) {
 				},
 				LogAnalyticsWorkspace: features.LogAnalyticsWorkspaceFeatures{
 					PermanentlyDeleteOnDestroy: true,
+				},
+				Network: features.NetworkFeatures{
+					ManagerKeepCommittedOnDestroy: true,
 				},
 				ResourceGroup: features.ResourceGroupFeatures{
 					PreventDeletionIfContainsResources: true,
@@ -212,7 +219,8 @@ func TestExpandFeatures(t *testing.T) {
 					},
 					"network_locking": []interface{}{
 						map[string]interface{}{
-							"relaxed_locking": false,
+							"relaxed_locking":                   false,
+							"manager_keep_committed_on_destroy": false,
 						},
 					},
 					"resource_group": []interface{}{
@@ -268,6 +276,9 @@ func TestExpandFeatures(t *testing.T) {
 				},
 				ResourceGroup: features.ResourceGroupFeatures{
 					PreventDeletionIfContainsResources: false,
+				},
+				Network: features.NetworkFeatures{
+					ManagerKeepCommittedOnDestroy: false,
 				},
 				TemplateDeployment: features.TemplateDeploymentFeatures{
 					DeleteNestedItemsDuringDeletion: false,
@@ -957,6 +968,76 @@ func TestExpandFeaturesLogAnalyticsWorkspace(t *testing.T) {
 		result := expandFeatures(testCase.Input)
 		if !reflect.DeepEqual(result.LogAnalyticsWorkspace, testCase.Expected.LogAnalyticsWorkspace) {
 			t.Fatalf("Expected %+v but got %+v", result.LogAnalyticsWorkspace, testCase.Expected.LogAnalyticsWorkspace)
+		}
+	}
+}
+
+func TestExpandFeaturesNetwork(t *testing.T) {
+	testData := []struct {
+		Name     string
+		Input    []interface{}
+		EnvVars  map[string]interface{}
+		Expected features.UserFeatures
+	}{
+		{
+			Name: "Empty Block",
+			Input: []interface{}{
+				map[string]interface{}{
+					"network": []interface{}{},
+				},
+			},
+			Expected: features.UserFeatures{
+				Network: features.NetworkFeatures{
+					ManagerKeepCommittedOnDestroy: true,
+					ManagerOverwriteCommitted:     true,
+				},
+			},
+		},
+		{
+			Name: "Enabled",
+			Input: []interface{}{
+				map[string]interface{}{
+					"network": []interface{}{
+						map[string]interface{}{
+							"manager_keep_committed_on_destroy": true,
+							"manager_overwrite_committed":       true,
+						},
+					},
+				},
+			},
+			Expected: features.UserFeatures{
+				Network: features.NetworkFeatures{
+					ManagerKeepCommittedOnDestroy: true,
+					ManagerOverwriteCommitted:     true,
+				},
+			},
+		},
+		{
+			Name: "Disabled",
+			Input: []interface{}{
+				map[string]interface{}{
+					"network": []interface{}{
+						map[string]interface{}{
+							"manager_keep_committed_on_destroy": false,
+							"manager_overwrite_committed":       false,
+						},
+					},
+				},
+			},
+			Expected: features.UserFeatures{
+				Network: features.NetworkFeatures{
+					ManagerKeepCommittedOnDestroy: false,
+					ManagerOverwriteCommitted:     false,
+				},
+			},
+		},
+	}
+
+	for _, testCase := range testData {
+		t.Logf("[DEBUG] Test Case: %q", testCase.Name)
+		result := expandFeatures(testCase.Input)
+		if !reflect.DeepEqual(result.Network, testCase.Expected.Network) {
+			t.Fatalf("Expected %+v but got %+v", result.Network, testCase.Expected.Network)
 		}
 	}
 }

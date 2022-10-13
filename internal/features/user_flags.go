@@ -9,6 +9,7 @@ type UserFeatures struct {
 	KeyVault               KeyVaultFeatures
 	TemplateDeployment     TemplateDeploymentFeatures
 	LogAnalyticsWorkspace  LogAnalyticsWorkspaceFeatures
+	Network                NetworkFeatures
 	ResourceGroup          ResourceGroupFeatures
 }
 
@@ -59,4 +60,9 @@ type ApiManagementFeatures struct {
 
 type ApplicationInsightFeatures struct {
 	DisableGeneratedRule bool
+}
+
+type NetworkFeatures struct {
+	ManagerKeepCommittedOnDestroy bool
+	ManagerOverwriteCommitted     bool
 }

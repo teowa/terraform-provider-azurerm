@@ -21,6 +21,7 @@ type ManagerCommitModel struct {
 	ScopeAccess      string   `tfschema:"scope_access"`
 	Location         string   `tfschema:"location"`
 	ConfigurationIds []string `tfschema:"configuration_ids"`
+	DeploymentStatus string   `tfschema:"deployment_status"`
 }
 
 type ManagerCommitResource struct{}
@@ -57,7 +58,8 @@ func (r ManagerCommitResource) Arguments() map[string]*pluginsdk.Schema {
 		},
 
 		"configuration_ids": {
-			Type: pluginsdk.TypeList, Required: true,
+			Type:     pluginsdk.TypeList,
+			Required: true,
 			MinItems: 1,
 			Elem: &pluginsdk.Schema{
 				Type:         pluginsdk.TypeString,
@@ -68,7 +70,12 @@ func (r ManagerCommitResource) Arguments() map[string]*pluginsdk.Schema {
 }
 
 func (r ManagerCommitResource) Attributes() map[string]*pluginsdk.Schema {
-	return map[string]*pluginsdk.Schema{}
+	return map[string]*pluginsdk.Schema{
+		"deployment_status": {
+			Type:     pluginsdk.TypeString,
+			Computed: true,
+		},
+	}
 }
 
 func (r ManagerCommitResource) Create() sdk.ResourceFunc {
@@ -90,16 +97,18 @@ func (r ManagerCommitResource) Create() sdk.ResourceFunc {
 
 			metadata.Logger.Infof("creating %s", id)
 
-			listParam := networkManager.ManagerDeploymentStatusParameter{
-				Regions:         &[]string{azure.NormalizeLocation(state.Location)},
-				DeploymentTypes: &[]networkManager.ConfigurationType{networkManager.ConfigurationType(state.ScopeAccess)},
-			}
-			existing, err := statusClient.List(ctx, listParam, id.ResourceGroup, id.NetworkManagerName)
-			if err != nil {
-				return fmt.Errorf("checking for the presence of an existing %s: %+v", id, err)
-			}
-			if existing.Value != nil && len(*existing.Value) > 0 {
-				return metadata.ResourceRequiresImport(r.ResourceType(), id)
+			if !metadata.Client.Features.Network.ManagerOverwriteCommitted {
+				listParam := networkManager.ManagerDeploymentStatusParameter{
+					Regions:         &[]string{azure.NormalizeLocation(state.Location)},
+					DeploymentTypes: &[]networkManager.ConfigurationType{networkManager.ConfigurationType(state.ScopeAccess)},
+				}
+				existing, err := statusClient.List(ctx, listParam, id.ResourceGroup, id.NetworkManagerName)
+				if err != nil {
+					return fmt.Errorf("checking for the presence of an existing %s: %+v", id, err)
+				}
+				if existing.Value != nil && len(*existing.Value) > 0 {
+					return metadata.ResourceRequiresImport(r.ResourceType(), id)
+				}
 			}
 
 			input := networkManager.ManagerCommit{
@@ -153,6 +162,7 @@ func (r ManagerCommitResource) Read() sdk.ResourceFunc {
 				Location:         location.NormalizeNilable(commit.Region),
 				ScopeAccess:      string(commit.DeploymentType),
 				ConfigurationIds: *commit.ConfigurationIds,
+				DeploymentStatus: string(commit.DeploymentStatus),
 			})
 		},
 		Timeout: 5 * time.Minute,
@@ -226,19 +236,21 @@ func (r ManagerCommitResource) Delete() sdk.ResourceFunc {
 
 			metadata.Logger.Infof("deleting %s..", *id)
 
-			input := networkManager.ManagerCommit{
-				ConfigurationIds: &[]string{},
-				TargetLocations:  &[]string{id.Location},
-				CommitType:       networkManager.ConfigurationType(id.ScopeAccess),
-			}
+			if !metadata.Client.Features.Network.ManagerKeepCommittedOnDestroy {
+				input := networkManager.ManagerCommit{
+					ConfigurationIds: &[]string{},
+					TargetLocations:  &[]string{id.Location},
+					CommitType:       networkManager.ConfigurationType(id.ScopeAccess),
+				}
 
-			future, err := client.Post(ctx, input, id.ResourceGroup, id.NetworkManagerName)
-			if err != nil {
-				return fmt.Errorf("deleting %s: %+v", *id, err)
-			}
+				future, err := client.Post(ctx, input, id.ResourceGroup, id.NetworkManagerName)
+				if err != nil {
+					return fmt.Errorf("deleting %s: %+v", *id, err)
+				}
 
-			if err = future.WaitForCompletionRef(ctx, client.Client); err != nil {
-				return fmt.Errorf("waiting for deletion of %s: %+v", *id, err)
+				if err = future.WaitForCompletionRef(ctx, client.Client); err != nil {
+					return fmt.Errorf("waiting for deletion of %s: %+v", *id, err)
+				}
 			}
 			return nil
 		},
