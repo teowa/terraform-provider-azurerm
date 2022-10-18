@@ -63,6 +63,6 @@ type ApplicationInsightFeatures struct {
 }
 
 type NetworkFeatures struct {
-	ManagerKeepCommittedOnDestroy bool
-	ManagerOverwriteCommitted     bool
+	ManagerReplaceCommitted   bool
+	ManagerOverwriteCommitted bool
 }

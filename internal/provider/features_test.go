@@ -43,7 +43,7 @@ func TestExpandFeatures(t *testing.T) {
 					PermanentlyDeleteOnDestroy: true,
 				},
 				Network: features.NetworkFeatures{
-					ManagerKeepCommittedOnDestroy: false,
+					ManagerReplaceCommitted: false,
 				},
 				TemplateDeployment: features.TemplateDeploymentFeatures{
 					DeleteNestedItemsDuringDeletion: true,
@@ -103,8 +103,8 @@ func TestExpandFeatures(t *testing.T) {
 					},
 					"network": []interface{}{
 						map[string]interface{}{
-							"relaxed_locking":                   true,
-							"manager_keep_committed_on_destroy": true,
+							"relaxed_locking":           true,
+							"manager_replace_committed": true,
 						},
 					},
 					"resource_group": []interface{}{
@@ -159,7 +159,7 @@ func TestExpandFeatures(t *testing.T) {
 					PermanentlyDeleteOnDestroy: true,
 				},
 				Network: features.NetworkFeatures{
-					ManagerKeepCommittedOnDestroy: true,
+					ManagerReplaceCommitted: true,
 				},
 				ResourceGroup: features.ResourceGroupFeatures{
 					PreventDeletionIfContainsResources: true,
@@ -219,8 +219,8 @@ func TestExpandFeatures(t *testing.T) {
 					},
 					"network_locking": []interface{}{
 						map[string]interface{}{
-							"relaxed_locking":                   false,
-							"manager_keep_committed_on_destroy": false,
+							"relaxed_locking":           false,
+							"manager_replace_committed": false,
 						},
 					},
 					"resource_group": []interface{}{
@@ -278,7 +278,7 @@ func TestExpandFeatures(t *testing.T) {
 					PreventDeletionIfContainsResources: false,
 				},
 				Network: features.NetworkFeatures{
-					ManagerKeepCommittedOnDestroy: false,
+					ManagerReplaceCommitted: false,
 				},
 				TemplateDeployment: features.TemplateDeploymentFeatures{
 					DeleteNestedItemsDuringDeletion: false,
@@ -988,8 +988,8 @@ func TestExpandFeaturesNetwork(t *testing.T) {
 			},
 			Expected: features.UserFeatures{
 				Network: features.NetworkFeatures{
-					ManagerKeepCommittedOnDestroy: true,
-					ManagerOverwriteCommitted:     true,
+					ManagerReplaceCommitted:   true,
+					ManagerOverwriteCommitted: true,
 				},
 			},
 		},
@@ -999,16 +999,16 @@ func TestExpandFeaturesNetwork(t *testing.T) {
 				map[string]interface{}{
 					"network": []interface{}{
 						map[string]interface{}{
-							"manager_keep_committed_on_destroy": true,
-							"manager_overwrite_committed":       true,
+							"manager_replace_committed":   true,
+							"manager_overwrite_committed": true,
 						},
 					},
 				},
 			},
 			Expected: features.UserFeatures{
 				Network: features.NetworkFeatures{
-					ManagerKeepCommittedOnDestroy: true,
-					ManagerOverwriteCommitted:     true,
+					ManagerReplaceCommitted:   true,
+					ManagerOverwriteCommitted: true,
 				},
 			},
 		},
@@ -1018,16 +1018,16 @@ func TestExpandFeaturesNetwork(t *testing.T) {
 				map[string]interface{}{
 					"network": []interface{}{
 						map[string]interface{}{
-							"manager_keep_committed_on_destroy": false,
-							"manager_overwrite_committed":       false,
+							"manager_replace_committed":   false,
+							"manager_overwrite_committed": false,
 						},
 					},
 				},
 			},
 			Expected: features.UserFeatures{
 				Network: features.NetworkFeatures{
-					ManagerKeepCommittedOnDestroy: false,
-					ManagerOverwriteCommitted:     false,
+					ManagerReplaceCommitted:   false,
+					ManagerOverwriteCommitted: false,
 				},
 			},
 		},

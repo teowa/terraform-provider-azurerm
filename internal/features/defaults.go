@@ -28,8 +28,8 @@ func Default() UserFeatures {
 			PermanentlyDeleteOnDestroy: true,
 		},
 		Network: NetworkFeatures{
-			ManagerKeepCommittedOnDestroy: true,
-			ManagerOverwriteCommitted:     true,
+			ManagerReplaceCommitted:   true,
+			ManagerOverwriteCommitted: true,
 		},
 		ResourceGroup: ResourceGroupFeatures{
 			PreventDeletionIfContainsResources: true,

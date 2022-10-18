@@ -161,7 +161,7 @@ func schemaFeatures(supportLegacyTestSuite bool) *pluginsdk.Schema {
 						Type:     pluginsdk.TypeBool,
 						Required: true,
 					},
-					"manager_keep_committed_on_destroy": {
+					"manager_replace_committed": {
 						Type:     pluginsdk.TypeBool,
 						Default:  true,
 						Optional: true,
@@ -325,8 +325,8 @@ func expandFeatures(input []interface{}) features.UserFeatures {
 		items := raw.([]interface{})
 		if len(items) > 0 {
 			networkRaw := items[0].(map[string]interface{})
-			if v, ok := networkRaw["manager_keep_committed_on_destroy"]; ok {
-				featuresMap.Network.ManagerKeepCommittedOnDestroy = v.(bool)
+			if v, ok := networkRaw["manager_replace_committed"]; ok {
+				featuresMap.Network.ManagerReplaceCommitted = v.(bool)
 			}
 			if v, ok := networkRaw["manager_overwrite_committed"]; ok {
 				featuresMap.Network.ManagerOverwriteCommitted = v.(bool)

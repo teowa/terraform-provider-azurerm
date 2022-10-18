@@ -22,11 +22,11 @@ type ManagerAdminRuleModel struct {
 	DestinationPortRanges   []string                                          `tfschema:"destination_port_ranges"`
 	Destinations            []AddressPrefixItemModel                          `tfschema:"destination"`
 	Direction               networkManager.SecurityConfigurationRuleDirection `tfschema:"direction"`
-	Kind                    networkManager.KindBasicBaseAdminRule             `tfschema:"kind"`
-	Priority                int32                                             `tfschema:"priority"`
-	Protocol                networkManager.SecurityConfigurationRuleProtocol  `tfschema:"protocol"`
-	SourcePortRanges        []string                                          `tfschema:"source_port_ranges"`
-	Sources                 []AddressPrefixItemModel                          `tfschema:"source"`
+	//Kind                    networkManager.KindBasicBaseAdminRule             `tfschema:"kind"`
+	Priority         int32                                            `tfschema:"priority"`
+	Protocol         networkManager.SecurityConfigurationRuleProtocol `tfschema:"protocol"`
+	SourcePortRanges []string                                         `tfschema:"source_port_ranges"`
+	Sources          []AddressPrefixItemModel                         `tfschema:"source"`
 }
 
 type AddressPrefixItemModel struct {
@@ -76,6 +76,34 @@ func (r ManagerAdminRuleResource) Arguments() map[string]*pluginsdk.Schema {
 			}, false),
 		},
 
+		"direction": {
+			Type:     pluginsdk.TypeString,
+			Required: true,
+			ValidateFunc: validation.StringInSlice([]string{
+				string(networkManager.SecurityConfigurationRuleDirectionInbound),
+				string(networkManager.SecurityConfigurationRuleDirectionOutbound),
+			}, false),
+		},
+
+		"priority": {
+			Type:         pluginsdk.TypeInt,
+			Required:     true,
+			ValidateFunc: validation.IntBetween(1, 4096),
+		},
+
+		"protocol": {
+			Type:     pluginsdk.TypeString,
+			Required: true,
+			ValidateFunc: validation.StringInSlice([]string{
+				string(networkManager.SecurityConfigurationRuleProtocolAh),
+				string(networkManager.SecurityConfigurationRuleProtocolAny),
+				string(networkManager.SecurityConfigurationRuleProtocolIcmp),
+				string(networkManager.SecurityConfigurationRuleProtocolEsp),
+				string(networkManager.SecurityConfigurationRuleProtocolTCP),
+				string(networkManager.SecurityConfigurationRuleProtocolUDP),
+			}, false),
+		},
+
 		"description": {
 			Type:         pluginsdk.TypeString,
 			Optional:     true,
@@ -112,45 +140,17 @@ func (r ManagerAdminRuleResource) Arguments() map[string]*pluginsdk.Schema {
 				},
 			},
 		},
-
-		"direction": {
-			Type:     pluginsdk.TypeString,
-			Required: true,
-			ValidateFunc: validation.StringInSlice([]string{
-				string(networkManager.SecurityConfigurationRuleDirectionInbound),
-				string(networkManager.SecurityConfigurationRuleDirectionOutbound),
-			}, false),
-		},
-
-		"kind": {
-			Type:     pluginsdk.TypeString,
-			Optional: true,
-			Default:  string(networkManager.KindCustom),
-			ValidateFunc: validation.StringInSlice([]string{
-				string(networkManager.KindDefault),
-				string(networkManager.KindCustom),
-				string(networkManager.KindActiveBaseSecurityAdminRule),
-			}, false),
-		},
-
-		"priority": {
-			Type:         pluginsdk.TypeInt,
-			Required:     true,
-			ValidateFunc: validation.IntBetween(1, 4096),
-		},
-
-		"protocol": {
-			Type:     pluginsdk.TypeString,
-			Required: true,
-			ValidateFunc: validation.StringInSlice([]string{
-				string(networkManager.SecurityConfigurationRuleProtocolTCP),
-				string(networkManager.SecurityConfigurationRuleProtocolUDP),
-				string(networkManager.SecurityConfigurationRuleProtocolIcmp),
-				string(networkManager.SecurityConfigurationRuleProtocolEsp),
-				string(networkManager.SecurityConfigurationRuleProtocolAny),
-				string(networkManager.SecurityConfigurationRuleProtocolAh),
-			}, false),
-		},
+		//
+		//"kind": {
+		//	Type:     pluginsdk.TypeString,
+		//	Optional: true,
+		//	Default:  string(networkManager.KindCustom),
+		//	ValidateFunc: validation.StringInSlice([]string{
+		//		string(networkManager.KindDefault),
+		//		string(networkManager.KindCustom),
+		//		string(networkManager.KindActiveBaseSecurityAdminRule),
+		//	}, false),
+		//},
 
 		"source_port_ranges": {
 			Type:     pluginsdk.TypeList,
@@ -216,7 +216,7 @@ func (r ManagerAdminRuleResource) Create() sdk.ResourceFunc {
 			}
 
 			rule := &networkManager.AdminRule{
-				Kind: "Custom",
+				Kind: networkManager.KindBasicBaseAdminRule("Custom"),
 				AdminPropertiesFormat: &networkManager.AdminPropertiesFormat{
 					Access:                model.Access,
 					DestinationPortRanges: &model.DestinationPortRanges,
@@ -286,9 +286,9 @@ func (r ManagerAdminRuleResource) Update() sdk.ResourceFunc {
 				return fmt.Errorf("retrieving %s: properties was nil", id)
 			}
 
-			if metadata.ResourceData.HasChange("kind") {
-				rule.Kind = model.Kind
-			}
+			//if metadata.ResourceData.HasChange("kind") {
+			//	rule.Kind = model.Kind
+			//}
 
 			if metadata.ResourceData.HasChange("access") {
 				properties.Access = model.Access
@@ -385,7 +385,7 @@ func (r ManagerAdminRuleResource) Read() sdk.ResourceFunc {
 				Name: id.RuleName,
 				NetworkRuleCollectionId: parse.NewNetworkManagerAdminRuleCollectionID(id.SubscriptionId, id.ResourceGroup,
 					id.NetworkManagerName, id.SecurityAdminConfigurationName, id.RuleCollectionName).ID(),
-				Kind: rule.Kind,
+				//Kind: rule.Kind,
 			}
 
 			state.Access = properties.Access

@@ -44,11 +44,13 @@ The following arguments are supported:
 
 * `resource_group_name` - (Required) Specifies the name of the Resource Group where the Network Managers should exist. Changing this forces a new Network Managers to be created.
 
+* `location` - (Required) Specifies the Azure Region where the Network Managers should exist.
+ 
 * `scope` - (Required) A `scope` block as defined below.
+ 
+* `scope_accesses` - (Required) A list of configuration deployment type. Possible values are `Connectivity` and `SecurityAdmin`, corresponds to if Connectivity Configuration and Security Admin Configuration is allowed for the Network Manager.
 
 * `description` - (Optional) A description of the network manager.
-
-* `location` - (Optional) Specifies the Azure Region where the Network Managers should exist.
 
 * `tags` - (Optional) A mapping of tags which should be assigned to the Network Managers.
 
@@ -56,21 +58,15 @@ The following arguments are supported:
 
 A `scope` block supports the following:
 
-* `management_group_ids` - (Optional) List of management groups.
+* `management_group_ids` - (Optional) A list of management group IDs.
 
-* `subscription_ids` - (Optional) List of subscriptions.
+* `subscription_ids` - (Optional) A list of subscription IDs.
 
 ## Attributes Reference
 
 In addition to the Arguments listed above - the following Attributes are exported:
 
 * `id` - The ID of the Network Managers.
-
-* `network_manager_scopes` - A `network_manager_scopes` block as defined below.
-
----
-
-A `network_manager_scopes` block exports the following:
 
 * `cross_tenant_scopes` - A `cross_tenant_scopes` block as defined below.
 
@@ -86,7 +82,7 @@ A `cross_tenant_scopes` block exports the following:
 
 ## Timeouts
 
-The `timeouts` block allows you to specify [timeouts](https://www.terraform.io/docs/configuration/resources.html#timeouts) for certain actions:
+The `timeouts` block allows you to specify [timeouts](https://www.terraform.io/language/resources/syntax#operation-timeouts) for certain actions:
 
 * `create` - (Defaults to 30 minutes) Used when creating the Network Managers.
 * `read` - (Defaults to 5 minutes) Used when retrieving the Network Managers.

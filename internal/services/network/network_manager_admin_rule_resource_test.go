@@ -150,7 +150,6 @@ resource "azurerm_network_manager_admin_rule" "test" {
   direction                = "Outbound"
   protocol                 = "Tcp"
   priority                 = 1
-
 }
 `, template, data.RandomInteger)
 }
