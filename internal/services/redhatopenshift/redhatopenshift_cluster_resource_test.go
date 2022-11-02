@@ -47,20 +47,12 @@ func TestAccOpenShiftCluster_basic(t *testing.T) {
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
-				check.That(data.ResourceName).
-					Key("main_profile.0.vm_size").
-					HasValue("Standard_D8s_v3"),
-				check.That(data.ResourceName).
-					Key("worker_profile.0.vm_size").
-					HasValue("Standard_D4s_v3"),
+				check.That(data.ResourceName).Key("main_profile.0.vm_size").HasValue("Standard_D8s_v3"),
+				check.That(data.ResourceName).Key("worker_profile.0.vm_size").HasValue("Standard_D4s_v3"),
 				check.That(data.ResourceName).Key("worker_profile.0.disk_size_gb").HasValue("128"),
 				check.That(data.ResourceName).Key("worker_profile.0.node_count").HasValue("3"),
-				check.That(data.ResourceName).
-					Key("api_server_profile.0.visibility").
-					HasValue(string(redhatopenshift.VisibilityPublic)),
-				check.That(data.ResourceName).
-					Key("ingress_profile.0.visibility").
-					HasValue(string(redhatopenshift.VisibilityPublic)),
+				check.That(data.ResourceName).Key("api_server_profile.0.visibility").HasValue(string(redhatopenshift.VisibilityPublic)),
+				check.That(data.ResourceName).Key("ingress_profile.0.visibility").HasValue(string(redhatopenshift.VisibilityPublic)),
 			),
 		},
 	})
@@ -75,20 +67,12 @@ func TestAccOpenShiftCluster_private(t *testing.T) {
 			Config: r.private(data),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
-				check.That(data.ResourceName).
-					Key("main_profile.0.vm_size").
-					HasValue("Standard_D8s_v3"),
-				check.That(data.ResourceName).
-					Key("worker_profile.0.vm_size").
-					HasValue("Standard_D4s_v3"),
+				check.That(data.ResourceName).Key("main_profile.0.vm_size").HasValue("Standard_D8s_v3"),
+				check.That(data.ResourceName).Key("worker_profile.0.vm_size").HasValue("Standard_D4s_v3"),
 				check.That(data.ResourceName).Key("worker_profile.0.disk_size_gb").HasValue("128"),
 				check.That(data.ResourceName).Key("worker_profile.0.node_count").HasValue("3"),
-				check.That(data.ResourceName).
-					Key("api_server_profile.0.visibility").
-					HasValue(string(redhatopenshift.VisibilityPrivate)),
-				check.That(data.ResourceName).
-					Key("ingress_profile.0.visibility").
-					HasValue(string(redhatopenshift.VisibilityPrivate)),
+				check.That(data.ResourceName).Key("api_server_profile.0.visibility").HasValue(string(redhatopenshift.VisibilityPrivate)),
+				check.That(data.ResourceName).Key("ingress_profile.0.visibility").HasValue(string(redhatopenshift.VisibilityPrivate)),
 			),
 		},
 	})
@@ -103,23 +87,13 @@ func TestAccOpenShiftCluster_customDomain(t *testing.T) {
 			Config: r.customDomain(data),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
-				check.That(data.ResourceName).
-					Key("main_profile.0.vm_size").
-					HasValue("Standard_D8s_v3"),
-				check.That(data.ResourceName).
-					Key("worker_profile.0.vm_size").
-					HasValue("Standard_D4s_v3"),
+				check.That(data.ResourceName).Key("main_profile.0.vm_size").HasValue("Standard_D8s_v3"),
+				check.That(data.ResourceName).Key("worker_profile.0.vm_size").HasValue("Standard_D4s_v3"),
 				check.That(data.ResourceName).Key("worker_profile.0.disk_size_gb").HasValue("128"),
 				check.That(data.ResourceName).Key("worker_profile.0.node_count").HasValue("3"),
-				check.That(data.ResourceName).
-					Key("api_server_profile.0.visibility").
-					HasValue(string(redhatopenshift.VisibilityPublic)),
-				check.That(data.ResourceName).
-					Key("ingress_profile.0.visibility").
-					HasValue(string(redhatopenshift.VisibilityPublic)),
-				check.That(data.ResourceName).
-					Key("cluster_profile.0.domain").
-					HasValue("foo.example.com"),
+				check.That(data.ResourceName).Key("api_server_profile.0.visibility").HasValue(string(redhatopenshift.VisibilityPublic)),
+				check.That(data.ResourceName).Key("ingress_profile.0.visibility").HasValue(string(redhatopenshift.VisibilityPublic)),
+				check.That(data.ResourceName).Key("cluster_profile.0.domain").HasValue("foo.example.com"),
 			),
 		},
 	})
@@ -134,18 +108,10 @@ func TestAccOpenShiftCluster_encryptionAtHost(t *testing.T) {
 			Config: r.encryptionAtHost(data),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
-				check.That(data.ResourceName).
-					Key("main_profile.0.encryption_at_host_enabled").
-					HasValue("true"),
-				check.That(data.ResourceName).
-					Key("main_profile.0.disk_encryption_set_id").
-					IsSet(),
-				check.That(data.ResourceName).
-					Key("worker_profile.0.encryption_at_host_enabled").
-					HasValue("true"),
-				check.That(data.ResourceName).
-					Key("worker_profile.0.disk_encryption_set_id").
-					IsSet(),
+				check.That(data.ResourceName).Key("main_profile.0.encryption_at_host_enabled").HasValue("true"),
+				check.That(data.ResourceName).Key("main_profile.0.disk_encryption_set_id").IsSet(),
+				check.That(data.ResourceName).Key("worker_profile.0.encryption_at_host_enabled").HasValue("true"),
+				check.That(data.ResourceName).Key("worker_profile.0.disk_encryption_set_id").IsSet(),
 			),
 		},
 	})
@@ -160,23 +126,13 @@ func TestAccOpenShiftCluster_basicWithFipsEnabled(t *testing.T) {
 			Config: r.basicWithFipsEnabled(data),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
-				check.That(data.ResourceName).
-					Key("cluster_profile.0.fips_enabled").
-					HasValue("true"),
-				check.That(data.ResourceName).
-					Key("main_profile.0.vm_size").
-					HasValue("Standard_D8s_v3"),
-				check.That(data.ResourceName).
-					Key("worker_profile.0.vm_size").
-					HasValue("Standard_D4s_v3"),
+				check.That(data.ResourceName).Key("cluster_profile.0.fips_enabled").HasValue("true"),
+				check.That(data.ResourceName).Key("main_profile.0.vm_size").HasValue("Standard_D8s_v3"),
+				check.That(data.ResourceName).Key("worker_profile.0.vm_size").HasValue("Standard_D4s_v3"),
 				check.That(data.ResourceName).Key("worker_profile.0.disk_size_gb").HasValue("128"),
 				check.That(data.ResourceName).Key("worker_profile.0.node_count").HasValue("3"),
-				check.That(data.ResourceName).
-					Key("api_server_profile.0.visibility").
-					HasValue(string(redhatopenshift.VisibilityPublic)),
-				check.That(data.ResourceName).
-					Key("ingress_profile.0.visibility").
-					HasValue(string(redhatopenshift.VisibilityPublic)),
+				check.That(data.ResourceName).Key("api_server_profile.0.visibility").HasValue(string(redhatopenshift.VisibilityPublic)),
+				check.That(data.ResourceName).Key("ingress_profile.0.visibility").HasValue(string(redhatopenshift.VisibilityPublic)),
 			),
 		},
 	})
@@ -188,21 +144,7 @@ provider "azurerm" {
   features {}
 }
 
-provider "azuread" {}
-
-data "azuread_client_config" "test" {}
-
-resource "azuread_application" "test" {
-  display_name = "acctest-aro-%d"
-}
-
-resource "azuread_service_principal" "test" {
-  application_id = azuread_application.test.application_id
-}
-
-resource "azuread_service_principal_password" "test" {
-  service_principal_id = azuread_service_principal.test.object_id
-}
+data "azurerm_client_config" "current" {}
 
 resource "azurerm_resource_group" "test" {
   name     = "acctestRG-aro-%d"
@@ -214,6 +156,12 @@ resource "azurerm_virtual_network" "test" {
   address_space       = ["10.0.0.0/22"]
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
+}
+
+resource "azurerm_role_assignment" "example" {
+  scope                = azurerm_virtual_network.test.id
+  role_definition_name = "Contributor"
+  principal_id         = data.azurerm_client_config.current.object_id
 }
 
 resource "azurerm_subnet" "main_subnet" {
@@ -252,11 +200,11 @@ resource "azurerm_redhatopenshift_cluster" "test" {
   }
 
   service_principal {
-    client_id     = azuread_application.test.application_id
-    client_secret = azuread_service_principal_password.test.value
+    client_id     = "b2460f16-4594-468c-9f2f-2c96f7ed1a43"
+    client_secret = "123451234512345123451234512345"
   }
 }
-  `, data.RandomInteger, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger, data.RandomInteger, data.RandomInteger)
+  `, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger, data.RandomInteger, data.RandomInteger)
 }
 
 func (OpenShiftClusterResource) private(data acceptance.TestData) string {
