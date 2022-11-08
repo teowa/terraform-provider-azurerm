@@ -54,3 +54,14 @@ func (id ManagerCommitId) ID() string {
 	fmtString := "/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Network/networkManagers/%s/commit|%s|%s"
 	return fmt.Sprintf(fmtString, id.SubscriptionId, id.ResourceGroup, id.NetworkManagerName, id.Location, id.ScopeAccess)
 }
+
+func (id ManagerCommitId) String() string {
+	segments := []string{
+		fmt.Sprintf("Scope Access %q", id.ScopeAccess),
+		fmt.Sprintf("Location %q", id.Location),
+		fmt.Sprintf("Network Manager %q", id.NetworkManagerName),
+		fmt.Sprintf("Resource Group %q", id.ResourceGroup),
+	}
+	segmentsStr := strings.Join(segments, " / ")
+	return fmt.Sprintf("%s: (%s)", "Network Manager Commit", segmentsStr)
+}

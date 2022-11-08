@@ -5,33 +5,33 @@ import (
 	"fmt"
 	"time"
 
-	networkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
+	"github.com/tombuildsstuff/kermit/sdk/network/2022-05-01/network"
 )
 
 type ManagerAdminRuleModel struct {
-	Name                    string                                            `tfschema:"name"`
-	NetworkRuleCollectionId string                                            `tfschema:"admin_rule_collection_id"`
-	Access                  networkManager.SecurityConfigurationRuleAccess    `tfschema:"access"`
-	Description             string                                            `tfschema:"description"`
-	DestinationPortRanges   []string                                          `tfschema:"destination_port_ranges"`
-	Destinations            []AddressPrefixItemModel                          `tfschema:"destination"`
-	Direction               networkManager.SecurityConfigurationRuleDirection `tfschema:"direction"`
-	//Kind                    networkManager.KindBasicBaseAdminRule             `tfschema:"kind"`
-	Priority         int32                                            `tfschema:"priority"`
-	Protocol         networkManager.SecurityConfigurationRuleProtocol `tfschema:"protocol"`
-	SourcePortRanges []string                                         `tfschema:"source_port_ranges"`
-	Sources          []AddressPrefixItemModel                         `tfschema:"source"`
+	Name                    string                                     `tfschema:"name"`
+	NetworkRuleCollectionId string                                     `tfschema:"admin_rule_collection_id"`
+	Access                  network.SecurityConfigurationRuleAccess    `tfschema:"access"`
+	Description             string                                     `tfschema:"description"`
+	DestinationPortRanges   []string                                   `tfschema:"destination_port_ranges"`
+	Destinations            []AddressPrefixItemModel                   `tfschema:"destination"`
+	Direction               network.SecurityConfigurationRuleDirection `tfschema:"direction"`
+	//Kind                    network.KindBasicBaseAdminRule             `tfschema:"kind"`
+	Priority         int32                                     `tfschema:"priority"`
+	Protocol         network.SecurityConfigurationRuleProtocol `tfschema:"protocol"`
+	SourcePortRanges []string                                  `tfschema:"source_port_ranges"`
+	Sources          []AddressPrefixItemModel                  `tfschema:"source"`
 }
 
 type AddressPrefixItemModel struct {
-	AddressPrefix     string                           `tfschema:"address_prefix"`
-	AddressPrefixType networkManager.AddressPrefixType `tfschema:"address_prefix_type"`
+	AddressPrefix     string                    `tfschema:"address_prefix"`
+	AddressPrefixType network.AddressPrefixType `tfschema:"address_prefix_type"`
 }
 
 type ManagerAdminRuleResource struct{}
@@ -70,9 +70,9 @@ func (r ManagerAdminRuleResource) Arguments() map[string]*pluginsdk.Schema {
 			Type:     pluginsdk.TypeString,
 			Required: true,
 			ValidateFunc: validation.StringInSlice([]string{
-				string(networkManager.SecurityConfigurationRuleAccessAllow),
-				string(networkManager.SecurityConfigurationRuleAccessDeny),
-				string(networkManager.SecurityConfigurationRuleAccessAlwaysAllow),
+				string(network.SecurityConfigurationRuleAccessAllow),
+				string(network.SecurityConfigurationRuleAccessDeny),
+				string(network.SecurityConfigurationRuleAccessAlwaysAllow),
 			}, false),
 		},
 
@@ -80,8 +80,8 @@ func (r ManagerAdminRuleResource) Arguments() map[string]*pluginsdk.Schema {
 			Type:     pluginsdk.TypeString,
 			Required: true,
 			ValidateFunc: validation.StringInSlice([]string{
-				string(networkManager.SecurityConfigurationRuleDirectionInbound),
-				string(networkManager.SecurityConfigurationRuleDirectionOutbound),
+				string(network.SecurityConfigurationRuleDirectionInbound),
+				string(network.SecurityConfigurationRuleDirectionOutbound),
 			}, false),
 		},
 
@@ -95,12 +95,12 @@ func (r ManagerAdminRuleResource) Arguments() map[string]*pluginsdk.Schema {
 			Type:     pluginsdk.TypeString,
 			Required: true,
 			ValidateFunc: validation.StringInSlice([]string{
-				string(networkManager.SecurityConfigurationRuleProtocolAh),
-				string(networkManager.SecurityConfigurationRuleProtocolAny),
-				string(networkManager.SecurityConfigurationRuleProtocolIcmp),
-				string(networkManager.SecurityConfigurationRuleProtocolEsp),
-				string(networkManager.SecurityConfigurationRuleProtocolTCP),
-				string(networkManager.SecurityConfigurationRuleProtocolUDP),
+				string(network.SecurityConfigurationRuleProtocolAh),
+				string(network.SecurityConfigurationRuleProtocolAny),
+				string(network.SecurityConfigurationRuleProtocolIcmp),
+				string(network.SecurityConfigurationRuleProtocolEsp),
+				string(network.SecurityConfigurationRuleProtocolTCP),
+				string(network.SecurityConfigurationRuleProtocolUDP),
 			}, false),
 		},
 
@@ -133,8 +133,8 @@ func (r ManagerAdminRuleResource) Arguments() map[string]*pluginsdk.Schema {
 						Type:     pluginsdk.TypeString,
 						Optional: true,
 						ValidateFunc: validation.StringInSlice([]string{
-							string(networkManager.AddressPrefixTypeIPPrefix),
-							string(networkManager.AddressPrefixTypeServiceTag),
+							string(network.AddressPrefixTypeIPPrefix),
+							string(network.AddressPrefixTypeServiceTag),
 						}, false),
 					},
 				},
@@ -144,11 +144,11 @@ func (r ManagerAdminRuleResource) Arguments() map[string]*pluginsdk.Schema {
 		//"kind": {
 		//	Type:     pluginsdk.TypeString,
 		//	Optional: true,
-		//	Default:  string(networkManager.KindCustom),
+		//	Default:  string(network.KindCustom),
 		//	ValidateFunc: validation.StringInSlice([]string{
-		//		string(networkManager.KindDefault),
-		//		string(networkManager.KindCustom),
-		//		string(networkManager.KindActiveBaseSecurityAdminRule),
+		//		string(network.KindDefault),
+		//		string(network.KindCustom),
+		//		string(network.KindActiveBaseSecurityAdminRule),
 		//	}, false),
 		//},
 
@@ -175,8 +175,8 @@ func (r ManagerAdminRuleResource) Arguments() map[string]*pluginsdk.Schema {
 						Type:     pluginsdk.TypeString,
 						Optional: true,
 						ValidateFunc: validation.StringInSlice([]string{
-							string(networkManager.AddressPrefixTypeIPPrefix),
-							string(networkManager.AddressPrefixTypeServiceTag),
+							string(network.AddressPrefixTypeIPPrefix),
+							string(network.AddressPrefixTypeServiceTag),
 						}, false),
 					},
 				},
@@ -215,9 +215,9 @@ func (r ManagerAdminRuleResource) Create() sdk.ResourceFunc {
 				return metadata.ResourceRequiresImport(r.ResourceType(), id)
 			}
 
-			rule := &networkManager.AdminRule{
-				Kind: networkManager.KindBasicBaseAdminRule("Custom"),
-				AdminPropertiesFormat: &networkManager.AdminPropertiesFormat{
+			rule := &network.AdminRule{
+				Kind: network.KindBasicBaseAdminRule("Custom"),
+				AdminPropertiesFormat: &network.AdminPropertiesFormat{
 					Access:                model.Access,
 					DestinationPortRanges: &model.DestinationPortRanges,
 					Direction:             model.Direction,
@@ -276,7 +276,7 @@ func (r ManagerAdminRuleResource) Update() sdk.ResourceFunc {
 				return fmt.Errorf("retrieving %s: %+v", *id, err)
 			}
 
-			var rule *networkManager.AdminRule
+			var rule *network.AdminRule
 			if adminRule, ok := existing.Value.AsAdminRule(); ok {
 				rule = adminRule
 			}
@@ -371,7 +371,7 @@ func (r ManagerAdminRuleResource) Read() sdk.ResourceFunc {
 				return fmt.Errorf("retrieving %s: %+v", *id, err)
 			}
 
-			var rule *networkManager.AdminRule
+			var rule *network.AdminRule
 			if adminRule, ok := existing.Value.AsAdminRule(); ok {
 				rule = adminRule
 			}
@@ -455,11 +455,11 @@ func (r ManagerAdminRuleResource) Delete() sdk.ResourceFunc {
 	}
 }
 
-func expandAddressPrefixItemModel(inputList []AddressPrefixItemModel) (*[]networkManager.AddressPrefixItem, error) {
-	var outputList []networkManager.AddressPrefixItem
+func expandAddressPrefixItemModel(inputList []AddressPrefixItemModel) (*[]network.AddressPrefixItem, error) {
+	var outputList []network.AddressPrefixItem
 	for _, v := range inputList {
 		input := v
-		output := networkManager.AddressPrefixItem{
+		output := network.AddressPrefixItem{
 			AddressPrefixType: input.AddressPrefixType,
 		}
 
@@ -473,7 +473,7 @@ func expandAddressPrefixItemModel(inputList []AddressPrefixItemModel) (*[]networ
 	return &outputList, nil
 }
 
-func flattenAddressPrefixItemModel(inputList *[]networkManager.AddressPrefixItem) ([]AddressPrefixItemModel, error) {
+func flattenAddressPrefixItemModel(inputList *[]network.AddressPrefixItem) ([]AddressPrefixItemModel, error) {
 	var outputList []AddressPrefixItemModel
 	if inputList == nil {
 		return outputList, nil

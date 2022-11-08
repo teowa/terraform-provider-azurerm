@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	networkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
+	"github.com/tombuildsstuff/kermit/sdk/network/2022-05-01/network"
 )
 
 type ManagerAdminRuleCollectionModel struct {
@@ -100,8 +100,8 @@ func (r ManagerAdminRuleCollectionResource) Create() sdk.ResourceFunc {
 				return metadata.ResourceRequiresImport(r.ResourceType(), id)
 			}
 
-			adminRuleCollection := &networkManager.AdminRuleCollection{
-				AdminRuleCollectionPropertiesFormat: &networkManager.AdminRuleCollectionPropertiesFormat{},
+			adminRuleCollection := &network.AdminRuleCollection{
+				AdminRuleCollectionPropertiesFormat: &network.AdminRuleCollectionPropertiesFormat{},
 			}
 
 			appliesToGroupsValue, err := expandNetworkManagerNetworkGroupIds(model.NetworkGroupIds)
@@ -253,11 +253,11 @@ func (r ManagerAdminRuleCollectionResource) Delete() sdk.ResourceFunc {
 	}
 }
 
-func expandNetworkManagerNetworkGroupIds(inputList []string) (*[]networkManager.ManagerSecurityGroupItem, error) {
-	var outputList []networkManager.ManagerSecurityGroupItem
+func expandNetworkManagerNetworkGroupIds(inputList []string) (*[]network.ManagerSecurityGroupItem, error) {
+	var outputList []network.ManagerSecurityGroupItem
 	for _, v := range inputList {
 		input := v
-		output := networkManager.ManagerSecurityGroupItem{
+		output := network.ManagerSecurityGroupItem{
 			NetworkGroupID: utils.String(input),
 		}
 
@@ -267,7 +267,7 @@ func expandNetworkManagerNetworkGroupIds(inputList []string) (*[]networkManager.
 	return &outputList, nil
 }
 
-func flattenNetworkManagerNetworkGroupIds(inputList *[]networkManager.ManagerSecurityGroupItem) ([]string, error) {
+func flattenNetworkManagerNetworkGroupIds(inputList *[]network.ManagerSecurityGroupItem) ([]string, error) {
 	var outputList []string
 	if inputList == nil {
 		return outputList, nil

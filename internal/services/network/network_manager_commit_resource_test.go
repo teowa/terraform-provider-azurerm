@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	networkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/azure"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
@@ -13,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
+	"github.com/tombuildsstuff/kermit/sdk/network/2022-05-01/network"
 )
 
 type ManagerCommitResource struct{}
@@ -99,11 +99,11 @@ func (r ManagerCommitResource) Exists(ctx context.Context, clients *clients.Clie
 	}
 
 	client := clients.Network.ManagerDeploymentStatusClient
-	listParam := networkManager.ManagerDeploymentStatusParameter{
+	listParam := network.ManagerDeploymentStatusParameter{
 		Regions:         &[]string{azure.NormalizeLocation(id.Location)},
-		DeploymentTypes: &[]networkManager.ConfigurationType{networkManager.ConfigurationType(id.ScopeAccess)},
+		DeploymentTypes: &[]network.ConfigurationType{network.ConfigurationType(id.ScopeAccess)},
 	}
-	resp, err := client.List(ctx, listParam, id.ResourceGroup, id.NetworkManagerName)
+	resp, err := client.List(ctx, listParam, id.ResourceGroup, id.NetworkManagerName, nil)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving %s: %+v", id, err)
 	}

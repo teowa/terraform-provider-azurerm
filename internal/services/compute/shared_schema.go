@@ -3,13 +3,13 @@ package compute
 import (
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-11-01/compute"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/azure"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/compute/validate"
 	keyVaultValidate "github.com/hashicorp/terraform-provider-azurerm/internal/services/keyvault/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
+	"github.com/tombuildsstuff/kermit/sdk/compute/2022-08-01/compute"
 )
 
 func additionalUnattendContentSchema() *pluginsdk.Schema {
@@ -435,9 +435,9 @@ func expandSourceImageReference(referenceInput []interface{}, imageId string) (*
 	}, nil
 }
 
-func flattenSourceImageReference(input *compute.ImageReference) []interface{} {
+func flattenSourceImageReference(input *compute.ImageReference, hasImageId bool) []interface{} {
 	// since the image id is pulled out as a separate field, if that's set we should return an empty block here
-	if input == nil || input.ID != nil {
+	if input == nil || hasImageId {
 		return []interface{}{}
 	}
 

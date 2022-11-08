@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	networkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/azure"
@@ -14,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
+	"github.com/tombuildsstuff/kermit/sdk/network/2022-05-01/network"
 )
 
 type ManagerCommitModel struct {
@@ -52,8 +52,8 @@ func (r ManagerCommitResource) Arguments() map[string]*pluginsdk.Schema {
 			Type:     pluginsdk.TypeString,
 			Required: true,
 			ValidateFunc: validation.StringInSlice([]string{
-				string(networkManager.ConfigurationTypeConnectivity),
-				string(networkManager.ConfigurationTypeSecurityAdmin),
+				string(network.ConfigurationTypeConnectivity),
+				string(network.ConfigurationTypeSecurityAdmin),
 			}, false),
 		},
 
@@ -98,11 +98,11 @@ func (r ManagerCommitResource) Create() sdk.ResourceFunc {
 			metadata.Logger.Infof("creating %s", id)
 
 			if !metadata.Client.Features.Network.ManagerReplaceCommitted {
-				listParam := networkManager.ManagerDeploymentStatusParameter{
+				listParam := network.ManagerDeploymentStatusParameter{
 					Regions:         &[]string{azure.NormalizeLocation(state.Location)},
-					DeploymentTypes: &[]networkManager.ConfigurationType{networkManager.ConfigurationType(state.ScopeAccess)},
+					DeploymentTypes: &[]network.ConfigurationType{network.ConfigurationType(state.ScopeAccess)},
 				}
-				existing, err := statusClient.List(ctx, listParam, id.ResourceGroup, id.NetworkManagerName)
+				existing, err := statusClient.List(ctx, listParam, id.ResourceGroup, id.NetworkManagerName, nil)
 				if err != nil {
 					return fmt.Errorf("checking for the presence of an existing %s: %+v", id, err)
 				}
@@ -111,10 +111,10 @@ func (r ManagerCommitResource) Create() sdk.ResourceFunc {
 				}
 			}
 
-			input := networkManager.ManagerCommit{
+			input := network.ManagerCommit{
 				ConfigurationIds: &state.ConfigurationIds,
 				TargetLocations:  &[]string{state.Location},
-				CommitType:       networkManager.ConfigurationType(state.ScopeAccess),
+				CommitType:       network.ConfigurationType(state.ScopeAccess),
 			}
 
 			if _, err := client.Post(ctx, input, id.ResourceGroup, id.NetworkManagerName); err != nil {
@@ -143,11 +143,11 @@ func (r ManagerCommitResource) Read() sdk.ResourceFunc {
 
 			metadata.Logger.Infof("retrieving %s", *id)
 
-			listParam := networkManager.ManagerDeploymentStatusParameter{
+			listParam := network.ManagerDeploymentStatusParameter{
 				Regions:         &[]string{azure.NormalizeLocation(id.Location)},
-				DeploymentTypes: &[]networkManager.ConfigurationType{networkManager.ConfigurationType(id.ScopeAccess)},
+				DeploymentTypes: &[]network.ConfigurationType{network.ConfigurationType(id.ScopeAccess)},
 			}
-			resp, err := client.List(ctx, listParam, id.ResourceGroup, id.NetworkManagerName)
+			resp, err := client.List(ctx, listParam, id.ResourceGroup, id.NetworkManagerName, nil)
 			if err != nil {
 				return fmt.Errorf("retrieving %s: %+v", *id, err)
 			}
@@ -185,11 +185,11 @@ func (r ManagerCommitResource) Update() sdk.ResourceFunc {
 			client := metadata.Client.Network.ManagerCommitsClient
 			statusClient := metadata.Client.Network.ManagerDeploymentStatusClient
 
-			listParam := networkManager.ManagerDeploymentStatusParameter{
+			listParam := network.ManagerDeploymentStatusParameter{
 				Regions:         &[]string{azure.NormalizeLocation(id.Location)},
-				DeploymentTypes: &[]networkManager.ConfigurationType{networkManager.ConfigurationType(id.ScopeAccess)},
+				DeploymentTypes: &[]network.ConfigurationType{network.ConfigurationType(id.ScopeAccess)},
 			}
-			resp, err := statusClient.List(ctx, listParam, id.ResourceGroup, id.NetworkManagerName)
+			resp, err := statusClient.List(ctx, listParam, id.ResourceGroup, id.NetworkManagerName, nil)
 			if err != nil {
 				return fmt.Errorf("retrieving %s: %+v", *id, err)
 			}
@@ -213,10 +213,10 @@ func (r ManagerCommitResource) Update() sdk.ResourceFunc {
 				commit.ConfigurationIds = &state.ConfigurationIds
 			}
 
-			input := networkManager.ManagerCommit{
+			input := network.ManagerCommit{
 				ConfigurationIds: commit.ConfigurationIds,
 				TargetLocations:  &[]string{state.Location},
-				CommitType:       networkManager.ConfigurationType(state.ScopeAccess),
+				CommitType:       network.ConfigurationType(state.ScopeAccess),
 			}
 
 			if _, err := client.Post(ctx, input, id.ResourceGroup, id.NetworkManagerName); err != nil {
@@ -245,10 +245,10 @@ func (r ManagerCommitResource) Delete() sdk.ResourceFunc {
 			metadata.Logger.Infof("deleting %s..", *id)
 
 			if !metadata.Client.Features.Network.ManagerReplaceCommitted {
-				input := networkManager.ManagerCommit{
+				input := network.ManagerCommit{
 					ConfigurationIds: &[]string{},
 					TargetLocations:  &[]string{id.Location},
-					CommitType:       networkManager.ConfigurationType(id.ScopeAccess),
+					CommitType:       network.ConfigurationType(id.ScopeAccess),
 				}
 
 				future, err := client.Post(ctx, input, id.ResourceGroup, id.NetworkManagerName)
@@ -271,7 +271,7 @@ func (r ManagerCommitResource) Delete() sdk.ResourceFunc {
 	}
 }
 
-func resourceManagerCommitWaitForDeleted(ctx context.Context, client *networkManager.ManagerDeploymentStatusClient, managerCommitId *parse.ManagerCommitId, d *pluginsdk.ResourceData) (networkManager.ManagerDeploymentStatusListResult, error) {
+func resourceManagerCommitWaitForDeleted(ctx context.Context, client *network.ManagerDeploymentStatusClient, managerCommitId *parse.ManagerCommitId, d *pluginsdk.ResourceData) (network.ManagerDeploymentStatusListResult, error) {
 	state := &pluginsdk.StateChangeConf{
 		MinTimeout: 30 * time.Second,
 		Delay:      10 * time.Second,
@@ -283,13 +283,13 @@ func resourceManagerCommitWaitForDeleted(ctx context.Context, client *networkMan
 
 	resp, err := state.WaitForStateContext(ctx)
 	if err != nil {
-		return resp.(networkManager.ManagerDeploymentStatusListResult), fmt.Errorf("waiting for the Commit %s: %+v", *managerCommitId, err)
+		return resp.(network.ManagerDeploymentStatusListResult), fmt.Errorf("waiting for the Commit %s: %+v", *managerCommitId, err)
 	}
 
-	return resp.(networkManager.ManagerDeploymentStatusListResult), nil
+	return resp.(network.ManagerDeploymentStatusListResult), nil
 }
 
-func resourceManagerCommitWaitForFinished(ctx context.Context, client *networkManager.ManagerDeploymentStatusClient, managerCommitId *parse.ManagerCommitId, d *pluginsdk.ResourceData) (networkManager.ManagerDeploymentStatusListResult, error) {
+func resourceManagerCommitWaitForFinished(ctx context.Context, client *network.ManagerDeploymentStatusClient, managerCommitId *parse.ManagerCommitId, d *pluginsdk.ResourceData) (network.ManagerDeploymentStatusListResult, error) {
 	state := &pluginsdk.StateChangeConf{
 		MinTimeout: 30 * time.Second,
 		Delay:      10 * time.Second,
@@ -301,19 +301,19 @@ func resourceManagerCommitWaitForFinished(ctx context.Context, client *networkMa
 
 	resp, err := state.WaitForStateContext(ctx)
 	if err != nil {
-		return resp.(networkManager.ManagerDeploymentStatusListResult), fmt.Errorf("waiting for the Commit %s: %+v", *managerCommitId, err)
+		return resp.(network.ManagerDeploymentStatusListResult), fmt.Errorf("waiting for the Commit %s: %+v", *managerCommitId, err)
 	}
 
-	return resp.(networkManager.ManagerDeploymentStatusListResult), nil
+	return resp.(network.ManagerDeploymentStatusListResult), nil
 }
 
-func resourceManagerCommitResultRefreshFunc(ctx context.Context, client *networkManager.ManagerDeploymentStatusClient, managerCommitId *parse.ManagerCommitId) pluginsdk.StateRefreshFunc {
+func resourceManagerCommitResultRefreshFunc(ctx context.Context, client *network.ManagerDeploymentStatusClient, managerCommitId *parse.ManagerCommitId) pluginsdk.StateRefreshFunc {
 	return func() (interface{}, string, error) {
-		listParam := networkManager.ManagerDeploymentStatusParameter{
+		listParam := network.ManagerDeploymentStatusParameter{
 			Regions:         &[]string{azure.NormalizeLocation(managerCommitId.Location)},
-			DeploymentTypes: &[]networkManager.ConfigurationType{networkManager.ConfigurationType(managerCommitId.ScopeAccess)},
+			DeploymentTypes: &[]network.ConfigurationType{network.ConfigurationType(managerCommitId.ScopeAccess)},
 		}
-		resp, err := client.List(ctx, listParam, managerCommitId.ResourceGroup, managerCommitId.NetworkManagerName)
+		resp, err := client.List(ctx, listParam, managerCommitId.ResourceGroup, managerCommitId.NetworkManagerName, nil)
 		if err != nil {
 			return resp, "Error", fmt.Errorf("retriving Commit: %+v", err)
 		}

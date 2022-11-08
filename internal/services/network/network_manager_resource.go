@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	networkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
@@ -19,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
+	"github.com/tombuildsstuff/kermit/sdk/network/2022-05-01/network"
 )
 
 type ManagerModel struct {
@@ -106,8 +106,8 @@ func (r ManagerResource) Arguments() map[string]*pluginsdk.Schema {
 			Elem: &pluginsdk.Schema{
 				Type: pluginsdk.TypeString,
 				ValidateFunc: validation.StringInSlice([]string{
-					string(networkManager.ConfigurationTypeConnectivity),
-					string(networkManager.ConfigurationTypeSecurityAdmin),
+					string(network.ConfigurationTypeConnectivity),
+					string(network.ConfigurationTypeSecurityAdmin),
 				}, false),
 			},
 		},
@@ -175,10 +175,10 @@ func (r ManagerResource) Create() sdk.ResourceFunc {
 				return metadata.ResourceRequiresImport(r.ResourceType(), id)
 			}
 
-			input := networkManager.Manager{
+			input := network.Manager{
 				Location: utils.String(azure.NormalizeLocation(state.Location)),
 				Name:     utils.String(state.Name),
-				ManagerProperties: &networkManager.ManagerProperties{
+				ManagerProperties: &network.ManagerProperties{
 					Description:                 utils.String(state.Description),
 					NetworkManagerScopes:        expandNetworkManagerScope(state.Scope),
 					NetworkManagerScopeAccesses: expandNetworkManagerScopeAccesses(state.ScopeAccesses),
@@ -317,21 +317,21 @@ func stringSlice(input []string) *[]string {
 	return &input
 }
 
-func expandNetworkManagerScope(input []ManagerScopeModel) *networkManager.ManagerPropertiesNetworkManagerScopes {
+func expandNetworkManagerScope(input []ManagerScopeModel) *network.ManagerPropertiesNetworkManagerScopes {
 	if len(input) == 0 {
 		return nil
 	}
 
-	return &networkManager.ManagerPropertiesNetworkManagerScopes{
+	return &network.ManagerPropertiesNetworkManagerScopes{
 		ManagementGroups: stringSlice(input[0].ManagementGroups),
 		Subscriptions:    stringSlice(input[0].Subscriptions),
 	}
 }
 
-func expandNetworkManagerScopeAccesses(input []string) *[]networkManager.ConfigurationType {
-	result := make([]networkManager.ConfigurationType, 0)
+func expandNetworkManagerScopeAccesses(input []string) *[]network.ConfigurationType {
+	result := make([]network.ConfigurationType, 0)
 	for _, v := range input {
-		result = append(result, networkManager.ConfigurationType(v))
+		result = append(result, network.ConfigurationType(v))
 	}
 	return &result
 }
@@ -343,7 +343,7 @@ func flattenStringSlicePtr(input *[]string) []string {
 	return *input
 }
 
-func flattenNetworkManagerScope(input *networkManager.ManagerPropertiesNetworkManagerScopes) []ManagerScopeModel {
+func flattenNetworkManagerScope(input *network.ManagerPropertiesNetworkManagerScopes) []ManagerScopeModel {
 	if input == nil {
 		return make([]ManagerScopeModel, 0)
 	}
@@ -354,7 +354,7 @@ func flattenNetworkManagerScope(input *networkManager.ManagerPropertiesNetworkMa
 	}}
 }
 
-func flattenNetworkManagerScopeAccesses(input *[]networkManager.ConfigurationType) []string {
+func flattenNetworkManagerScopeAccesses(input *[]network.ConfigurationType) []string {
 	var result []string
 	if input == nil {
 		return result

@@ -5,31 +5,31 @@ import (
 	"fmt"
 	"time"
 
-	networkManager "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2022-01-01/network"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
+	"github.com/tombuildsstuff/kermit/sdk/network/2022-05-01/network"
 )
 
 type ManagerConnectivityConfigurationModel struct {
-	Name                  string                              `tfschema:"name"`
-	NetworkManagerId      string                              `tfschema:"network_manager_id"`
-	AppliesToGroups       []ConnectivityGroupItemModel        `tfschema:"applies_to_group"`
-	ConnectivityTopology  networkManager.ConnectivityTopology `tfschema:"connectivity_topology"`
-	DeleteExistingPeering bool                                `tfschema:"delete_existing_peering"`
-	Description           string                              `tfschema:"description"`
-	Hubs                  []HubModel                          `tfschema:"hub"`
-	IsGlobal              bool                                `tfschema:"is_global"`
+	Name                  string                       `tfschema:"name"`
+	NetworkManagerId      string                       `tfschema:"network_manager_id"`
+	AppliesToGroups       []ConnectivityGroupItemModel `tfschema:"applies_to_group"`
+	ConnectivityTopology  network.ConnectivityTopology `tfschema:"connectivity_topology"`
+	DeleteExistingPeering bool                         `tfschema:"delete_existing_peering"`
+	Description           string                       `tfschema:"description"`
+	Hubs                  []HubModel                   `tfschema:"hub"`
+	IsGlobal              bool                         `tfschema:"is_global"`
 }
 
 type ConnectivityGroupItemModel struct {
-	GroupConnectivity networkManager.GroupConnectivity `tfschema:"group_connectivity"`
-	IsGlobal          bool                             `tfschema:"is_global"`
-	NetworkGroupId    string                           `tfschema:"network_group_id"`
-	UseHubGateway     bool                             `tfschema:"use_hub_gateway"`
+	GroupConnectivity network.GroupConnectivity `tfschema:"group_connectivity"`
+	IsGlobal          bool                      `tfschema:"is_global"`
+	NetworkGroupId    string                    `tfschema:"network_group_id"`
+	UseHubGateway     bool                      `tfschema:"use_hub_gateway"`
 }
 
 type HubModel struct {
@@ -78,8 +78,8 @@ func (r ManagerConnectivityConfigurationResource) Arguments() map[string]*plugin
 						Type:     pluginsdk.TypeString,
 						Required: true,
 						ValidateFunc: validation.StringInSlice([]string{
-							string(networkManager.GroupConnectivityNone),
-							string(networkManager.GroupConnectivityDirectlyConnected),
+							string(network.GroupConnectivityNone),
+							string(network.GroupConnectivityDirectlyConnected),
 						}, false),
 					},
 
@@ -106,8 +106,8 @@ func (r ManagerConnectivityConfigurationResource) Arguments() map[string]*plugin
 			Type:     pluginsdk.TypeString,
 			Required: true,
 			ValidateFunc: validation.StringInSlice([]string{
-				string(networkManager.ConnectivityTopologyHubAndSpoke),
-				string(networkManager.ConnectivityTopologyMesh),
+				string(network.ConnectivityTopologyHubAndSpoke),
+				string(network.ConnectivityTopologyMesh),
 			}, false),
 		},
 
@@ -178,8 +178,8 @@ func (r ManagerConnectivityConfigurationResource) Create() sdk.ResourceFunc {
 				return metadata.ResourceRequiresImport(r.ResourceType(), id)
 			}
 
-			conf := &networkManager.ConnectivityConfiguration{
-				ConnectivityConfigurationProperties: &networkManager.ConnectivityConfigurationProperties{
+			conf := &network.ConnectivityConfiguration{
+				ConnectivityConfigurationProperties: &network.ConnectivityConfigurationProperties{
 					ConnectivityTopology:  model.ConnectivityTopology,
 					DeleteExistingPeering: expandDeleteExistingPeering(model.DeleteExistingPeering),
 					IsGlobal:              expandConnectivityConfIsGlobal(model.IsGlobal),
@@ -370,25 +370,25 @@ func (r ManagerConnectivityConfigurationResource) Delete() sdk.ResourceFunc {
 	}
 }
 
-func expandDeleteExistingPeering(input bool) networkManager.DeleteExistingPeering {
+func expandDeleteExistingPeering(input bool) network.DeleteExistingPeering {
 	if input {
-		return networkManager.DeleteExistingPeeringTrue
+		return network.DeleteExistingPeeringTrue
 	}
-	return networkManager.DeleteExistingPeeringFalse
+	return network.DeleteExistingPeeringFalse
 }
 
-func expandConnectivityConfIsGlobal(input bool) networkManager.IsGlobal {
+func expandConnectivityConfIsGlobal(input bool) network.IsGlobal {
 	if input {
-		return networkManager.IsGlobalTrue
+		return network.IsGlobalTrue
 	}
-	return networkManager.IsGlobalFalse
+	return network.IsGlobalFalse
 }
 
-func expandConnectivityGroupItemModel(inputList []ConnectivityGroupItemModel) (*[]networkManager.ConnectivityGroupItem, error) {
-	var outputList []networkManager.ConnectivityGroupItem
+func expandConnectivityGroupItemModel(inputList []ConnectivityGroupItemModel) (*[]network.ConnectivityGroupItem, error) {
+	var outputList []network.ConnectivityGroupItem
 	for _, v := range inputList {
 		input := v
-		output := networkManager.ConnectivityGroupItem{
+		output := network.ConnectivityGroupItem{
 			GroupConnectivity: input.GroupConnectivity,
 			IsGlobal:          expandConnectivityConfIsGlobal(input.IsGlobal),
 			NetworkGroupID:    utils.String(input.NetworkGroupId),
@@ -401,18 +401,18 @@ func expandConnectivityGroupItemModel(inputList []ConnectivityGroupItemModel) (*
 	return &outputList, nil
 }
 
-func expandUseHubGateWay(input bool) networkManager.UseHubGateway {
+func expandUseHubGateWay(input bool) network.UseHubGateway {
 	if input {
-		return networkManager.UseHubGatewayTrue
+		return network.UseHubGatewayTrue
 	}
-	return networkManager.UseHubGatewayFalse
+	return network.UseHubGatewayFalse
 }
 
-func expandHubModel(inputList []HubModel) (*[]networkManager.Hub, error) {
-	var outputList []networkManager.Hub
+func expandHubModel(inputList []HubModel) (*[]network.Hub, error) {
+	var outputList []network.Hub
 	for _, v := range inputList {
 		input := v
-		output := networkManager.Hub{}
+		output := network.Hub{}
 
 		if input.ResourceId != "" {
 			output.ResourceID = &input.ResourceId
@@ -428,21 +428,21 @@ func expandHubModel(inputList []HubModel) (*[]networkManager.Hub, error) {
 	return &outputList, nil
 }
 
-func flattenDeleteExistingPeering(input networkManager.DeleteExistingPeering) bool {
-	if input == networkManager.DeleteExistingPeeringTrue {
+func flattenDeleteExistingPeering(input network.DeleteExistingPeering) bool {
+	if input == network.DeleteExistingPeeringTrue {
 		return true
 	}
 	return false
 }
 
-func flattenConnectivityConfIsGlobal(input networkManager.IsGlobal) bool {
-	if input == networkManager.IsGlobalTrue {
+func flattenConnectivityConfIsGlobal(input network.IsGlobal) bool {
+	if input == network.IsGlobalTrue {
 		return true
 	}
 	return false
 }
 
-func flattenConnectivityGroupItemModel(inputList *[]networkManager.ConnectivityGroupItem) ([]ConnectivityGroupItemModel, error) {
+func flattenConnectivityGroupItemModel(inputList *[]network.ConnectivityGroupItem) ([]ConnectivityGroupItemModel, error) {
 	var outputList []ConnectivityGroupItemModel
 	if inputList == nil {
 		return outputList, nil
@@ -465,14 +465,14 @@ func flattenConnectivityGroupItemModel(inputList *[]networkManager.ConnectivityG
 	return outputList, nil
 }
 
-func flattenUseHubGateWay(input networkManager.UseHubGateway) bool {
-	if input == networkManager.UseHubGatewayTrue {
+func flattenUseHubGateWay(input network.UseHubGateway) bool {
+	if input == network.UseHubGatewayTrue {
 		return true
 	}
 	return false
 }
 
-func flattenHubModel(inputList *[]networkManager.Hub) ([]HubModel, error) {
+func flattenHubModel(inputList *[]network.Hub) ([]HubModel, error) {
 	var outputList []HubModel
 	if inputList == nil {
 		return outputList, nil

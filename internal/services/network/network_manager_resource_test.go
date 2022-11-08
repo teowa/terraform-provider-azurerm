@@ -125,16 +125,16 @@ func (r ManagerResource) requiresImport(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 %s
 
-resource "azurerm_network_manager" "test" {
+resource "azurerm_network_manager" "import" {
   name                = azurerm_network_manager.test.name
   location            = azurerm_network_manager.test.location
-  resource_group_name = azruerm_network_manager.test.resource_group_name
+  resource_group_name = azurerm_network_manager.test.resource_group_name
   scope {
-    subscription_ids = azurerm_network_manager.scope.0.subscription_ids
+    subscription_ids = azurerm_network_manager.test.scope.0.subscription_ids
   }
-  scope_accesses = azurerm_network_manager.scope.0.scope_accesses
+  scope_accesses = azurerm_network_manager.test.scope_accesses
 }
-`, r.template(data))
+`, r.basic(data))
 }
 
 func (r ManagerResource) complete(data acceptance.TestData) string {
