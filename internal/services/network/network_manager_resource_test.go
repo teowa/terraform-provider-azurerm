@@ -15,11 +15,38 @@ import (
 
 type ManagerResource struct{}
 
-func TestAccNetworkManager_basic(t *testing.T) {
+func TestAccNetworkManager(t *testing.T) {
+	// NOTE: this is a combined test rather than separate split out tests due to
+	// Azure only being happy about provisioning one network manager per subscription at once
+	// (which our test suite can't easily work around)
+
+	testCases := map[string]map[string]func(t *testing.T){
+		"Manager": {
+			"basic":          testAccNetworkManager_basic,
+			"complete":       testAccNetworkManager_complete,
+			"update":         testAccNetworkManager_update,
+			"requiresImport": testAccNetworkManager_requiresImport,
+		},
+	}
+
+	for group, m := range testCases {
+		m := m
+		t.Run(group, func(t *testing.T) {
+			for name, tc := range m {
+				tc := tc
+				t.Run(name, func(t *testing.T) {
+					tc(t)
+				})
+			}
+		})
+	}
+}
+
+func testAccNetworkManager_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager", "test")
 	r := ManagerResource{}
 
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -30,11 +57,11 @@ func TestAccNetworkManager_basic(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManager_complete(t *testing.T) {
+func testAccNetworkManager_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager", "test")
 	r := ManagerResource{}
 
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -45,11 +72,11 @@ func TestAccNetworkManager_complete(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManager_update(t *testing.T) {
+func testAccNetworkManager_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager", "test")
 	r := ManagerResource{}
 
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -74,11 +101,11 @@ func TestAccNetworkManager_update(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManager_requiresImport(t *testing.T) {
+func testAccNetworkManager_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager", "test")
 	r := ManagerResource{}
 
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
