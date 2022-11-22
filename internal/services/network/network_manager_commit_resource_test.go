@@ -17,10 +17,10 @@ import (
 
 type ManagerCommitResource struct{}
 
-func TestAccNetworkManagerCommit_basic(t *testing.T) {
+func testAccNetworkManagerCommit_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_commit", "test")
 	r := ManagerCommitResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -31,10 +31,10 @@ func TestAccNetworkManagerCommit_basic(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerCommit_basicAdmin(t *testing.T) {
+func testAccNetworkManagerCommit_basicAdmin(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_commit", "test")
 	r := ManagerCommitResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basicAdmin(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -43,10 +43,10 @@ func TestAccNetworkManagerCommit_basicAdmin(t *testing.T) {
 		}, data.ImportStep()})
 }
 
-func TestAccNetworkManagerCommit_requiresImport(t *testing.T) {
+func testAccNetworkManagerCommit_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_commit", "test")
 	r := ManagerCommitResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -57,10 +57,10 @@ func TestAccNetworkManagerCommit_requiresImport(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerCommit_complete(t *testing.T) {
+func testAccNetworkManagerCommit_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_commit", "test")
 	r := ManagerCommitResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -71,10 +71,10 @@ func TestAccNetworkManagerCommit_complete(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerCommit_update(t *testing.T) {
+func testAccNetworkManagerCommit_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_commit", "test")
 	r := ManagerCommitResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -218,8 +218,9 @@ resource "azurerm_network_manager_commit" "test" {
   location           = "eastus"
   scope_access       = "SecurityAdmin"
   configuration_ids  = [azurerm_network_manager_security_admin_configuration.test.id]
-  depends_on = [azurerm_network_manager_admin_rule.test]
+  depends_on         = [azurerm_network_manager_admin_rule.test]
 }
+
 
 `, template, data.RandomInteger)
 }

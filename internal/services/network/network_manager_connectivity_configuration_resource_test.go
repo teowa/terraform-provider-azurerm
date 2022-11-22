@@ -15,10 +15,10 @@ import (
 
 type ManagerConnectivityConfigurationResource struct{}
 
-func TestAccNetworkManagerConnectivityConfiguration_basic(t *testing.T) {
+func testAccNetworkManagerConnectivityConfiguration_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_connectivity_configuration", "test")
 	r := ManagerConnectivityConfigurationResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -29,10 +29,10 @@ func TestAccNetworkManagerConnectivityConfiguration_basic(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerConnectivityConfiguration_basicTopologyMesh(t *testing.T) {
+func testAccNetworkManagerConnectivityConfiguration_basicTopologyMesh(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_connectivity_configuration", "test")
 	r := ManagerConnectivityConfigurationResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basicTopologyMesh(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -43,10 +43,10 @@ func TestAccNetworkManagerConnectivityConfiguration_basicTopologyMesh(t *testing
 	})
 }
 
-func TestAccNetworkManagerConnectivityConfiguration_requiresImport(t *testing.T) {
+func testAccNetworkManagerConnectivityConfiguration_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_connectivity_configuration", "test")
 	r := ManagerConnectivityConfigurationResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -57,10 +57,10 @@ func TestAccNetworkManagerConnectivityConfiguration_requiresImport(t *testing.T)
 	})
 }
 
-func TestAccNetworkManagerConnectivityConfiguration_complete(t *testing.T) {
+func testAccNetworkManagerConnectivityConfiguration_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_connectivity_configuration", "test")
 	r := ManagerConnectivityConfigurationResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -71,10 +71,10 @@ func TestAccNetworkManagerConnectivityConfiguration_complete(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerConnectivityConfiguration_update(t *testing.T) {
+func testAccNetworkManagerConnectivityConfiguration_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_connectivity_configuration", "test")
 	r := ManagerConnectivityConfigurationResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(

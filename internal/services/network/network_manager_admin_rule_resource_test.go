@@ -15,10 +15,10 @@ import (
 
 type ManagerAdminRuleResource struct{}
 
-func TestAccNetworkManagerAdminRule_basic(t *testing.T) {
+func testAccNetworkManagerAdminRule_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_admin_rule", "test")
 	r := ManagerAdminRuleResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -29,10 +29,10 @@ func TestAccNetworkManagerAdminRule_basic(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerAdminRule_requiresImport(t *testing.T) {
+func testAccNetworkManagerAdminRule_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_admin_rule", "test")
 	r := ManagerAdminRuleResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -43,10 +43,10 @@ func TestAccNetworkManagerAdminRule_requiresImport(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerAdminRule_complete(t *testing.T) {
+func testAccNetworkManagerAdminRule_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_admin_rule", "test")
 	r := ManagerAdminRuleResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -57,10 +57,10 @@ func TestAccNetworkManagerAdminRule_complete(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerAdminRule_update(t *testing.T) {
+func testAccNetworkManagerAdminRule_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_admin_rule", "test")
 	r := ManagerAdminRuleResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(

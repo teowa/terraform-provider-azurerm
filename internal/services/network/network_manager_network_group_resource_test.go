@@ -15,10 +15,10 @@ import (
 
 type ManagerNetworkGroupResource struct{}
 
-func TestAccNetworkManagerNetworkGroup_basic(t *testing.T) {
+func testAccNetworkManagerNetworkGroup_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_network_group", "test")
 	r := ManagerNetworkGroupResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -29,10 +29,10 @@ func TestAccNetworkManagerNetworkGroup_basic(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerNetworkGroup_requiresImport(t *testing.T) {
+func testAccNetworkManagerNetworkGroup_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_network_group", "test")
 	r := ManagerNetworkGroupResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -43,10 +43,10 @@ func TestAccNetworkManagerNetworkGroup_requiresImport(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerNetworkGroup_complete(t *testing.T) {
+func testAccNetworkManagerNetworkGroup_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_network_group", "test")
 	r := ManagerNetworkGroupResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -57,10 +57,10 @@ func TestAccNetworkManagerNetworkGroup_complete(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerNetworkGroup_update(t *testing.T) {
+func testAccNetworkManagerNetworkGroup_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_network_group", "test")
 	r := ManagerNetworkGroupResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(

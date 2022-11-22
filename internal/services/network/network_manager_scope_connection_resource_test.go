@@ -15,10 +15,10 @@ import (
 
 type ManagerScopeConnectionResource struct{}
 
-func TestAccNetworkManagerScopeConnection_basic(t *testing.T) {
+func testAccNetworkManagerScopeConnection_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_scope_connection", "test")
 	r := ManagerScopeConnectionResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -29,10 +29,10 @@ func TestAccNetworkManagerScopeConnection_basic(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerScopeConnection_requiresImport(t *testing.T) {
+func testAccNetworkManagerScopeConnection_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_scope_connection", "test")
 	r := ManagerScopeConnectionResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -43,10 +43,10 @@ func TestAccNetworkManagerScopeConnection_requiresImport(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerScopeConnection_complete(t *testing.T) {
+func testAccNetworkManagerScopeConnection_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_scope_connection", "test")
 	r := ManagerScopeConnectionResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -57,10 +57,10 @@ func TestAccNetworkManagerScopeConnection_complete(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerScopeConnection_update(t *testing.T) {
+func testAccNetworkManagerScopeConnection_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_scope_connection", "test")
 	r := ManagerScopeConnectionResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -102,14 +102,30 @@ provider "azurerm" {
 }
 
 resource "azurerm_resource_group" "test" {
-  name     = "acctest-rg-%d"
+  name     = "acctestRG-network-manager-%d"
   location = "%s"
 }
-resource "azurerm_network_manager" "test" {
-  name                = "acctest-nm-%d"
-  resource_group_name = azurerm_resource_group.test.name
+
+data "azurerm_client_config" "current" {
 }
-`, data.RandomInteger, data.Locations.Primary, data.RandomInteger)
+
+data "azurerm_subscription" "current" {
+}
+
+resource "azurerm_network_manager" "test" {
+  name                = "acctest-networkmanager-%[1]d"
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
+  scope {
+    subscription_ids = [data.azurerm_subscription.current.id]
+  }
+  scope_accesses = ["SecurityAdmin"]
+}
+
+
+
+			
+`, data.RandomInteger, data.Locations.Primary)
 }
 
 func (r ManagerScopeConnectionResource) basic(data acceptance.TestData) string {
@@ -120,6 +136,8 @@ func (r ManagerScopeConnectionResource) basic(data acceptance.TestData) string {
 resource "azurerm_network_manager_scope_connection" "test" {
   name               = "acctest-nsc-%d"
   network_manager_id = azurerm_network_manager.test.id
+  tenant_id          = data.azurerm_client_config.current.tenant_id
+  resource_id        = data.azurerm_subscription.current.id
 }
 `, template, data.RandomInteger)
 }
@@ -131,8 +149,12 @@ func (r ManagerScopeConnectionResource) requiresImport(data acceptance.TestData)
 
 resource "azurerm_network_manager_scope_connection" "import" {
   name               = azurerm_network_manager_scope_connection.test.name
-  network_manager_id = azurerm_network_manager.test.id
+  network_manager_id = azurerm_network_manager_scope_connection.test.network_manager_id
+  tenant_id          = azurerm_network_manager_scope_connection.test.tenant_id
+  resource_id        = azurerm_network_manager_scope_connection.test.resource_id
 }
+
+
 `, config)
 }
 
@@ -144,11 +166,9 @@ func (r ManagerScopeConnectionResource) complete(data acceptance.TestData) strin
 resource "azurerm_network_manager_scope_connection" "test" {
   name               = "acctest-nsc-%d"
   network_manager_id = azurerm_network_manager.test.id
-  connection_state   = ""
-  description        = ""
-  resource_id        = ""
-  tenant_id          = ""
-
+  tenant_id          = data.azurerm_client_config.current.tenant_id
+  resource_id        = data.azurerm_subscription.current.id
+  description        = "complete"
 }
 `, template, data.RandomInteger)
 }
@@ -161,11 +181,9 @@ func (r ManagerScopeConnectionResource) update(data acceptance.TestData) string 
 resource "azurerm_network_manager_scope_connection" "test" {
   name               = "acctest-nsc-%d"
   network_manager_id = azurerm_network_manager.test.id
-  connection_state   = ""
-  description        = ""
-  resource_id        = ""
-  tenant_id          = ""
-
+  tenant_id          = data.azurerm_client_config.current.tenant_id
+  resource_id        = data.azurerm_subscription.current.id
+  description        = "update"
 }
 `, template, data.RandomInteger)
 }

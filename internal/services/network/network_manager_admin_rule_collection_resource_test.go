@@ -15,10 +15,10 @@ import (
 
 type NetworkAdminRuleCollectionResource struct{}
 
-func TestAccNetworkManagerAdminRuleCollection_basic(t *testing.T) {
+func testAccNetworkManagerAdminRuleCollection_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_admin_rule_collection", "test")
 	r := NetworkAdminRuleCollectionResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -29,10 +29,10 @@ func TestAccNetworkManagerAdminRuleCollection_basic(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerAdminRuleCollection_requiresImport(t *testing.T) {
+func testAccNetworkManagerAdminRuleCollection_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_admin_rule_collection", "test")
 	r := NetworkAdminRuleCollectionResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -43,10 +43,10 @@ func TestAccNetworkManagerAdminRuleCollection_requiresImport(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerAdminRuleCollection_complete(t *testing.T) {
+func testAccNetworkManagerAdminRuleCollection_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_admin_rule_collection", "test")
 	r := NetworkAdminRuleCollectionResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -57,10 +57,10 @@ func TestAccNetworkManagerAdminRuleCollection_complete(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerAdminRuleCollection_update(t *testing.T) {
+func testAccNetworkManagerAdminRuleCollection_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_admin_rule_collection", "test")
 	r := NetworkAdminRuleCollectionResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -151,8 +151,8 @@ func (r NetworkAdminRuleCollectionResource) requiresImport(data acceptance.TestD
 
 resource "azurerm_network_manager_admin_rule_collection" "import" {
   name                            = azurerm_network_manager_admin_rule_collection.test.name
-  security_admin_configuration_id = azurerm_network_manager_security_admin_configuration.test.id
-  network_group_id                = [azurerm_network_manager_network_group.test.id]
+  security_admin_configuration_id = azurerm_network_manager_admin_rule_collection.test.security_admin_configuration_id
+  network_group_ids               = azurerm_network_manager_admin_rule_collection.test.network_group_ids
 }
 `, config)
 }
@@ -170,7 +170,7 @@ resource "azurerm_network_manager_admin_rule_collection" "test" {
   name                            = "acctest-nmarc-%d"
   security_admin_configuration_id = azurerm_network_manager_security_admin_configuration.test.id
   description                     = "test admin rule collection"
-  network_group_id                = [azurerm_network_manager_network_group.test.id, azurerm_network_manager_network_group.test2.id]
+  network_group_ids               = [azurerm_network_manager_network_group.test.id, azurerm_network_manager_network_group.test2.id]
 }
 `, template, data.RandomInteger, data.RandomInteger)
 }

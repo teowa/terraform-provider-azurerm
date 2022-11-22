@@ -15,10 +15,10 @@ import (
 
 type ManagerManagementGroupConnectionResource struct{}
 
-func TestAccNetworkManagementGroupNetworkManagerConnection_basic(t *testing.T) {
+func testAccNetworkManagementGroupNetworkManagerConnection_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_management_group_connection", "test")
 	r := ManagerManagementGroupConnectionResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -29,10 +29,10 @@ func TestAccNetworkManagementGroupNetworkManagerConnection_basic(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagementGroupNetworkManagerConnection_requiresImport(t *testing.T) {
+func testAccNetworkManagementGroupNetworkManagerConnection_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_management_group_connection", "test")
 	r := ManagerManagementGroupConnectionResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -43,10 +43,10 @@ func TestAccNetworkManagementGroupNetworkManagerConnection_requiresImport(t *tes
 	})
 }
 
-func TestAccNetworkManagementGroupNetworkManagerConnection_complete(t *testing.T) {
+func testAccNetworkManagementGroupNetworkManagerConnection_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_management_group_connection", "test")
 	r := ManagerManagementGroupConnectionResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -57,10 +57,10 @@ func TestAccNetworkManagementGroupNetworkManagerConnection_complete(t *testing.T
 	})
 }
 
-func TestAccNetworkManagementGroupNetworkManagerConnection_update(t *testing.T) {
+func testAccNetworkManagementGroupNetworkManagerConnection_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_management_group_connection", "test")
 	r := ManagerManagementGroupConnectionResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -97,12 +97,36 @@ func (r ManagerManagementGroupConnectionResource) Exists(ctx context.Context, cl
 
 func (r ManagerManagementGroupConnectionResource) template(data acceptance.TestData) string {
 	return fmt.Sprintf(`
-			provider "azurerm" {
-				features {}
-			}
+provider "azurerm" {
+  features {}
+}
 
-			
-`)
+resource "azurerm_management_group" "test" {
+}
+
+resource "azurerm_management_group_subscription_association" "test" {
+  management_group_id = azurerm_management_group.test.id
+  subscription_id     = data.azurerm_subscription.current.id
+}
+
+resource "azurerm_resource_group" "test" {
+  name     = "acctestRG-network-manager-%d"
+  location = "%s"
+}
+
+data "azurerm_subscription" "current" {
+}
+
+resource "azurerm_network_manager" "test" {
+  name                = "acctest-networkmanager-%[1]d"
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
+  scope {
+    subscription_ids = [data.azurerm_subscription.current.id]
+  }
+  scope_accesses = ["SecurityAdmin"]
+}
+`, data.RandomInteger, data.Locations.Primary)
 }
 
 func (r ManagerManagementGroupConnectionResource) basic(data acceptance.TestData) string {
@@ -112,7 +136,8 @@ func (r ManagerManagementGroupConnectionResource) basic(data acceptance.TestData
 
 resource "azurerm_network_manager_management_group_connection" "test" {
   name                = "acctest-nmgnmc-%d"
-  management_group_id = ""
+  management_group_id = azurerm_management_group.test.id
+  network_manager_id  = azurerm_network_manager.test.id
 }
 `, template, data.RandomInteger)
 }
@@ -124,7 +149,8 @@ func (r ManagerManagementGroupConnectionResource) requiresImport(data acceptance
 
 resource "azurerm_network_manager_management_group_connection" "import" {
   name                = azurerm_network_manager_management_group_connection.test.name
-  management_group_id = ""
+  management_group_id = azurerm_network_manager_management_group_connection.test.management_group_id
+  network_manager_id  = azurerm_network_manager_management_group_connection.test.network_manager_id
 }
 `, config)
 }
@@ -136,11 +162,9 @@ func (r ManagerManagementGroupConnectionResource) complete(data acceptance.TestD
 
 resource "azurerm_network_manager_management_group_connection" "test" {
   name                = "acctest-nmgnmc-%d"
-  management_group_id = ""
-  connection_state    = ""
-  description         = ""
-  network_manager_id  = ""
-
+  management_group_id = azurerm_management_group.test.id
+  network_manager_id  = azurerm_network_manager.test.id
+  description         = "complete"
 }
 `, template, data.RandomInteger)
 }
@@ -152,11 +176,9 @@ func (r ManagerManagementGroupConnectionResource) update(data acceptance.TestDat
 
 resource "azurerm_network_manager_management_group_connection" "test" {
   name                = "acctest-nmgnmc-%d"
-  management_group_id = ""
-  connection_state    = ""
-  description         = ""
-  network_manager_id  = ""
-
+  management_group_id = azurerm_management_group.test.id
+  network_manager_id  = azurerm_network_manager.test.id
+  description         = "update"
 }
 `, template, data.RandomInteger)
 }

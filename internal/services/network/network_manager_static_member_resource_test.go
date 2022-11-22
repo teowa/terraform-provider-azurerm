@@ -15,10 +15,10 @@ import (
 
 type ManagerStaticMemberResource struct{}
 
-func TestAccNetworkManagerStaticMember_basic(t *testing.T) {
+func testAccNetworkManagerStaticMember_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_static_member", "test")
 	r := ManagerStaticMemberResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -29,10 +29,10 @@ func TestAccNetworkManagerStaticMember_basic(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerStaticMember_requiresImport(t *testing.T) {
+func testAccNetworkManagerStaticMember_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_static_member", "test")
 	r := ManagerStaticMemberResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -43,10 +43,10 @@ func TestAccNetworkManagerStaticMember_requiresImport(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerStaticMember_update(t *testing.T) {
+func testAccNetworkManagerStaticMember_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_static_member", "test")
 	r := ManagerStaticMemberResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(

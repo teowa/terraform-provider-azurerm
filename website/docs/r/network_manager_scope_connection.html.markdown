@@ -24,12 +24,12 @@ resource "azurerm_network_manager" "example" {
 }
 
 resource "azurerm_network_scope_connection" "example" {
-  name                       = "example-nsc"
+  name               = "example-nsc"
   network_manager_id = azurerm_network_manager.test.id
-  connection_state           = ""
-  description                = ""
-  resource_id                = ""
-  tenant_id                  = ""
+  connection_state   = ""
+  description        = ""
+  resource_id        = ""
+  tenant_id          = ""
 
 }
 ```

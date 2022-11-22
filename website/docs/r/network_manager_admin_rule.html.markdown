@@ -67,7 +67,6 @@ resource "azurerm_network_manager_admin_rule" "example" {
     address_prefix      = "*"
   }
 }
-dd
 ```
 
 ## Arguments Reference

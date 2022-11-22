@@ -15,10 +15,10 @@ import (
 
 type ManagerSubscriptionConnectionResource struct{}
 
-func TestAccNetworkSubscriptionNetworkManagerConnection_basic(t *testing.T) {
+func testAccNetworkSubscriptionNetworkManagerConnection_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_subscription_connection", "test")
 	r := ManagerSubscriptionConnectionResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -29,10 +29,10 @@ func TestAccNetworkSubscriptionNetworkManagerConnection_basic(t *testing.T) {
 	})
 }
 
-func TestAccNetworkSubscriptionNetworkManagerConnection_requiresImport(t *testing.T) {
+func testAccNetworkSubscriptionNetworkManagerConnection_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_subscription_connection", "test")
 	r := ManagerSubscriptionConnectionResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -43,10 +43,10 @@ func TestAccNetworkSubscriptionNetworkManagerConnection_requiresImport(t *testin
 	})
 }
 
-func TestAccNetworkSubscriptionNetworkManagerConnection_complete(t *testing.T) {
+func testAccNetworkSubscriptionNetworkManagerConnection_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_subscription_connection", "test")
 	r := ManagerSubscriptionConnectionResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -57,10 +57,10 @@ func TestAccNetworkSubscriptionNetworkManagerConnection_complete(t *testing.T) {
 	})
 }
 
-func TestAccNetworkSubscriptionNetworkManagerConnection_update(t *testing.T) {
+func testAccNetworkSubscriptionNetworkManagerConnection_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_subscription_connection", "test")
 	r := ManagerSubscriptionConnectionResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -97,12 +97,32 @@ func (r ManagerSubscriptionConnectionResource) Exists(ctx context.Context, clien
 
 func (r ManagerSubscriptionConnectionResource) template(data acceptance.TestData) string {
 	return fmt.Sprintf(`
-			provider "azurerm" {
-				features {}
-			}
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_resource_group" "test" {
+  name     = "acctestRG-network-manager-%d"
+  location = "%s"
+}
+
+data "azurerm_subscription" "current" {
+}
+
+resource "azurerm_network_manager" "test" {
+  name                = "acctest-networkmanager-%[1]d"
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
+  scope {
+    subscription_ids = [data.azurerm_subscription.current.id]
+  }
+  scope_accesses = ["SecurityAdmin"]
+}
+
+
 
 			
-`)
+`, data.RandomInteger, data.Locations.Primary)
 }
 
 func (r ManagerSubscriptionConnectionResource) basic(data acceptance.TestData) string {
@@ -111,7 +131,9 @@ func (r ManagerSubscriptionConnectionResource) basic(data acceptance.TestData) s
 				%s
 
 resource "azurerm_network_manager_subscription_connection" "test" {
-  name = "acctest-nsnmc-%d"
+  name               = "acctest-nsnmc-%d"
+  subscription_id    = data.azurerm_subscription.current.id
+  network_manager_id = azurerm_network_manager.test.id
 }
 `, template, data.RandomInteger)
 }
@@ -121,10 +143,12 @@ func (r ManagerSubscriptionConnectionResource) requiresImport(data acceptance.Te
 	return fmt.Sprintf(`
 			%s
 
-resource "azurerm_network_manager_subscription_connection" "import" {
-  name = azurerm_network_manager_subscription_connection.test.name
+resource "azurerm_network_manager_subscription_connection" "test" {
+  name               = "acctest-nsnmc-%d"
+  subscription_id    = data.azurerm_subscription.current.id
+  network_manager_id = azurerm_network_manager.test.id
 }
-`, config)
+`, config, data.RandomInteger)
 }
 
 func (r ManagerSubscriptionConnectionResource) complete(data acceptance.TestData) string {
@@ -134,10 +158,9 @@ func (r ManagerSubscriptionConnectionResource) complete(data acceptance.TestData
 
 resource "azurerm_network_manager_subscription_connection" "test" {
   name               = "acctest-nsnmc-%d"
-  connection_state   = ""
-  description        = ""
-  network_manager_id = ""
-
+  subscription_id    = data.azurerm_subscription.current.id
+  network_manager_id = azurerm_network_manager.test.id
+  description        = "complete"
 }
 `, template, data.RandomInteger)
 }
@@ -149,10 +172,9 @@ func (r ManagerSubscriptionConnectionResource) update(data acceptance.TestData) 
 
 resource "azurerm_network_manager_subscription_connection" "test" {
   name               = "acctest-nsnmc-%d"
-  connection_state   = ""
-  description        = ""
-  network_manager_id = ""
-
+  subscription_id    = data.azurerm_subscription.current.id
+  network_manager_id = azurerm_network_manager.test.id
+  description        = "update"
 }
 `, template, data.RandomInteger)
 }

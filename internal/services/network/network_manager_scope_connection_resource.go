@@ -55,22 +55,22 @@ func (r ManagerScopeConnectionResource) Arguments() map[string]*pluginsdk.Schema
 			ValidateFunc: validate.NetworkManagerID,
 		},
 
-		"description": {
-			Type:         pluginsdk.TypeString,
-			Optional:     true,
-			ValidateFunc: validation.StringIsNotEmpty,
-		},
-
 		"resource_id": {
 			Type:         pluginsdk.TypeString,
-			Optional:     true,
+			Required:     true,
 			ValidateFunc: validation.StringIsNotEmpty,
 		},
 
 		"tenant_id": {
 			Type:         pluginsdk.TypeString,
-			Optional:     true,
+			Required:     true,
 			ValidateFunc: validation.IsUUID,
+		},
+
+		"description": {
+			Type:         pluginsdk.TypeString,
+			Optional:     true,
+			ValidateFunc: validation.StringIsNotEmpty,
 		},
 	}
 }

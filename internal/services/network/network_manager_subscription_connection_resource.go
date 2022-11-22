@@ -55,13 +55,13 @@ func (r ManagerSubscriptionConnectionResource) Arguments() map[string]*pluginsdk
 			ValidateFunc: commonids.ValidateSubscriptionID,
 		},
 
-		"description": {
+		"network_manager_id": {
 			Type:         pluginsdk.TypeString,
-			Optional:     true,
-			ValidateFunc: validation.StringIsNotEmpty,
+			Required:     true,
+			ValidateFunc: validate.NetworkManagerSubscriptionConnectionID,
 		},
 
-		"network_manager_id": {
+		"description": {
 			Type:         pluginsdk.TypeString,
 			Optional:     true,
 			ValidateFunc: validation.StringIsNotEmpty,

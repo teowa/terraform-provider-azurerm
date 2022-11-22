@@ -15,10 +15,10 @@ import (
 
 type ManagerSecurityAdminConfigurationResource struct{}
 
-func TestAccNetworkManagerSecurityAdminConfiguration_basic(t *testing.T) {
+func testAccNetworkManagerSecurityAdminConfiguration_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_security_admin_configuration", "test")
 	r := ManagerSecurityAdminConfigurationResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -29,10 +29,10 @@ func TestAccNetworkManagerSecurityAdminConfiguration_basic(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerSecurityAdminConfiguration_requiresImport(t *testing.T) {
+func testAccNetworkManagerSecurityAdminConfiguration_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_security_admin_configuration", "test")
 	r := ManagerSecurityAdminConfigurationResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -43,10 +43,10 @@ func TestAccNetworkManagerSecurityAdminConfiguration_requiresImport(t *testing.T
 	})
 }
 
-func TestAccNetworkManagerSecurityAdminConfiguration_complete(t *testing.T) {
+func testAccNetworkManagerSecurityAdminConfiguration_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_security_admin_configuration", "test")
 	r := ManagerSecurityAdminConfigurationResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
 			Check: acceptance.ComposeTestCheckFunc(
@@ -57,10 +57,10 @@ func TestAccNetworkManagerSecurityAdminConfiguration_complete(t *testing.T) {
 	})
 }
 
-func TestAccNetworkManagerSecurityAdminConfiguration_update(t *testing.T) {
+func testAccNetworkManagerSecurityAdminConfiguration_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_network_manager_security_admin_configuration", "test")
 	r := ManagerSecurityAdminConfigurationResource{}
-	data.ResourceTest(t, r, []acceptance.TestStep{
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
 			Check: acceptance.ComposeTestCheckFunc(

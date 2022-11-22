@@ -23,7 +23,7 @@ type ManagerStaticMemberModel struct {
 
 type ManagerStaticMemberResource struct{}
 
-var _ sdk.ResourceWithUpdate = ManagerStaticMemberResource{}
+var _ sdk.Resource = ManagerStaticMemberResource{}
 
 func (r ManagerStaticMemberResource) ResourceType() string {
 	return "azurerm_network_manager_static_member"
@@ -54,8 +54,10 @@ func (r ManagerStaticMemberResource) Arguments() map[string]*pluginsdk.Schema {
 		},
 
 		"resource_id": {
-			Type:     pluginsdk.TypeString,
-			Optional: true,
+			Type:         pluginsdk.TypeString,
+			Optional:     true,
+			ForceNew:     true,
+			ValidateFunc: validate.VirtualNetworkID,
 		},
 	}
 }
@@ -107,51 +109,6 @@ func (r ManagerStaticMemberResource) Create() sdk.ResourceFunc {
 			}
 
 			metadata.SetID(id)
-			return nil
-		},
-	}
-}
-
-func (r ManagerStaticMemberResource) Update() sdk.ResourceFunc {
-	return sdk.ResourceFunc{
-		Timeout: 30 * time.Minute,
-		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.Network.ManagerStaticMembersClient
-
-			id, err := parse.NetworkManagerStaticMemberID(metadata.ResourceData.Id())
-			if err != nil {
-				return err
-			}
-
-			var model ManagerStaticMemberModel
-			if err := metadata.Decode(&model); err != nil {
-				return fmt.Errorf("decoding: %+v", err)
-			}
-
-			existing, err := client.Get(ctx, id.ResourceGroup, id.NetworkManagerName, id.NetworkGroupName, id.StaticMemberName)
-			if err != nil {
-				return fmt.Errorf("retrieving %s: %+v", *id, err)
-			}
-
-			properties := existing.StaticMemberProperties
-			if properties == nil {
-				return fmt.Errorf("retrieving %s: properties was nil", id)
-			}
-
-			if metadata.ResourceData.HasChange("resource_id") {
-				if model.ResourceId != "" {
-					properties.ResourceID = &model.ResourceId
-				} else {
-					properties.ResourceID = nil
-				}
-			}
-
-			existing.SystemData = nil
-
-			if _, err := client.CreateOrUpdate(ctx, existing, id.ResourceGroup, id.NetworkManagerName, id.NetworkGroupName, id.StaticMemberName); err != nil {
-				return fmt.Errorf("updating %s: %+v", *id, err)
-			}
-
 			return nil
 		},
 	}

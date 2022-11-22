@@ -56,13 +56,13 @@ func (r ManagerManagementGroupConnectionResource) Arguments() map[string]*plugin
 			ValidateFunc: managementValidate.ManagementGroupID,
 		},
 
-		"description": {
+		"network_manager_id": {
 			Type:         pluginsdk.TypeString,
-			Optional:     true,
-			ValidateFunc: validation.StringIsNotEmpty,
+			Required:     true,
+			ValidateFunc: validate.NetworkManagerID,
 		},
 
-		"network_manager_id": {
+		"description": {
 			Type:         pluginsdk.TypeString,
 			Optional:     true,
 			ValidateFunc: validation.StringIsNotEmpty,
