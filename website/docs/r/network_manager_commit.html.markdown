@@ -10,9 +10,17 @@ description: |-
 
 Manages a Network Manager Commit.
 
+-> **Note:** The Azure Provider include a Feature Toggle `manager_replace_committed` to control whether to enable the replacement mode of the commit, the default is `false`. If `manager_replace_committed` is set to `true`, the deployed resource will not be cleaned when the `azurerm_network_manager_commit` is removed from the config, and provisioning a new resource will not check if the remote existence. This is designed to avoid downtime when use [`replace_triggered_by`](https://developer.hashicorp.com/terraform/language/meta-arguments/lifecycle#replace_triggered_by). If `manager_replace_committed` is set to `false`, the deployed resource will be cleaned when the config is removed. See [the Features block documentation](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs#features) for more information on Feature Toggles within Terraform.
+
 ## Example Usage
 
 ```hcl
+provider "azurerm" {
+  network {
+    manager_replace_committed = false
+  }
+}
+
 resource "azurerm_resource_group" "example" {
   name     = "example-resources"
   location = "West Europe"
@@ -64,6 +72,13 @@ resource "azurerm_network_manager_commit" "example" {
   location           = "eastus"
   scope_access       = "Connectivity"
   configuration_ids  = [azurerm_network_manager_connectivity_configuration.example.id]
+  lifecycle {
+    replace_triggered_by = [
+      # Replace `azurerm_network_manager_commit` each time 
+      # the `azurerm_network_manager_connectivity_configuration` is updated.
+      azurerm_network_manager_connectivity_configuration.example
+    ]
+  }
 }
 ```
 
@@ -77,7 +92,7 @@ The following arguments are supported:
 
 * `scope_access` - (Required) Specifies the configuration deployment type. Possible values are `Connectivity` and `SecurityAdmin`.
 
-* `configuration_ids` - (Required) A list of Network Manager Configuration IDs.
+* `configuration_ids` - (Required) A list of Network Manager Configuration IDs. If an empty list is passed, it means to clean all the commit.
 
 ## Attributes Reference
 

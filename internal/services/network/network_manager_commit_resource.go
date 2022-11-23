@@ -60,7 +60,6 @@ func (r ManagerCommitResource) Arguments() map[string]*pluginsdk.Schema {
 		"configuration_ids": {
 			Type:     pluginsdk.TypeList,
 			Required: true,
-			MinItems: 1,
 			Elem: &pluginsdk.Schema{
 				Type:         pluginsdk.TypeString,
 				ValidateFunc: validation.StringIsNotEmpty,
