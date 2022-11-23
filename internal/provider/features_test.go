@@ -1082,8 +1082,7 @@ func TestExpandFeaturesNetwork(t *testing.T) {
 			},
 			Expected: features.UserFeatures{
 				Network: features.NetworkFeatures{
-					ManagerReplaceCommitted:   true,
-					ManagerOverwriteCommitted: true,
+					ManagerReplaceCommitted: true,
 				},
 			},
 		},
@@ -1093,16 +1092,14 @@ func TestExpandFeaturesNetwork(t *testing.T) {
 				map[string]interface{}{
 					"network": []interface{}{
 						map[string]interface{}{
-							"manager_replace_committed":   true,
-							"manager_overwrite_committed": true,
+							"manager_replace_committed": true,
 						},
 					},
 				},
 			},
 			Expected: features.UserFeatures{
 				Network: features.NetworkFeatures{
-					ManagerReplaceCommitted:   true,
-					ManagerOverwriteCommitted: true,
+					ManagerReplaceCommitted: true,
 				},
 			},
 		},
@@ -1112,16 +1109,14 @@ func TestExpandFeaturesNetwork(t *testing.T) {
 				map[string]interface{}{
 					"network": []interface{}{
 						map[string]interface{}{
-							"manager_replace_committed":   false,
-							"manager_overwrite_committed": false,
+							"manager_replace_committed": false,
 						},
 					},
 				},
 			},
 			Expected: features.UserFeatures{
 				Network: features.NetworkFeatures{
-					ManagerReplaceCommitted:   false,
-					ManagerOverwriteCommitted: false,
+					ManagerReplaceCommitted: false,
 				},
 			},
 		},

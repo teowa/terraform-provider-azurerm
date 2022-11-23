@@ -261,14 +261,12 @@ resource "azurerm_network_manager_connectivity_configuration" "test2" {
 resource "azurerm_network_manager_commit" "test" {
   network_manager_id = azurerm_network_manager.test.id
   location           = "eastus"
-  scope_access       = "SecurityAdmin"
+  scope_access       = "Connectivity"
   configuration_ids = [
     azurerm_network_manager_connectivity_configuration.test.id,
     azurerm_network_manager_connectivity_configuration.test2.id
   ]
 }
-
-
 `, template, data.RandomInteger)
 }
 
@@ -294,7 +292,7 @@ resource "azurerm_network_manager_connectivity_configuration" "test2" {
 resource "azurerm_network_manager_commit" "test" {
   network_manager_id = azurerm_network_manager.test.id
   location           = "eastus"
-  scope_access       = "SecurityAdmin"
+  scope_access       = "Connectivity"
   configuration_ids = [
     azurerm_network_manager_connectivity_configuration.test2.id
   ]

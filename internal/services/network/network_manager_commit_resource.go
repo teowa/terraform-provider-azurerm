@@ -260,10 +260,10 @@ func (r ManagerCommitResource) Delete() sdk.ResourceFunc {
 					return fmt.Errorf("waiting for deletion of %s: %+v", *id, err)
 				}
 
-				statusClient := metadata.Client.Network.ManagerDeploymentStatusClient
-				if _, err = resourceManagerCommitWaitForDeleted(ctx, statusClient, id, metadata.ResourceData); err != nil {
-					return err
-				}
+				//statusClient := metadata.Client.Network.ManagerDeploymentStatusClient
+				//if _, err = resourceManagerCommitWaitForDeleted(ctx, statusClient, id, metadata.ResourceData); err != nil {
+				//	return err
+				//}
 			}
 			return nil
 		},
@@ -294,7 +294,7 @@ func resourceManagerCommitWaitForFinished(ctx context.Context, client *network.M
 		MinTimeout: 30 * time.Second,
 		Delay:      10 * time.Second,
 		Pending:    []string{"NotStarted", "Deploying"},
-		Target:     []string{"Deployed", "Failed"},
+		Target:     []string{"Deployed"},
 		Refresh:    resourceManagerCommitResultRefreshFunc(ctx, client, managerCommitId),
 		Timeout:    d.Timeout(pluginsdk.TimeoutCreate),
 	}

@@ -184,12 +184,7 @@ func schemaFeatures(supportLegacyTestSuite bool) *pluginsdk.Schema {
 					},
 					"manager_replace_committed": {
 						Type:     pluginsdk.TypeBool,
-						Default:  true,
-						Optional: true,
-					},
-					"manager_overwrite_committed": {
-						Type:     pluginsdk.TypeBool,
-						Default:  true,
+						Default:  false,
 						Optional: true,
 					},
 				},
@@ -361,9 +356,6 @@ func expandFeatures(input []interface{}) features.UserFeatures {
 			networkRaw := items[0].(map[string]interface{})
 			if v, ok := networkRaw["manager_replace_committed"]; ok {
 				featuresMap.Network.ManagerReplaceCommitted = v.(bool)
-			}
-			if v, ok := networkRaw["manager_overwrite_committed"]; ok {
-				featuresMap.Network.ManagerOverwriteCommitted = v.(bool)
 			}
 		}
 	}

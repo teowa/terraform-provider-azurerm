@@ -3,6 +3,7 @@ package network_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
@@ -106,12 +107,16 @@ resource "azurerm_management_group" "test" {
 
 resource "azurerm_management_group_subscription_association" "test" {
   management_group_id = azurerm_management_group.test.id
-  subscription_id     = data.azurerm_subscription.current.id
+  subscription_id     = data.azurerm_subscription.alt.id
 }
 
 resource "azurerm_resource_group" "test" {
-  name     = "acctestRG-network-manager-%d"
+  name     = "acctestRG-nm-%d"
   location = "%s"
+}
+
+data "azurerm_subscription" "alt" {
+  subscription_id = %q
 }
 
 data "azurerm_subscription" "current" {
@@ -126,7 +131,7 @@ resource "azurerm_network_manager" "test" {
   }
   scope_accesses = ["SecurityAdmin"]
 }
-`, data.RandomInteger, data.Locations.Primary)
+`, data.RandomInteger, data.Locations.Primary, os.Getenv("ARM_SUBSCRIPTION_ID_ALT"))
 }
 
 func (r ManagerManagementGroupConnectionResource) basic(data acceptance.TestData) string {
@@ -135,7 +140,7 @@ func (r ManagerManagementGroupConnectionResource) basic(data acceptance.TestData
 				%s
 
 resource "azurerm_network_manager_management_group_connection" "test" {
-  name                = "acctest-nmgnmc-%d"
+  name                = "acctest-nmmgc-%d"
   management_group_id = azurerm_management_group.test.id
   network_manager_id  = azurerm_network_manager.test.id
 }
@@ -161,7 +166,7 @@ func (r ManagerManagementGroupConnectionResource) complete(data acceptance.TestD
 			%s
 
 resource "azurerm_network_manager_management_group_connection" "test" {
-  name                = "acctest-nmgnmc-%d"
+  name                = "acctest-nmmgc-%d"
   management_group_id = azurerm_management_group.test.id
   network_manager_id  = azurerm_network_manager.test.id
   description         = "complete"
@@ -175,7 +180,7 @@ func (r ManagerManagementGroupConnectionResource) update(data acceptance.TestDat
 			%s
 
 resource "azurerm_network_manager_management_group_connection" "test" {
-  name                = "acctest-nmgnmc-%d"
+  name                = "acctest-nmmgc-%d"
   management_group_id = azurerm_management_group.test.id
   network_manager_id  = azurerm_network_manager.test.id
   description         = "update"

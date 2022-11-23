@@ -69,6 +69,5 @@ type AppConfigurationFeatures struct {
 }
 
 type NetworkFeatures struct {
-	ManagerReplaceCommitted   bool
-	ManagerOverwriteCommitted bool
+	ManagerReplaceCommitted bool
 }

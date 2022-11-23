@@ -102,7 +102,7 @@ provider "azurerm" {
 }
 
 resource "azurerm_resource_group" "test" {
-  name     = "acctestRG-network-manager-%d"
+  name     = "acctestRG-nm-%d"
   location = "%s"
 }
 
@@ -118,10 +118,6 @@ resource "azurerm_network_manager" "test" {
   }
   scope_accesses = ["SecurityAdmin"]
 }
-
-
-
-			
 `, data.RandomInteger, data.Locations.Primary)
 }
 
@@ -131,7 +127,7 @@ func (r ManagerSubscriptionConnectionResource) basic(data acceptance.TestData) s
 				%s
 
 resource "azurerm_network_manager_subscription_connection" "test" {
-  name               = "acctest-nsnmc-%d"
+  name               = "acctest-nmsc-%d"
   subscription_id    = data.azurerm_subscription.current.id
   network_manager_id = azurerm_network_manager.test.id
 }
@@ -143,8 +139,8 @@ func (r ManagerSubscriptionConnectionResource) requiresImport(data acceptance.Te
 	return fmt.Sprintf(`
 			%s
 
-resource "azurerm_network_manager_subscription_connection" "test" {
-  name               = "acctest-nsnmc-%d"
+resource "azurerm_network_manager_subscription_connection" "import" {
+  name               = "acctest-nmsc-%d"
   subscription_id    = data.azurerm_subscription.current.id
   network_manager_id = azurerm_network_manager.test.id
 }
@@ -157,7 +153,7 @@ func (r ManagerSubscriptionConnectionResource) complete(data acceptance.TestData
 			%s
 
 resource "azurerm_network_manager_subscription_connection" "test" {
-  name               = "acctest-nsnmc-%d"
+  name               = "acctest-nmsc-%d"
   subscription_id    = data.azurerm_subscription.current.id
   network_manager_id = azurerm_network_manager.test.id
   description        = "complete"
@@ -171,7 +167,7 @@ func (r ManagerSubscriptionConnectionResource) update(data acceptance.TestData) 
 			%s
 
 resource "azurerm_network_manager_subscription_connection" "test" {
-  name               = "acctest-nsnmc-%d"
+  name               = "acctest-nmsc-%d"
   subscription_id    = data.azurerm_subscription.current.id
   network_manager_id = azurerm_network_manager.test.id
   description        = "update"

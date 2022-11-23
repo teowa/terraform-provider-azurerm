@@ -102,7 +102,7 @@ provider "azurerm" {
 }
 
 resource "azurerm_resource_group" "test" {
-  name     = "acctestRG-network-manager-%d"
+  name     = "acctestRG-nm-%d"
   location = "%s"
 }
 
@@ -121,10 +121,6 @@ resource "azurerm_network_manager" "test" {
   }
   scope_accesses = ["SecurityAdmin"]
 }
-
-
-
-			
 `, data.RandomInteger, data.Locations.Primary)
 }
 
@@ -153,8 +149,6 @@ resource "azurerm_network_manager_scope_connection" "import" {
   tenant_id          = azurerm_network_manager_scope_connection.test.tenant_id
   resource_id        = azurerm_network_manager_scope_connection.test.resource_id
 }
-
-
 `, config)
 }
 
