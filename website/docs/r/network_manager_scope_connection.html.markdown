@@ -8,7 +8,7 @@ description: |-
 
 # azurerm_network_manager_scope_connection
 
-Manages a Network Manager Scope Connection.
+Manages a Network Manager Scope Connection which may cross tenants.
 
 ## Example Usage
 

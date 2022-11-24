@@ -8,7 +8,7 @@ description: |-
 
 # azurerm_network_manager_subscription_connection
 
-Manages a Network Manager Subscription Connection.
+Manages a Network Manager Subscription Connection which may cross tenants.
 
 ## Example Usage
 

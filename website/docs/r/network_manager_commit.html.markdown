@@ -10,7 +10,7 @@ description: |-
 
 Manages a Network Manager Commit.
 
--> **Note:** The Azure Provider include a Feature Toggle `manager_replace_committed` to control whether to enable the replacement mode of the commit, the default is `false`. If `manager_replace_committed` is set to `true`, the deployed resource will not be cleaned when the `azurerm_network_manager_commit` is removed from the config, and provisioning a new resource will not check if there is a commit with same region and scope exists. This is designed to avoid downtime when use [`replace_triggered_by`](https://developer.hashicorp.com/terraform/language/meta-arguments/lifecycle#replace_triggered_by). Otherwise, if `manager_replace_committed` is set to `false`, the deployed resource will be cleaned when the config is removed. See [the Features block documentation](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs#features) for more information on Feature Toggles within Terraform.
+-> **Note:** The Azure Provider include a Feature Toggle `manager_replace_committed` to control whether to enable the replacement mode of the commit, the default is `false`. If `manager_replace_committed` is set to `true`, the deployed resource will not be cleaned when the `azurerm_network_manager_commit` is removed from the config, and provisioning a new resource will not check if there is a commit with same location and scope exists. This is designed to avoid downtime when use [`replace_triggered_by`](https://developer.hashicorp.com/terraform/language/meta-arguments/lifecycle#replace_triggered_by). Otherwise, if `manager_replace_committed` is set to `false`, the deployed resource will be cleaned when the config is removed. See [the Features block documentation](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs#features) for more information on Feature Toggles within Terraform.
 
 ## Example Usage
 
@@ -92,7 +92,7 @@ The following arguments are supported:
 
 * `scope_access` - (Required) Specifies the configuration deployment type. Possible values are `Connectivity` and `SecurityAdmin`.
 
-* `configuration_ids` - (Required) A list of Network Manager Configuration IDs. If an empty list is passed, it means to clean all the commit.
+* `configuration_ids` - (Required) A list of Network Manager Configuration IDs. If an empty list is passed, it means to clean all the committed configurations.
 
 ## Attributes Reference
 

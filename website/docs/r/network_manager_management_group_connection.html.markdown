@@ -8,7 +8,7 @@ description: |-
 
 # azurerm_network_manager_management_group_connection
 
-Manages a Network Manager Management Group Connection.
+Manages a Network Manager Management Group Connection which may cross tenants.
 
 ## Example Usage
 
