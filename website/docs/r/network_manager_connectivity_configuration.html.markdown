@@ -10,6 +10,8 @@ description: |-
 
 Manages a Network Manager Connectivity Configuration.
 
+-> **Note:** The `azurerm_network_manager_connectivity_configuration` may delete or modify existing Network Peering.
+
 ## Example Usage
 
 ```hcl

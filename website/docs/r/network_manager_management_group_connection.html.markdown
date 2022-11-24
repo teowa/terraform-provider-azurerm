@@ -3,23 +3,51 @@ subcategory: "Network"
 layout: "azurerm"
 page_title: "Azure Resource Manager: azurerm_network_manager_management_group_connection"
 description: |-
-  Manages a Network Manager Management Group Connections.
+  Manages a Network Manager Management Group Connection.
 ---
 
 # azurerm_network_manager_management_group_connection
 
-Manages a Network Manager Management Group Connections.
+Manages a Network Manager Management Group Connection.
 
 ## Example Usage
 
 ```hcl
-resource "azurerm_network_manager_management_group_connection" "example" {
-  name                = "example-nmgnmc"
-  management_group_id = ""
-  connection_state    = ""
-  description         = ""
-  network_manager_id  = ""
+resource "azurerm_management_group" "example" {
+}
 
+resource "azurerm_management_group_subscription_association" "example" {
+  management_group_id = azurerm_management_group.example.id
+  subscription_id     = data.azurerm_subscription.alt.id
+}
+
+data "azurerm_subscription" "alt" {
+  subscription_id = "00000000-0000-0000-0000-000000000000"
+}
+
+data "azurerm_subscription" "current" {
+}
+
+resource "azurerm_resource_group" "example" {
+  name     = "example-resources"
+  location = "West Europe"
+}
+
+resource "azurerm_network_manager" "example" {
+  name                = "example-networkmanager"
+  location            = azurerm_resource_group.example.location
+  resource_group_name = azurerm_resource_group.example.name
+  scope {
+    subscription_ids = [data.azurerm_subscription.current.id]
+  }
+  scope_accesses = ["SecurityAdmin"]
+}
+
+resource "azurerm_network_manager_management_group_connection" "example" {
+  name                = "example-nmmgc"
+  management_group_id = azurerm_management_group.example.id
+  network_manager_id  = azurerm_network_manager.example.id
+  description         = "example"
 }
 ```
 
@@ -27,35 +55,36 @@ resource "azurerm_network_manager_management_group_connection" "example" {
 
 The following arguments are supported:
 
-* `name` - (Required) Specifies the name which should be used for this Network Manager Management Group Connections. Changing this forces a new Network Manager Management Group Connections to be created.
+* `name` - (Required) Specifies the name which should be used for this Network Manager Management Group Connection. Changing this forces a new Network Manager Management Group Connection to be created.
 
-* `management_group_id` - (Required) Specifies the Management Group ID. Changing this forces a new Network Manager Management Group Connections to be created.
+* `management_group_id` (Required) Specifies the ID of the target Management Group.
 
-* `connection_state` - (Optional) .
+* `network_manager_id` - (Required) Specifies the ID of the Network Manager which the Management Group is connected to.
 
-* `description` - (Optional) A description of the network manager connection.
+* `description` - (Optional) A description of the Network Manager Management Group Connection.
 
-* `network_manager_id` - (Optional) Network Manager ID.
 
 ## Attributes Reference
 
 In addition to the Arguments listed above - the following Attributes are exported:
 
-* `id` - The ID of the Network Manager Management Group Connections.
+* `id` - The ID of the Network Manager Management Group Connection.
 
+* `connection_state` - The Connection state of the Network Manager Management Group Connection.
+* 
 ## Timeouts
 
 The `timeouts` block allows you to specify [timeouts](https://www.terraform.io/language/resources/syntax#operation-timeouts) for certain actions:
 
-* `create` - (Defaults to 30 minutes) Used when creating the Network Manager Management Group Connections.
-* `read` - (Defaults to 5 minutes) Used when retrieving the Network Manager Management Group Connections.
-* `update` - (Defaults to 30 minutes) Used when updating the Network Manager Management Group Connections.
-* `delete` - (Defaults to 30 minutes) Used when deleting the Network Manager Management Group Connections.
+* `create` - (Defaults to 30 minutes) Used when creating the Network Manager Management Group Connection.
+* `read` - (Defaults to 5 minutes) Used when retrieving the Network Manager Management Group Connection.
+* `update` - (Defaults to 30 minutes) Used when updating the Network Manager Management Group Connection.
+* `delete` - (Defaults to 30 minutes) Used when deleting the Network Manager Management Group Connection.
 
 ## Import
 
-Network Manager Management Group Connections can be imported using the `resource id`, e.g.
+Network Manager Management Group Connection can be imported using the `resource id`, e.g.
 
 ```shell
-terraform import azurerm_network_manager_management_group_connection.example /providers/Microsoft.Management/managementGroups/{managementGroupId}/providers/Microsoft.Network/networkManagerConnections/networkManagerConnection1
+terraform import azurerm_network_manager_management_group_connection.example /providers/Microsoft.Management/managementGroups/00000000-0000-0000-0000-000000000000/providers/Microsoft.Network/networkManagerConnections/networkManagerConnection1
 ```

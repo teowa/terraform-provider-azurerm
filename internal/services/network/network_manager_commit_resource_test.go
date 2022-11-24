@@ -40,7 +40,30 @@ func testAccNetworkManagerCommit_basicAdmin(t *testing.T) {
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 			),
-		}, data.ImportStep()})
+		},
+		data.ImportStep(),
+	})
+}
+
+func testAccNetworkManagerCommit_replace(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_network_manager_commit", "test")
+	r := ManagerCommitResource{}
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.basicReplace(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+		{
+			Config: r.basicReplace(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+	})
 }
 
 func testAccNetworkManagerCommit_requiresImport(t *testing.T) {
@@ -220,9 +243,174 @@ resource "azurerm_network_manager_commit" "test" {
   configuration_ids  = [azurerm_network_manager_security_admin_configuration.test.id]
   depends_on         = [azurerm_network_manager_admin_rule.test]
 }
-
-
 `, template, data.RandomInteger)
+}
+
+func (r ManagerCommitResource) basicReplace(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+provider "azurerm" {
+  features {
+    network {
+      manager_replace_committed = true
+    }
+  }
+}
+
+resource "azurerm_resource_group" "test" {
+  name     = "acctest-nmng-%d"
+  location = "%s"
+}
+
+data "azurerm_subscription" "current" {
+}
+
+resource "azurerm_network_manager" "test" {
+  name                = "acctest-nm-%[1]d"
+  resource_group_name = azurerm_resource_group.test.name
+  location            = azurerm_resource_group.test.location
+  scope {
+    subscription_ids = [data.azurerm_subscription.current.id]
+  }
+  scope_accesses = ["SecurityAdmin", "Connectivity"]
+}
+
+resource "azurerm_network_manager_network_group" "test" {
+  name               = "acctest-nmng-%[1]d"
+  network_manager_id = azurerm_network_manager.test.id
+}
+
+resource "azurerm_virtual_network" "test" {
+  name                    = "acctest-vnet-%[1]d"
+  location                = azurerm_resource_group.test.location
+  resource_group_name     = azurerm_resource_group.test.name
+  address_space           = ["10.0.0.0/16"]
+  flow_timeout_in_minutes = 10
+}
+
+resource "azurerm_network_manager_security_admin_configuration" "test" {
+  name               = "acctest-nmsac-%[1]d"
+  network_manager_id = azurerm_network_manager.test.id
+}
+
+resource "azurerm_network_manager_admin_rule_collection" "test" {
+  name                            = "acctest-nmarc-%[1]d"
+  security_admin_configuration_id = azurerm_network_manager_security_admin_configuration.test.id
+  network_group_ids               = [azurerm_network_manager_network_group.test.id]
+}
+
+resource "azurerm_network_manager_admin_rule" "test" {
+  name                     = "acctest-nmar-%[1]d"
+  admin_rule_collection_id = azurerm_network_manager_admin_rule_collection.test.id
+  access                   = "Deny"
+  direction                = "Outbound"
+  protocol                 = "Tcp"
+  priority                 = 1
+}
+
+resource "azurerm_network_manager_commit" "test" {
+  network_manager_id = azurerm_network_manager.test.id
+  location           = "eastus"
+  scope_access       = "SecurityAdmin"
+  configuration_ids  = [azurerm_network_manager_security_admin_configuration.test.id]
+  depends_on         = [azurerm_network_manager_admin_rule.test]
+  lifecycle {
+    replace_triggered_by = [
+      azurerm_network_manager_security_admin_configuration.test,
+      azurerm_network_manager_admin_rule_collection.test,
+      azurerm_network_manager_admin_rule.test,
+    ]
+  }
+}
+`, data.RandomInteger, data.Locations.Primary)
+}
+
+func (r ManagerCommitResource) updateReplace(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+provider "azurerm" {
+  features {
+    network {
+      manager_replace_committed = true
+    }
+  }
+}
+
+resource "azurerm_resource_group" "test" {
+  name     = "acctest-nmng-%d"
+  location = "%s"
+}
+
+data "azurerm_subscription" "current" {
+}
+
+resource "azurerm_network_manager" "test" {
+  name                = "acctest-nm-%[1]d"
+  resource_group_name = azurerm_resource_group.test.name
+  location            = azurerm_resource_group.test.location
+  scope {
+    subscription_ids = [data.azurerm_subscription.current.id]
+  }
+  scope_accesses = ["SecurityAdmin", "Connectivity"]
+}
+
+resource "azurerm_network_manager_network_group" "test" {
+  name               = "acctest-nmng-%[1]d"
+  network_manager_id = azurerm_network_manager.test.id
+}
+
+resource "azurerm_virtual_network" "test" {
+  name                    = "acctest-vnet-%[1]d"
+  location                = azurerm_resource_group.test.location
+  resource_group_name     = azurerm_resource_group.test.name
+  address_space           = ["10.0.0.0/16"]
+  flow_timeout_in_minutes = 10
+}
+
+resource "azurerm_network_manager_security_admin_configuration" "test" {
+  name               = "acctest-nmsac-%[1]d"
+  network_manager_id = azurerm_network_manager.test.id
+}
+
+resource "azurerm_network_manager_admin_rule_collection" "test" {
+  name                            = "acctest-nmarc-%[1]d"
+  security_admin_configuration_id = azurerm_network_manager_security_admin_configuration.test.id
+  network_group_ids               = [azurerm_network_manager_network_group.test.id]
+}
+
+resource "azurerm_network_manager_admin_rule" "test" {
+  name                     = "acctest-nmar-%[1]d"
+  admin_rule_collection_id = azurerm_network_manager_admin_rule_collection.test.id
+  access                   = "Deny"
+  description              = "test"
+  direction                = "Inbound"
+  priority                 = 1
+  protocol                 = "Tcp"
+  source_port_ranges       = ["80"]
+  destination_port_ranges  = ["80"]
+  source {
+    address_prefix_type = "ServiceTag"
+    address_prefix      = "Internet"
+  }
+  destination {
+    address_prefix_type = "IPPrefix"
+    address_prefix      = "*"
+  }
+}
+
+resource "azurerm_network_manager_commit" "test" {
+  network_manager_id = azurerm_network_manager.test.id
+  location           = "eastus"
+  scope_access       = "SecurityAdmin"
+  configuration_ids  = [azurerm_network_manager_security_admin_configuration.test.id]
+  depends_on         = [azurerm_network_manager_admin_rule.test]
+  lifecycle {
+    replace_triggered_by = [
+      azurerm_network_manager_security_admin_configuration.test,
+      azurerm_network_manager_admin_rule_collection.test,
+      azurerm_network_manager_admin_rule.test,
+    ]
+  }
+}
+`, data.RandomInteger, data.Locations.Primary)
 }
 
 func (r ManagerCommitResource) requiresImport(data acceptance.TestData) string {

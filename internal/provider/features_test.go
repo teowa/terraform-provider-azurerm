@@ -113,7 +113,6 @@ func TestExpandFeatures(t *testing.T) {
 					},
 					"network": []interface{}{
 						map[string]interface{}{
-							"relaxed_locking":           true,
 							"manager_replace_committed": true,
 						},
 					},
@@ -239,7 +238,6 @@ func TestExpandFeatures(t *testing.T) {
 					},
 					"network_locking": []interface{}{
 						map[string]interface{}{
-							"relaxed_locking":           false,
 							"manager_replace_committed": false,
 						},
 					},

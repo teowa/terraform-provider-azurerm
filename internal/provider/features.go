@@ -178,10 +178,6 @@ func schemaFeatures(supportLegacyTestSuite bool) *pluginsdk.Schema {
 			MaxItems: 1,
 			Elem: &pluginsdk.Resource{
 				Schema: map[string]*pluginsdk.Schema{
-					"relaxed_locking": {
-						Type:     pluginsdk.TypeBool,
-						Required: true,
-					},
 					"manager_replace_committed": {
 						Type:     pluginsdk.TypeBool,
 						Default:  false,
