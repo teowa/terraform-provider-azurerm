@@ -144,7 +144,21 @@ provider "azurerm" {
   features {}
 }
 
-data "azurerm_client_config" "current" {}
+provider "azuread" {}
+
+data "azuread_client_config" "test" {}
+
+resource "azuread_application" "test" {
+  display_name = "acctest-aro-%d"
+}
+
+resource "azuread_service_principal" "test" {
+  application_id = azuread_application.test.application_id
+}
+
+resource "azuread_service_principal_password" "test" {
+  service_principal_id = azuread_service_principal.test.object_id
+}
 
 resource "azurerm_resource_group" "test" {
   name     = "acctestRG-aro-%d"
@@ -160,8 +174,8 @@ resource "azurerm_virtual_network" "test" {
 
 resource "azurerm_role_assignment" "example" {
   scope                = azurerm_virtual_network.test.id
-  role_definition_name = "Contributor"
-  principal_id         = data.azurerm_client_config.current.object_id
+  role_definition_name = "Network Contributor"
+  principal_id         = azuread_service_principal.test.object_id
 }
 
 resource "azurerm_subnet" "main_subnet" {
@@ -200,8 +214,8 @@ resource "azurerm_redhatopenshift_cluster" "test" {
   }
 
   service_principal {
-    client_id     = "b2460f16-4594-468c-9f2f-2c96f7ed1a43"
-    client_secret = "123451234512345123451234512345"
+    client_id     = azuread_application.test.application_id
+    client_secret = azuread_service_principal_password.test.value
   }
 }
   `, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger, data.RandomInteger, data.RandomInteger)
