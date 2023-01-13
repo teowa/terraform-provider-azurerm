@@ -1,9 +1,7 @@
 package redhatopenshift
 
 import (
-	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/redhatopenshift/mgmt/2022-04-01/redhatopenshift"
@@ -21,8 +19,6 @@ import (
 	"github.com/hashicorp/terraform-provider-azurerm/internal/timeouts"
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
 )
-
-var randomDomainName = GenerateRandomDomainName()
 
 func resourceOpenShiftCluster() *pluginsdk.Resource {
 	return &pluginsdk.Resource{
@@ -295,8 +291,6 @@ func resourceOpenShiftClusterCreate(d *pluginsdk.ResourceData, meta interface{})
 		Tags: tags.Expand(d.Get("tags").(map[string]interface{})),
 	}
 
-	js, _ := json.Marshal(parameters) //TODO
-	log.Printf(" create DDDDDD %s: ", js)
 	future, err := client.CreateOrUpdate(ctx, resourceGroupName, name, parameters)
 	if err != nil {
 		return fmt.Errorf("creating %s: %+v", id, err)
@@ -374,9 +368,6 @@ func resourceOpenShiftClusterRead(d *pluginsdk.ResourceData, meta interface{}) e
 
 		return fmt.Errorf("retrieving %s: %+v", *id, err)
 	}
-
-	js, _ := json.Marshal(resp)
-	log.Printf(" read DDDDDD %s: ", js)
 
 	d.Set("name", resp.Name)
 	d.Set("resource_group_name", id.ResourceGroup)
@@ -609,24 +600,22 @@ func flattenOpenShiftIngressProfiles(profiles *[]redhatopenshift.IngressProfile)
 }
 
 func expandOpenshiftClusterProfile(input []interface{}, subscriptionId string) *redhatopenshift.ClusterProfile {
-	resourceGroupName := fmt.Sprintf("aro-%s", randomDomainName)
+	resourceGroupName := fmt.Sprintf("aro-%s", GenerateRandomDomainName())
 	resourceGroupId := ResourceGroupID(subscriptionId, resourceGroupName)
 
 	if len(input) == 0 {
 		return &redhatopenshift.ClusterProfile{
 			ResourceGroupID:      utils.String(resourceGroupId),
-			Domain:               utils.String(randomDomainName),
+			Domain:               utils.String(GenerateRandomDomainName()),
 			FipsValidatedModules: redhatopenshift.FipsValidatedModulesDisabled,
 		}
 	}
 
 	config := input[0].(map[string]interface{})
-
 	pullSecret := config["pull_secret"].(string)
-
 	domain := config["domain"].(string)
 	if domain == "" {
-		domain = randomDomainName
+		domain = GenerateRandomDomainName()
 	}
 
 	fipsValidatedModules := redhatopenshift.FipsValidatedModulesDisabled
