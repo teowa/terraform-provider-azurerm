@@ -451,9 +451,9 @@ resource "azurerm_resource_group" "test" {
   name     = "acctestRG-aro%[1]d"
   location = "%[2]s"
 
-tags     = { // TODO
+  tags = { // TODO
     "StorageType" : "Standard_LRS"
-    "type"        : "test"
+    "type" : "test"
   }
 }
 
