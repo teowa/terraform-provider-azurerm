@@ -91,6 +91,28 @@ func TestAccMonitorDataCollectionEndpoint_update(t *testing.T) {
 	})
 }
 
+func TestAccMonitorDataCollectionEndpoint_identity(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_monitor_data_collection_endpoint", "test")
+	r := MonitorDataCollectionEndpointResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.systemAssignedIdentity(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+		{
+			Config: r.userAssignedIdentity(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
 func TestAccMonitorDataCollectionEndpoint_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_monitor_data_collection_endpoint", "test")
 	r := MonitorDataCollectionEndpointResource{}
@@ -117,9 +139,53 @@ resource "azurerm_monitor_data_collection_endpoint" "test" {
 `, r.template(data), data.RandomInteger)
 }
 
+func (r MonitorDataCollectionEndpointResource) systemAssignedIdentity(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+%[1]s
+
+resource "azurerm_monitor_data_collection_endpoint" "test" {
+  name                = "acctestmdcr-%[2]d"
+  resource_group_name = azurerm_resource_group.test.name
+  location            = azurerm_resource_group.test.location
+  identity {
+    type = "SystemAssigned"
+  }
+}
+`, r.template(data), data.RandomInteger)
+}
+
+func (r MonitorDataCollectionEndpointResource) userAssignedIdentity(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+%[1]s
+
+resource "azurerm_user_assigned_identity" "test" {
+  name                = "acctest%[2]d"
+  resource_group_name = azurerm_resource_group.test.name
+  location            = azurerm_resource_group.test.location
+}
+
+resource "azurerm_monitor_data_collection_endpoint" "test" {
+  name                = "acctestmdcr-%[2]d"
+  resource_group_name = azurerm_resource_group.test.name
+  location            = azurerm_resource_group.test.location
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.test.id]
+  }
+}
+`, r.template(data), data.RandomInteger)
+}
+
 func (r MonitorDataCollectionEndpointResource) complete(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 %[1]s
+
+resource "azurerm_user_assigned_identity" "test" {
+  name                = "acctest%[2]d"
+  resource_group_name = azurerm_resource_group.test.name
+  location            = azurerm_resource_group.test.location
+}
+
 resource "azurerm_monitor_data_collection_endpoint" "test" {
   name                          = "acctestmdce-%[2]d"
   resource_group_name           = azurerm_resource_group.test.name
@@ -127,6 +193,10 @@ resource "azurerm_monitor_data_collection_endpoint" "test" {
   kind                          = "Windows"
   public_network_access_enabled = false
   description                   = "acc test monitor_data_collection_endpoint complete"
+  identity {
+    type         = "SystemAssigned, UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.test.id]
+  }
   tags = {
     ENV = "test"
   }

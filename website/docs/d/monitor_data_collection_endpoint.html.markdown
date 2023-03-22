@@ -38,6 +38,8 @@ output "endpoint_id" {
 
 * `description` - Specifies a description for the Data Collection Endpoint.
 
+* `identity` - An `identity` block as defined below.
+
 * `kind` - The kind of the Data Collection Endpoint. Possible values are `Linux` and `Windows`.
 
 * `location` - The Azure Region where the Data Collection Endpoint should exist.
@@ -48,6 +50,18 @@ output "endpoint_id" {
 
 * `tags` - A mapping of tags which should be assigned to the Data Collection Endpoint.
 
+---
+
+An `identity` block exports the following:
+
+* `type` - The type of Managed Service Identity that is configured on this Automation Account.
+
+* `principal_id` - The Principal ID of the System Assigned Managed Service Identity that is configured on this Automation Account.
+
+* `tenant_id` - The Tenant ID of the System Assigned Managed Service Identity that is configured on this Automation Account.
+
+* `identity_ids` - The list of User Assigned Managed Identity IDs assigned to this Automation Account.
+ 
 ## Timeouts
 
 The `timeouts` block allows you to specify [timeouts](https://www.terraform.io/language/resources/syntax#operation-timeouts) for certain actions:

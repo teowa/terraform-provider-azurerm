@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
+	"github.com/hashicorp/go-azure-helpers/resourcemanager/identity"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/insights/2022-06-01/datacollectionendpoints"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/azure"
@@ -17,15 +18,16 @@ import (
 )
 
 type DataCollectionEndpoint struct {
-	ConfigurationAccessEndpoint string                 `tfschema:"configuration_access_endpoint"`
-	Description                 string                 `tfschema:"description"`
-	Kind                        string                 `tfschema:"kind"`
-	Name                        string                 `tfschema:"name"`
-	Location                    string                 `tfschema:"location"`
-	LogsIngestionEndpoint       string                 `tfschema:"logs_ingestion_endpoint"`
-	EnablePublicNetworkAccess   bool                   `tfschema:"public_network_access_enabled"`
-	ResourceGroupName           string                 `tfschema:"resource_group_name"`
-	Tags                        map[string]interface{} `tfschema:"tags"`
+	ConfigurationAccessEndpoint string                              `tfschema:"configuration_access_endpoint"`
+	Description                 string                              `tfschema:"description"`
+	Identity                    []identity.SystemOrUserAssignedList `tfschema:"identity"`
+	Kind                        string                              `tfschema:"kind"`
+	Name                        string                              `tfschema:"name"`
+	Location                    string                              `tfschema:"location"`
+	LogsIngestionEndpoint       string                              `tfschema:"logs_ingestion_endpoint"`
+	EnablePublicNetworkAccess   bool                                `tfschema:"public_network_access_enabled"`
+	ResourceGroupName           string                              `tfschema:"resource_group_name"`
+	Tags                        map[string]interface{}              `tfschema:"tags"`
 }
 
 type DataCollectionEndpointResource struct{}
@@ -53,6 +55,8 @@ func (r DataCollectionEndpointResource) Arguments() map[string]*pluginsdk.Schema
 			Type:     pluginsdk.TypeString,
 			Optional: true,
 		},
+
+		"identity": commonschema.SystemAssignedUserAssignedIdentityOptional(),
 
 		"kind": {
 			Type:     pluginsdk.TypeString,
@@ -114,7 +118,13 @@ func (r DataCollectionEndpointResource) Create() sdk.ResourceFunc {
 				return metadata.ResourceRequiresImport(r.ResourceType(), id)
 			}
 
+			identityValue, err := identity.ExpandLegacySystemAndUserAssignedMap(metadata.ResourceData.Get("identity").([]interface{}))
+			if err != nil {
+				return fmt.Errorf("expanding `identity`: %+v", err)
+			}
+
 			input := datacollectionendpoints.DataCollectionEndpointResource{
+				Identity: identityValue,
 				Kind:     expandDataCollectionEndpointKind(state.Kind),
 				Location: azure.NormalizeLocation(state.Location),
 				Name:     utils.String(state.Name),
@@ -163,6 +173,16 @@ func (r DataCollectionEndpointResource) Read() sdk.ResourceFunc {
 				kind = flattenDataCollectionEndpointKind(model.Kind)
 				location = azure.NormalizeLocation(model.Location)
 				tag = tags.Flatten(model.Tags)
+
+				identityValue, err := identity.FlattenLegacySystemAndUserAssignedMap(model.Identity)
+				if err != nil {
+					return fmt.Errorf("flattening `identity`: %+v", err)
+				}
+
+				if err := metadata.ResourceData.Set("identity", identityValue); err != nil {
+					return fmt.Errorf("setting `identity`: %+v", err)
+				}
+
 				if prop := model.Properties; prop != nil {
 					description = flattenDataCollectionEndpointDescription(prop.Description)
 					if networkAcls := prop.NetworkAcls; networkAcls != nil {
@@ -224,6 +244,14 @@ func (r DataCollectionEndpointResource) Update() sdk.ResourceFunc {
 
 			if metadata.ResourceData.HasChange("description") {
 				existing.Properties.Description = utils.String(state.Description)
+			}
+
+			if metadata.ResourceData.HasChange("identity") {
+				identityValue, err := identity.ExpandLegacySystemAndUserAssignedMap(metadata.ResourceData.Get("identity").([]interface{}))
+				if err != nil {
+					return fmt.Errorf("expanding `identity`: %+v", err)
+				}
+				existing.Identity = identityValue
 			}
 
 			if metadata.ResourceData.HasChange("kind") {

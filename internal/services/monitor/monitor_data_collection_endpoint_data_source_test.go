@@ -18,6 +18,7 @@ func TestAccMonitorDataCollectionEndpointDataSource_complete(t *testing.T) {
 		{
 			Config: d.complete(data),
 			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).Key("identity").HasValue("SystemAssigned, UserAssigned"),
 				check.That(data.ResourceName).Key("kind").HasValue("Windows"),
 				check.That(data.ResourceName).Key("public_network_access_enabled").HasValue("false"),
 				check.That(data.ResourceName).Key("configuration_access_endpoint").Exists(),

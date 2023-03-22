@@ -49,11 +49,23 @@ The following arguments are supported:
 
 * `description` - (Optional) Specifies a description for the Data Collection Endpoint.
 
+* `identity` - (Optional) An `identity` block as defined below.
+ 
 * `kind` - (Optional) The kind of the Data Collection Endpoint. Possible values are `Linux` and `Windows`.
 
 * `public_network_access_enabled` - (Optional) Whether network access from public internet to the Data Collection Endpoint are allowed. Possible values are `true` and `false`. Default to `true`.
 
 * `tags` - (Optional) A mapping of tags which should be assigned to the Data Collection Endpoint.
+
+---
+
+An `identity` block supports the following:
+
+* `type` - (Required) The type of identity used for this Automation Account. Possible values are `SystemAssigned`, `UserAssigned` and `SystemAssigned, UserAssigned`.
+
+* `identity_ids` - (Optional) The ID of the User Assigned Identity which should be assigned to this Automation Account.
+
+-> **Note:** `identity_ids` is required when `type` is set to `UserAssigned` or `SystemAssigned, UserAssigned`.
 
 ## Attributes Reference
 
@@ -63,7 +75,19 @@ In addition to the Arguments listed above - the following Attributes are exporte
 
 * `configuration_access_endpoint` - The endpoint used for accessing configuration, e.g., `https://mydce-abcd.eastus-1.control.monitor.azure.com`.
 
+* `identity` - An `identity` block as defined below.
+
 * `logs_ingestion_endpoint` - The endpoint used for ingesting logs, e.g., `https://mydce-abcd.eastus-1.ingest.monitor.azure.com`.
+
+---
+
+An `identity` block exports the following:
+
+* `principal_id` - The Principal ID associated with this Managed Service Identity.
+
+* `tenant_id` - The Tenant ID associated with this Managed Service Identity.
+
+* `type` - The identity type of this Managed Service Identity.
 
 ## Timeouts
 
