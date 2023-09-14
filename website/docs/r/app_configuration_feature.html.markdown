@@ -36,11 +36,32 @@ resource "azurerm_role_assignment" "appconf_dataowner" {
 }
 
 resource "azurerm_app_configuration_feature" "test" {
-  configuration_store_id = azurerm_app_configuration.appconf.id
-  description            = "test description"
-  name                   = "test-ackey"
-  label                  = "test-ackeylabel"
-  enabled                = true
+  configuration_store_id   = azurerm_app_configuration.appconf.id
+  description              = "test description"
+  name                     = "test-ackey"
+  label                    = "test-ackeylabel"
+  percentage_filter_values = [10, 20.5]
+  enabled                  = true
+
+  timewindow_filter {
+    start = "2019-11-12T07:20:50.52Z"
+    end   = "2019-11-13T07:20:50.52Z"
+  }
+
+  targeting_filter {
+    default_rollout_percentage = 39
+    users                      = ["random", "user"]
+
+    groups {
+      name               = "testgroup"
+      rollout_percentage = 50
+    }
+
+    groups {
+      name               = "testgroup2"
+      rollout_percentage = 30
+    }
+  }
 }
 ```
 
@@ -62,7 +83,11 @@ The following arguments are supported:
 
 * `name` - (Required) The name of the App Configuration Feature. Changing this forces a new resource to be created.
 
-* `percentage_filter_value` - (Optional) A list of one or more numbers representing the value of the percentage required to enable this feature.
+* `percentage_filter_value` - (Optional) A number representing the value of the percentage required to enable this feature.
+
+!> **NOTE:** `percentage_filter_value` is deprecated and will be removed in 4.0 of the provider. Please use `percentage_filter_values` instead.
+
+* `percentage_filter_values` - (Optional) A list of one or more numbers representing the value of the percentage required to enable this feature.
 
 * `tags` - (Optional) A mapping of tags to assign to the resource.
 

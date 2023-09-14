@@ -50,6 +50,48 @@ func TestAccAppConfigurationFeature_basic(t *testing.T) {
 	})
 }
 
+func TestAccAppConfigurationFeature_percentageFilters(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_app_configuration_feature", "test")
+	r := AppConfigurationFeatureResource{}
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.basicPercentageFilters(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
+func TestAccAppConfigurationFeature_percentageFiltersUpdate(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_app_configuration_feature", "test")
+	r := AppConfigurationFeatureResource{}
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.basic(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+		{
+			Config: r.basicPercentageFilters(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+		{
+			Config: r.updatePercentageFilters(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
 func TestAccAppConfigurationFeature_basicNoLabel(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_app_configuration_feature", "test")
 	r := AppConfigurationFeatureResource{}
@@ -250,6 +292,36 @@ resource "azurerm_app_configuration_feature" "test" {
   }
 }
 
+`, t.template(data), data.RandomInteger)
+}
+
+func (t AppConfigurationFeatureResource) basicPercentageFilters(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+%s
+
+resource "azurerm_app_configuration_feature" "test" {
+  configuration_store_id   = azurerm_app_configuration.test.id
+  description              = "test description"
+  name                     = "acctest-ackey-%d"
+  label                    = "acctest-ackeylabel-%[2]d"
+  enabled                  = true
+  percentage_filter_values = [10, 75.1]
+}
+`, t.template(data), data.RandomInteger)
+}
+
+func (t AppConfigurationFeatureResource) updatePercentageFilters(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+%s
+
+resource "azurerm_app_configuration_feature" "test" {
+  configuration_store_id   = azurerm_app_configuration.test.id
+  description              = "test description"
+  name                     = "acctest-ackey-%d"
+  label                    = "acctest-ackeylabel-%[2]d"
+  enabled                  = true
+  percentage_filter_values = [75.1, 17.2123, 45.12345678901234567890]
+}
 `, t.template(data), data.RandomInteger)
 }
 
