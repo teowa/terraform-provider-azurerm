@@ -348,7 +348,7 @@ func resourceAppConfigurationCreate(d *pluginsdk.ResourceData, meta interface{})
 	if resp.Model == nil || resp.Model.Properties == nil || resp.Model.Properties.Endpoint == nil {
 		return fmt.Errorf("retrieving %s: `model.properties.Endpoint` was nil", resourceId)
 	}
-	meta.(*clients.Client).AppConfiguration.AddToCache(resourceId, *resp.Model.Properties.Endpoint)
+	meta.(*clients.Client).AppConfiguration.AddToCache(resourceId, "", *resp.Model.Properties.Endpoint)
 
 	expandedReplicas, err := expandAppConfigurationReplicas(d.Get("replica").(*pluginsdk.Set).List(), name, location)
 	if err != nil {
@@ -363,6 +363,16 @@ func resourceAppConfigurationCreate(d *pluginsdk.ResourceData, meta interface{})
 			return fmt.Errorf("creating %s: %+v", replicaId, err)
 		}
 
+		existingReplica, err := replicaClient.Get(ctx, replicaId)
+		if err != nil {
+			return fmt.Errorf("retrieving %s after creation: %+v", replicaId, err)
+		}
+
+		if existingReplica.Model == nil || existingReplica.Model.Properties == nil || existingReplica.Model.Properties.Endpoint == nil {
+			return fmt.Errorf("retrieving %s: `model.properties.Endpoint` was nil", replicaId)
+		}
+
+		meta.(*clients.Client).AppConfiguration.AddToCache(resourceId, replicaId.ReplicaName, *existingReplica.Model.Properties.Endpoint)
 	}
 
 	return resourceAppConfigurationRead(d, meta)
@@ -505,6 +515,10 @@ func resourceAppConfigurationUpdate(d *pluginsdk.ResourceData, meta interface{})
 			return err
 		}
 
+		for _, replicaId := range deleteReplicaIds {
+			meta.(*clients.Client).AppConfiguration.RemoveFromCache(*id, replicaId.ReplicaName)
+		}
+
 		expandedReplicas, err := expandAppConfigurationReplicas(d.Get("replica").(*pluginsdk.Set).List(), id.ConfigurationStoreName, location.Normalize(existing.Model.Location))
 		if err != nil {
 			return fmt.Errorf("expanding `replica`: %+v", err)
@@ -532,6 +546,18 @@ func resourceAppConfigurationUpdate(d *pluginsdk.ResourceData, meta interface{})
 			if err = replicaClient.CreateThenPoll(ctx, replicaId, replica); err != nil {
 				return fmt.Errorf("creating %s: %+v", replicaId, err)
 			}
+
+			existingReplica, err = replicaClient.Get(ctx, replicaId)
+			if err != nil {
+				return fmt.Errorf("retrieving %s after creation: %+v", replicaId, err)
+			}
+
+			if existingReplica.Model == nil || existingReplica.Model.Properties == nil || existingReplica.Model.Properties.Endpoint == nil {
+				return fmt.Errorf("retrieving %s: `model.properties.Endpoint` was nil", replicaId)
+			}
+
+			meta.(*clients.Client).AppConfiguration.AddToCache(*id, replicaId.ReplicaName, *existingReplica.Model.Properties.Endpoint)
+
 		}
 	}
 
@@ -711,7 +737,7 @@ func resourceAppConfigurationDelete(d *pluginsdk.ResourceData, meta interface{})
 		log.Printf("[DEBUG] Purged AppConfiguration %q.", id.ConfigurationStoreName)
 	}
 
-	meta.(*clients.Client).AppConfiguration.RemoveFromCache(*id)
+	meta.(*clients.Client).AppConfiguration.RemoveFromCache(*id, "")
 
 	return nil
 }

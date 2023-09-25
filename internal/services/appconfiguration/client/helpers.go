@@ -12,6 +12,7 @@ import (
 
 	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/appconfiguration/2023-03-01/configurationstores"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/appconfiguration/2023-03-01/replicas"
 	resourcesClient "github.com/hashicorp/terraform-provider-azurerm/internal/services/resource/client"
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
 )
@@ -24,26 +25,28 @@ var (
 
 type ConfigurationStoreDetails struct {
 	configurationStoreId string
+	replicaName          string
 	dataPlaneEndpoint    string
 }
 
-func (c Client) AddToCache(configurationStoreId configurationstores.ConfigurationStoreId, dataPlaneEndpoint string) {
-	cacheKey := c.cacheKeyForConfigurationStore(configurationStoreId.ConfigurationStoreName)
+func (c Client) AddToCache(configurationStoreId configurationstores.ConfigurationStoreId, replicaName, dataPlaneEndpoint string) {
+	cacheKey := c.cacheKeyForConfigurationStore(configurationStoreId.ConfigurationStoreName, replicaName)
 	keysmith.Lock()
 	ConfigurationStoreCache[cacheKey] = ConfigurationStoreDetails{
 		configurationStoreId: configurationStoreId.ID(),
+		replicaName:          replicaName,
 		dataPlaneEndpoint:    dataPlaneEndpoint,
 	}
 	keysmith.Unlock()
 }
 
-func (c Client) ConfigurationStoreIDFromEndpoint(ctx context.Context, resourcesClient *resourcesClient.Client, configurationStoreEndpoint string) (*string, error) {
+func (c Client) ConfigurationStoreDetailsFromEndpoint(ctx context.Context, resourcesClient *resourcesClient.Client, configurationStoreEndpoint string) (*ConfigurationStoreDetails, error) {
 	configurationStoreName, err := c.parseNameFromEndpoint(configurationStoreEndpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	cacheKey := c.cacheKeyForConfigurationStore(*configurationStoreName)
+	cacheKey := c.cacheKeyForConfigurationStore(*configurationStoreName, "")
 	keysmith.Lock()
 	if lock[cacheKey] == nil {
 		lock[cacheKey] = &sync.RWMutex{}
@@ -53,7 +56,7 @@ func (c Client) ConfigurationStoreIDFromEndpoint(ctx context.Context, resourcesC
 	defer lock[cacheKey].Unlock()
 
 	if v, ok := ConfigurationStoreCache[cacheKey]; ok {
-		return &v.configurationStoreId, nil
+		return &v, nil
 	}
 
 	filter := fmt.Sprintf("resourceType eq 'Microsoft.AppConfiguration/configurationStores' and name eq '%s'", *configurationStoreName)
@@ -84,9 +87,12 @@ func (c Client) ConfigurationStoreIDFromEndpoint(ctx context.Context, resourcesC
 				return nil, fmt.Errorf("retrieving %s: `model.properties.Endpoint` was nil", *id)
 			}
 
-			c.AddToCache(*id, *resp.Model.Properties.Endpoint)
+			c.AddToCache(*id, "", *resp.Model.Properties.Endpoint)
 
-			return utils.String(id.ID()), nil
+			return &ConfigurationStoreDetails{
+				configurationStoreId: id.ID(),
+				dataPlaneEndpoint:    *resp.Model.Properties.Endpoint,
+			}, nil
 		}
 
 		if err := result.NextWithContext(ctx); err != nil {
@@ -94,12 +100,77 @@ func (c Client) ConfigurationStoreIDFromEndpoint(ctx context.Context, resourcesC
 		}
 	}
 
+	// check if is a replica endpoint
+	if index := strings.LastIndex(*configurationStoreName, "-"); index != -1 {
+		replicaName := (*configurationStoreName)[index+1:]
+		originalConfigurationStoreName := (*configurationStoreName)[:index]
+
+		filter := fmt.Sprintf("resourceType eq 'Microsoft.AppConfiguration/configurationStores' and name eq '%s'", originalConfigurationStoreName)
+		result, err := resourcesClient.ResourcesClient.List(ctx, filter, "", utils.Int32(5))
+		if err != nil {
+			return nil, fmt.Errorf("listing resources matching %q: %+v", filter, err)
+		}
+
+		for result.NotDone() {
+			for _, v := range result.Values() {
+				if v.ID == nil {
+					continue
+				}
+
+				id, err := configurationstores.ParseConfigurationStoreIDInsensitively(*v.ID)
+				if err != nil {
+					return nil, fmt.Errorf("parsing %q: %+v", *v.ID, err)
+				}
+				if !strings.EqualFold(id.ConfigurationStoreName, *configurationStoreName) {
+					continue
+				}
+
+				resp, err := c.ConfigurationStoresClient.Get(ctx, *id)
+				if err != nil {
+					return nil, fmt.Errorf("retrieving %s: %+v", *id, err)
+				}
+				if resp.Model == nil || resp.Model.Properties == nil || resp.Model.Properties.Endpoint == nil {
+					return nil, fmt.Errorf("retrieving %s: `model.properties.Endpoint` was nil", *id)
+				}
+
+				replicaId := replicas.NewReplicaID(id.SubscriptionId, id.ResourceGroupName, id.ConfigurationStoreName, replicaName)
+
+				existingReplica, err := c.ReplicasClient.Get(ctx, replicaId)
+				if err != nil {
+					if !response.WasNotFound(existingReplica.HttpResponse) {
+						return nil, fmt.Errorf("retrieving %s: %+v", replicaId, err)
+					}
+				}
+
+				if response.WasNotFound(existingReplica.HttpResponse) {
+					return nil, nil
+				}
+
+				if existingReplica.Model == nil || existingReplica.Model.Properties == nil || existingReplica.Model.Properties.Endpoint == nil {
+					return nil, fmt.Errorf("retrieving %s: `model.properties.Endpoint` was nil", replicaId)
+				}
+
+				c.AddToCache(*id, replicaName, *existingReplica.Model.Properties.Endpoint)
+
+				return &ConfigurationStoreDetails{
+					configurationStoreId: id.ID(),
+					replicaName:          replicaName,
+					dataPlaneEndpoint:    *resp.Model.Properties.Endpoint,
+				}, nil
+			}
+
+			if err := result.NextWithContext(ctx); err != nil {
+				return nil, fmt.Errorf("iterating over results: %+v", err)
+			}
+		}
+	}
+
 	// we haven't found it, but Data Sources and Resources need to handle this error separately
 	return nil, nil
 }
 
-func (c Client) EndpointForConfigurationStore(ctx context.Context, configurationStoreId configurationstores.ConfigurationStoreId) (*string, error) {
-	cacheKey := c.cacheKeyForConfigurationStore(configurationStoreId.ConfigurationStoreName)
+func (c Client) EndpointForConfigurationStore(ctx context.Context, configurationStoreId configurationstores.ConfigurationStoreId, replicaName string) (*string, error) {
+	cacheKey := c.cacheKeyForConfigurationStore(configurationStoreId.ConfigurationStoreName, replicaName)
 	keysmith.Lock()
 	if lock[cacheKey] == nil {
 		lock[cacheKey] = &sync.RWMutex{}
@@ -121,13 +192,34 @@ func (c Client) EndpointForConfigurationStore(ctx context.Context, configuration
 		return nil, fmt.Errorf("retrieving %s: `model.properties.Endpoint` was nil", configurationStoreId)
 	}
 
-	c.AddToCache(configurationStoreId, *resp.Model.Properties.Endpoint)
+	if replicaName == "" {
+		c.AddToCache(configurationStoreId, "", *resp.Model.Properties.Endpoint)
+	} else {
+		replicaId := replicas.NewReplicaID(configurationStoreId.SubscriptionId, configurationStoreId.ResourceGroupName, configurationStoreId.ConfigurationStoreName, replicaName)
+
+		existingReplica, err := c.ReplicasClient.Get(ctx, replicaId)
+		if err != nil {
+			if !response.WasNotFound(existingReplica.HttpResponse) {
+				return nil, fmt.Errorf("retrieving %s: %+v", replicaId, err)
+			}
+		}
+
+		if response.WasNotFound(existingReplica.HttpResponse) {
+			return nil, nil
+		}
+
+		if existingReplica.Model == nil || existingReplica.Model.Properties == nil || existingReplica.Model.Properties.Endpoint == nil {
+			return nil, fmt.Errorf("retrieving %s: `model.properties.Endpoint` was nil", replicaId)
+		}
+
+		c.AddToCache(configurationStoreId, replicaName, *existingReplica.Model.Properties.Endpoint)
+	}
 
 	return resp.Model.Properties.Endpoint, nil
 }
 
-func (c Client) Exists(ctx context.Context, configurationStoreId configurationstores.ConfigurationStoreId) (bool, error) {
-	cacheKey := c.cacheKeyForConfigurationStore(configurationStoreId.ConfigurationStoreName)
+func (c Client) Exists(ctx context.Context, configurationStoreId configurationstores.ConfigurationStoreId, replicaName string) (bool, error) {
+	cacheKey := c.cacheKeyForConfigurationStore(configurationStoreId.ConfigurationStoreName, replicaName)
 	keysmith.Lock()
 	if lock[cacheKey] == nil {
 		lock[cacheKey] = &sync.RWMutex{}
@@ -152,13 +244,34 @@ func (c Client) Exists(ctx context.Context, configurationStoreId configurationst
 		return false, fmt.Errorf("retrieving %s: `model.properties.Endpoint` was nil", configurationStoreId)
 	}
 
-	c.AddToCache(configurationStoreId, *resp.Model.Properties.Endpoint)
+	if replicaName == "" {
+		c.AddToCache(configurationStoreId, "", *resp.Model.Properties.Endpoint)
+	} else {
+		replicaId := replicas.NewReplicaID(configurationStoreId.SubscriptionId, configurationStoreId.ResourceGroupName, configurationStoreId.ConfigurationStoreName, replicaName)
+
+		existingReplica, err := c.ReplicasClient.Get(ctx, replicaId)
+		if err != nil {
+			if !response.WasNotFound(existingReplica.HttpResponse) {
+				return false, fmt.Errorf("retrieving %s: %+v", replicaId, err)
+			}
+		}
+
+		if response.WasNotFound(existingReplica.HttpResponse) {
+			return false, nil
+		}
+
+		if existingReplica.Model == nil || existingReplica.Model.Properties == nil || existingReplica.Model.Properties.Endpoint == nil {
+			return false, fmt.Errorf("retrieving %s: `model.properties.Endpoint` was nil", replicaId)
+		}
+
+		c.AddToCache(configurationStoreId, replicaName, *existingReplica.Model.Properties.Endpoint)
+	}
 
 	return true, nil
 }
 
-func (c Client) RemoveFromCache(configurationStoreId configurationstores.ConfigurationStoreId) {
-	cacheKey := c.cacheKeyForConfigurationStore(configurationStoreId.ConfigurationStoreName)
+func (c Client) RemoveFromCache(configurationStoreId configurationstores.ConfigurationStoreId, replicaName string) {
+	cacheKey := c.cacheKeyForConfigurationStore(configurationStoreId.ConfigurationStoreName, replicaName)
 	keysmith.Lock()
 	if lock[cacheKey] == nil {
 		lock[cacheKey] = &sync.RWMutex{}
@@ -169,8 +282,11 @@ func (c Client) RemoveFromCache(configurationStoreId configurationstores.Configu
 	lock[cacheKey].Unlock()
 }
 
-func (c Client) cacheKeyForConfigurationStore(name string) string {
-	return strings.ToLower(name)
+func (c Client) cacheKeyForConfigurationStore(configurationStoreName, replicaName string) string {
+	if replicaName == "" {
+		return strings.ToLower(configurationStoreName)
+	}
+	return strings.ToLower(fmt.Sprintf("%s-%s", configurationStoreName, replicaName))
 }
 
 func (c Client) parseNameFromEndpoint(input string) (*string, error) {
