@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/go-azure-sdk/resource-manager/redhatopenshift/2023-09-04/openshiftclusters"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/services/redhatopenshift/parse"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
 )
@@ -16,7 +16,7 @@ import (
 type OpenShiftClusterResource struct{}
 
 func TestAccOpenShiftCluster_basic(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_redhatopenshift_cluster", "test")
+	data := acceptance.BuildTestData(t, "azurerm_redhat_openshift_cluster", "test")
 	r := OpenShiftClusterResource{}
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
@@ -30,7 +30,7 @@ func TestAccOpenShiftCluster_basic(t *testing.T) {
 }
 
 func TestAccOpenShiftCluster_private(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_redhatopenshift_cluster", "test")
+	data := acceptance.BuildTestData(t, "azurerm_redhat_openshift_cluster", "test")
 	r := OpenShiftClusterResource{}
 
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -45,7 +45,7 @@ func TestAccOpenShiftCluster_private(t *testing.T) {
 }
 
 func TestAccOpenShiftCluster_customDomain(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_redhatopenshift_cluster", "test")
+	data := acceptance.BuildTestData(t, "azurerm_redhat_openshift_cluster", "test")
 	r := OpenShiftClusterResource{}
 
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -60,7 +60,7 @@ func TestAccOpenShiftCluster_customDomain(t *testing.T) {
 }
 
 func TestAccOpenShiftCluster_encryptionAtHost(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_redhatopenshift_cluster", "test")
+	data := acceptance.BuildTestData(t, "azurerm_redhat_openshift_cluster", "test")
 	r := OpenShiftClusterResource{}
 
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -75,7 +75,7 @@ func TestAccOpenShiftCluster_encryptionAtHost(t *testing.T) {
 }
 
 func TestAccOpenShiftCluster_basicWithFipsEnabled(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_redhatopenshift_cluster", "test")
+	data := acceptance.BuildTestData(t, "azurerm_redhat_openshift_cluster", "test")
 	r := OpenShiftClusterResource{}
 
 	data.ResourceTest(t, r, []acceptance.TestStep{
@@ -90,28 +90,27 @@ func TestAccOpenShiftCluster_basicWithFipsEnabled(t *testing.T) {
 }
 
 func (o OpenShiftClusterResource) Exists(ctx context.Context, clients *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
-	id, err := parse.RedhatOpenShiftClusterID(state.ID)
+	id, err := openshiftclusters.ParseProviderOpenShiftClusterID(state.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := clients.RedHatOpenshift.OpenShiftClustersClient.Get(
+	resp, err := clients.RedHatOpenshift.Client.OpenShiftClusters.Get(
 		ctx,
-		id.ResourceGroup,
-		id.OpenShiftClusterName,
+		*id,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving Red Hat Openshift Cluster %q: %+v", state.ID, err)
 	}
 
-	return utils.Bool(resp.ID != nil), nil
+	return utils.Bool(resp.Model != nil), nil
 }
 
 func (o OpenShiftClusterResource) basic(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 %s
 
-resource "azurerm_redhatopenshift_cluster" "test" {
+resource "azurerm_redhat_openshift_cluster" "test" {
   name                = "acctestaro%d"
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
@@ -144,7 +143,7 @@ func (o OpenShiftClusterResource) private(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 %s
 
-resource "azurerm_redhatopenshift_cluster" "test" {
+resource "azurerm_redhat_openshift_cluster" "test" {
   name                = "acctestaro%d"
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
@@ -180,7 +179,7 @@ resource "azurerm_redhatopenshift_cluster" "test" {
 func (o OpenShiftClusterResource) customDomain(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 %s
-resource "azurerm_redhatopenshift_cluster" "test" {
+resource "azurerm_redhat_openshift_cluster" "test" {
   name                = "acctestaro%d"
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
@@ -213,7 +212,7 @@ func (o OpenShiftClusterResource) basicWithFipsEnabled(data acceptance.TestData)
 	return fmt.Sprintf(`
 %s
 
-resource "azurerm_redhatopenshift_cluster" "test" {
+resource "azurerm_redhat_openshift_cluster" "test" {
   name                = "acctestaro%d"
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
@@ -390,7 +389,7 @@ resource "azurerm_key_vault_access_policy" "disk-encryption" {
   ]
 }
 
-resource "azurerm_redhatopenshift_cluster" "test" {
+resource "azurerm_redhat_openshift_cluster" "test" {
   name                = "acctestaro%[1]d"
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name

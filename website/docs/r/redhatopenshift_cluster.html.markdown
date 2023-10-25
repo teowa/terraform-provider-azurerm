@@ -1,12 +1,12 @@
 ---
 subcategory: "Red Hat Openshift"
 layout: "azurerm"
-page_title: "Azure Resource Manager: azurerm_redhatopenshift_cluster"
+page_title: "Azure Resource Manager: azurerm_redhat_openshift_cluster"
 description: |-
   Manages fully managed Azure Red Hat Openshift Cluster (also known as ARO)
 ---
 
-# azurerm_redhatopenshift_cluster
+# azurerm_redhat_openshift_cluster
 
 Manages a fully managed Azure Red Hat Openshift Cluster (also known as ARO).
 
@@ -45,7 +45,7 @@ resource "azurerm_subnet" "worker_subnet" {
   service_endpoints    = ["Microsoft.Storage", "Microsoft.ContainerRegistry"]
 }
 
-resource "azurerm_redhatopenshift_cluster" "example" {
+resource "azurerm_redhat_openshift_cluster" "example" {
   name                = "example-redhatopenshift1"
   location            = azurerm_resource_group.example.location
   resource_group_name = azurerm_resource_group.example.name
@@ -73,11 +73,11 @@ resource "azurerm_redhatopenshift_cluster" "example" {
 }
 
 output "openshift_version" {
-  value = azurerm_redhatopenshift_cluster.example.version
+  value = azurerm_redhat_openshift_cluster.example.version
 }
 
 output "console_url" {
-  value = azurerm_redhatopenshift_cluster.example.console_url
+  value = azurerm_redhat_openshift_cluster.example.console_url
 }
 ```
 
@@ -221,5 +221,5 @@ The `timeouts` block allows you to specify [timeouts](https://www.terraform.io/d
 Red Hat Openshift Clusters can be imported using the `resource id`, e.g.
 
 ```shell
-terraform import azurerm_redhatopenshift_cluster.cluster1 /subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/group1/providers/Microsoft.RedHatOpenShift/openShiftClusters/cluster1
+terraform import azurerm_redhat_openshift_cluster.cluster1 /subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/group1/providers/Microsoft.RedHatOpenShift/openShiftClusters/cluster1
 ```

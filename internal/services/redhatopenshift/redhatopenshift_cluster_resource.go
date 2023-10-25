@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/redhatopenshift/mgmt/2022-04-01/redhatopenshift"
+	"github.com/hashicorp/go-azure-helpers/lang/pointer"
+	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/redhatopenshift/2023-09-04/openshiftclusters"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/azure"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/services/redhatopenshift/parse"
 	openShiftValidate "github.com/hashicorp/terraform-provider-azurerm/internal/services/redhatopenshift/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tags"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
@@ -160,8 +161,8 @@ func (r RedHatOpenShiftCluster) Arguments() map[string]*pluginsdk.Schema {
 						Optional: true,
 						Computed: true,
 						ValidateFunc: validation.StringInSlice([]string{
-							string(redhatopenshift.VisibilityPublic),
-							string(redhatopenshift.VisibilityPrivate),
+							string(openshiftclusters.VisibilityPublic),
+							string(openshiftclusters.VisibilityPrivate),
 						}, false),
 					},
 					"url": {
@@ -199,7 +200,7 @@ func (r RedHatOpenShiftCluster) Arguments() map[string]*pluginsdk.Schema {
 				},
 			},
 		},
-		
+
 		"ingress_profile": {
 			Type:     pluginsdk.TypeList,
 			Optional: true,
@@ -213,8 +214,8 @@ func (r RedHatOpenShiftCluster) Arguments() map[string]*pluginsdk.Schema {
 						Optional: true,
 						Computed: true,
 						ValidateFunc: validation.StringInSlice([]string{
-							string(redhatopenshift.VisibilityPublic),
-							string(redhatopenshift.VisibilityPrivate),
+							string(openshiftclusters.VisibilityPublic),
+							string(openshiftclusters.VisibilityPrivate),
 						}, false),
 					},
 					"ip": {
@@ -315,7 +316,7 @@ func (r RedHatOpenShiftCluster) ModelObject() interface{} {
 }
 
 func (r RedHatOpenShiftCluster) ResourceType() string {
-	return "azurerm_redhatopenshift_cluster"
+	return "azurerm_redhat_openshift_cluster"
 }
 
 func (r RedHatOpenShiftCluster) IDValidationFunc() pluginsdk.SchemaValidateFunc {
@@ -330,29 +331,29 @@ func (r RedHatOpenShiftCluster) Create() sdk.ResourceFunc {
 				return fmt.Errorf("decoding %+v", err)
 			}
 
-			client := metadata.Client.RedHatOpenshift.OpenShiftClustersClient
+			client := metadata.Client.RedHatOpenshift.Client.OpenShiftClusters
 			subscriptionId := metadata.Client.Account.SubscriptionId
 
 			resourceGroupName := model.ResourceGroup
 			name := model.Name
-			id := parse.NewRedhatOpenShiftClusterID(subscriptionId, resourceGroupName, name)
-			existing, err := client.Get(ctx, resourceGroupName, name)
-			if err != nil && !utils.ResponseWasNotFound(existing.Response) {
+			id := openshiftclusters.NewProviderOpenShiftClusterID(subscriptionId, resourceGroupName, name)
+			existing, err := client.Get(ctx, id)
+			if err != nil && !response.WasNotFound(existing.HttpResponse) {
 				return fmt.Errorf("checking for presence of existing %s: %+v", id, err)
 			}
 
-			if existing.ID != nil && *existing.ID != "" {
-				return tf.ImportAsExistsError("azurerm_redhatopenshift_cluster", *existing.ID)
+			if existing.Model != nil && existing.Model.Id != nil {
+				return tf.ImportAsExistsError("azurerm_redhat_openshift_cluster", *existing.Model.Id)
 			}
 
 			location := azure.NormalizeLocation(model.Location)
 
-			parameters := redhatopenshift.OpenShiftCluster{
+			parameters := openshiftclusters.OpenShiftCluster{
 				Name:     &name,
-				Location: &location,
-				OpenShiftClusterProperties: &redhatopenshift.OpenShiftClusterProperties{
+				Location: location,
+				Properties: &openshiftclusters.OpenShiftClusterProperties{
 					ClusterProfile:          expandOpenshiftClusterProfile(model.ClusterProfile, subscriptionId),
-					ConsoleProfile:          &redhatopenshift.ConsoleProfile{},
+					ConsoleProfile:          &openshiftclusters.ConsoleProfile{},
 					ServicePrincipalProfile: expandOpenshiftServicePrincipalProfile(model.ServicePrincipal),
 					NetworkProfile:          expandOpenshiftNetworkProfile(model.NetworkProfile),
 					MasterProfile:           expandOpenshiftMasterProfile(model.MainProfile),
@@ -360,16 +361,11 @@ func (r RedHatOpenShiftCluster) Create() sdk.ResourceFunc {
 					ApiserverProfile:        expandOpenshiftApiServerProfile(model.ApiServerProfile),
 					IngressProfiles:         expandOpenshiftIngressProfiles(model.IngressProfile),
 				},
-				Tags: tags.FromTypedObject(model.Tags),
+				Tags: pointer.To(model.Tags),
 			}
 
-			future, err := client.CreateOrUpdate(ctx, resourceGroupName, name, parameters)
-			if err != nil {
+			if err := client.CreateOrUpdateThenPoll(ctx, id, parameters); err != nil {
 				return fmt.Errorf("creating %s: %+v", id, err)
-			}
-
-			if err = future.WaitForCompletionRef(ctx, client.Client); err != nil {
-				return fmt.Errorf("waiting for creation of %s: %+v", id, err)
 			}
 
 			metadata.SetID(id)
@@ -382,9 +378,9 @@ func (r RedHatOpenShiftCluster) Create() sdk.ResourceFunc {
 func (r RedHatOpenShiftCluster) Update() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.RedHatOpenshift.OpenShiftClustersClient
+			client := metadata.Client.RedHatOpenshift.Client.OpenShiftClusters
 			subscriptionId := metadata.Client.Account.SubscriptionId
-			id, err := parse.RedhatOpenShiftClusterID(metadata.ResourceData.Id())
+			id, err := openshiftclusters.ParseProviderOpenShiftClusterID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
 			}
@@ -394,29 +390,24 @@ func (r RedHatOpenShiftCluster) Update() sdk.ResourceFunc {
 				return fmt.Errorf("decoding: %+v", err)
 			}
 
-			parameter := redhatopenshift.OpenShiftClusterUpdate{
-				Tags: tags.FromTypedObject(state.Tags),
+			parameter := openshiftclusters.OpenShiftClusterUpdate{
+				Tags: pointer.To(state.Tags),
 			}
 
 			if metadata.ResourceData.HasChange("cluster_profile") {
-				parameter.OpenShiftClusterProperties.ClusterProfile = expandOpenshiftClusterProfile(state.ClusterProfile, subscriptionId)
+				parameter.Properties.ClusterProfile = expandOpenshiftClusterProfile(state.ClusterProfile, subscriptionId)
 			}
 
 			if metadata.ResourceData.HasChange("main_profile") {
-				parameter.OpenShiftClusterProperties.MasterProfile = expandOpenshiftMasterProfile(state.MainProfile)
+				parameter.Properties.MasterProfile = expandOpenshiftMasterProfile(state.MainProfile)
 			}
 
 			if metadata.ResourceData.HasChange("worker_profile") {
-				parameter.OpenShiftClusterProperties.WorkerProfiles = expandOpenshiftWorkerProfiles(state.WorkerProfile)
+				parameter.Properties.WorkerProfiles = expandOpenshiftWorkerProfiles(state.WorkerProfile)
 			}
 
-			future, err := client.Update(ctx, id.ResourceGroup, id.OpenShiftClusterName, parameter)
-			if err != nil {
+			if err := client.UpdateThenPoll(ctx, *id, parameter); err != nil {
 				return fmt.Errorf("updating %s: %+v", id, err)
-			}
-
-			if err := future.WaitForCompletionRef(ctx, client.Client); err != nil {
-				return fmt.Errorf("waiting for updationg of %s: %+v", id, err)
 			}
 
 			return nil
@@ -429,16 +420,16 @@ func (r RedHatOpenShiftCluster) Update() sdk.ResourceFunc {
 func (r RedHatOpenShiftCluster) Read() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.RedHatOpenshift.OpenShiftClustersClient
+			client := metadata.Client.RedHatOpenshift.Client.OpenShiftClusters
 
-			id, err := parse.RedhatOpenShiftClusterID(metadata.ResourceData.Id())
+			id, err := openshiftclusters.ParseProviderOpenShiftClusterID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
 			}
 
-			resp, err := client.Get(ctx, id.ResourceGroup, id.OpenShiftClusterName)
+			resp, err := client.Get(ctx, *id)
 			if err != nil {
-				if utils.ResponseWasNotFound(resp.Response) {
+				if response.WasNotFound(resp.HttpResponse) {
 					return metadata.MarkAsGone(id)
 				}
 
@@ -446,33 +437,30 @@ func (r RedHatOpenShiftCluster) Read() sdk.ResourceFunc {
 			}
 
 			state := RedHatOpenShiftClusterModel{
-				ResourceGroup: id.ResourceGroup,
-				Tags:          tags.ToTypedObject(resp.Tags),
+				Name:          id.OpenShiftClusterName,
+				ResourceGroup: id.ResourceGroupName,
 			}
 
-			if name := resp.Name; name != nil {
-				state.Name = *name
-			}
+			if model := resp.Model; model != nil {
+				state.Tags = pointer.From(model.Tags)
+				state.Location = azure.NormalizeLocation(model.Location)
 
-			if location := resp.Location; location != nil {
-				state.Location = azure.NormalizeLocation(*location)
-			}
+				if props := model.Properties; props != nil {
+					state.ClusterProfile = flattenOpenShiftClusterProfile(props.ClusterProfile)
+					state.ServicePrincipal = flattenOpenShiftServicePrincipalProfile(props.ServicePrincipalProfile, metadata)
+					state.NetworkProfile = flattenOpenShiftNetworkProfile(props.NetworkProfile)
+					state.MainProfile = flattenOpenShiftMasterProfile(props.MasterProfile)
+					state.WorkerProfile = flattenOpenShiftWorkerProfiles(props.WorkerProfiles)
+					state.ApiServerProfile = flattenOpenShiftAPIServerProfile(props.ApiserverProfile)
+					state.IngressProfile = flattenOpenShiftIngressProfiles(props.IngressProfiles)
 
-			if props := resp.OpenShiftClusterProperties; props != nil {
-				state.ClusterProfile = flattenOpenShiftClusterProfile(props.ClusterProfile)
-				state.ServicePrincipal = flattenOpenShiftServicePrincipalProfile(props.ServicePrincipalProfile, metadata)
-				state.NetworkProfile = flattenOpenShiftNetworkProfile(props.NetworkProfile)
-				state.MainProfile = flattenOpenShiftMasterProfile(props.MasterProfile)
-				state.WorkerProfile = flattenOpenShiftWorkerProfiles(props.WorkerProfiles)
-				state.ApiServerProfile = flattenOpenShiftAPIServerProfile(props.ApiserverProfile)
-				state.IngressProfile = flattenOpenShiftIngressProfiles(props.IngressProfiles)
+					if props.ClusterProfile != nil && props.ClusterProfile.Version != nil {
+						state.Version = *props.ClusterProfile.Version
+					}
 
-				if props.ClusterProfile != nil && props.ClusterProfile.Version != nil {
-					state.Version = *props.ClusterProfile.Version
-				}
-
-				if props.ConsoleProfile != nil && props.ConsoleProfile.URL != nil {
-					state.ConsoleUrl = *props.ConsoleProfile.URL
+					if props.ConsoleProfile != nil && props.ConsoleProfile.Url != nil {
+						state.ConsoleUrl = *props.ConsoleProfile.Url
+					}
 				}
 			}
 
@@ -485,29 +473,25 @@ func (r RedHatOpenShiftCluster) Read() sdk.ResourceFunc {
 func (r RedHatOpenShiftCluster) Delete() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			id, err := parse.RedhatOpenShiftClusterID(metadata.ResourceData.Id())
+			id, err := openshiftclusters.ParseProviderOpenShiftClusterID(metadata.ResourceData.Id())
 
 			if err != nil {
 				return fmt.Errorf("while parsing resource ID: %+v", err)
 			}
 
-			client := metadata.Client.RedHatOpenshift.OpenShiftClustersClient
+			client := metadata.Client.RedHatOpenshift.Client.OpenShiftClusters
 
-			future, err := client.Delete(ctx, id.ResourceGroup, id.OpenShiftClusterName)
-			if err != nil {
+			if err := client.DeleteThenPoll(ctx, *id); err != nil {
 				return fmt.Errorf("deleting %s: %+v", *id, err)
 			}
 
-			if err := future.WaitForCompletionRef(ctx, client.Client); err != nil {
-				return fmt.Errorf("waiting for deletion of %s: %+v", *id, err)
-			}
 			return nil
 		},
 		Timeout: 90 * time.Minute,
 	}
 }
 
-func flattenOpenShiftClusterProfile(profile *redhatopenshift.ClusterProfile) []clusterProfile {
+func flattenOpenShiftClusterProfile(profile *openshiftclusters.ClusterProfile) []clusterProfile {
 	if profile == nil {
 		return []clusterProfile{}
 	}
@@ -522,7 +506,7 @@ func flattenOpenShiftClusterProfile(profile *redhatopenshift.ClusterProfile) []c
 		clusterDomain = *profile.Domain
 	}
 
-	fipsEnabled := profile.FipsValidatedModules == redhatopenshift.FipsValidatedModulesEnabled
+	fipsEnabled := profile.FipsValidatedModules == string(openshiftclusters.FipsValidatedModulesEnabled)
 
 	return []clusterProfile{
 		{
