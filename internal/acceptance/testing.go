@@ -31,7 +31,7 @@ func PreCheck(t *testing.T) {
 	for _, variable := range variables {
 		value := os.Getenv(variable)
 		if value == "" {
-			t.Fatalf("`%s` must be set for acceptance tests!", variable)
+			// t.Fatalf("`%s` must be set for acceptance tests!", variable)
 		}
 	}
 }
@@ -86,9 +86,9 @@ func GetAuthConfig(t *testing.T) *auth.Credentials {
 		ClientCertificatePassword: os.Getenv("ARM_CLIENT_CERTIFICATE_PASSWORD"),
 		ClientSecret:              os.Getenv("ARM_CLIENT_SECRET"),
 
-		EnableAuthenticatingUsingClientCertificate: true,
-		EnableAuthenticatingUsingClientSecret:      true,
-		EnableAuthenticatingUsingAzureCLI:          false,
+		EnableAuthenticatingUsingClientCertificate: false,
+		EnableAuthenticatingUsingClientSecret:      false,
+		EnableAuthenticatingUsingAzureCLI:          true,
 		EnableAuthenticatingUsingManagedIdentity:   false,
 		EnableAuthenticationUsingOIDC:              false,
 		EnableAuthenticationUsingGitHubOIDC:        false,

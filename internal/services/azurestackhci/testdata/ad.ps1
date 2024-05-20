@@ -78,6 +78,6 @@ for ($count = 0; $count -lt 6; $count++) {
 }
 
 if ($count -ge 3) {
-    throw "Failed to provision AD after 3 retries."
+    throw "Failed to provision AD after 6 retries."
 }
 

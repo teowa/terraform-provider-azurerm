@@ -128,5 +128,5 @@ for ($count = 0; $count -lt 6; $count++) {
 }
 
 if ($count -ge 3) {
-    throw "Failed to connect Arc server after 3 retries."
+    throw "Failed to connect Arc server after 6 retries."
 }
