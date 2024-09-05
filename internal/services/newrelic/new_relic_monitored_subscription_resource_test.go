@@ -1,6 +1,3 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
-
 package newrelic_test
 
 import (
@@ -10,19 +7,20 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-azure-helpers/lang/response"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/newrelic/2024-03-01/tagrules"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/newrelic/2024-03-01/monitoredsubscriptions"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/services/newrelic/parse"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/utils"
 )
 
-type NewRelicTagRuleResource struct{}
+type NewRelicMonitoredSubscriptionResource struct{}
 
-func TestAccNewRelicTagRule_basic(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_new_relic_tag_rule", "test")
-	r := NewRelicTagRuleResource{}
+func TestAccNewRelicMonitoredSubscription_basic(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_new_relic_monitored_subscription", "test")
+	r := NewRelicMonitoredSubscriptionResource{}
 	email := "27362230-e2d8-4c73-9ee3-fdef83459ca3@example.com"
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
@@ -35,9 +33,9 @@ func TestAccNewRelicTagRule_basic(t *testing.T) {
 	})
 }
 
-func TestAccNewRelicTagRule_requiresImport(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_new_relic_tag_rule", "test")
-	r := NewRelicTagRuleResource{}
+func TestAccNewRelicMonitoredSubscription_requiresImport(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_new_relic_monitored_subscription", "test")
+	r := NewRelicMonitoredSubscriptionResource{}
 	email := "85b5febd-127d-4633-9c25-bcfea555af46@example.com"
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
@@ -53,9 +51,9 @@ func TestAccNewRelicTagRule_requiresImport(t *testing.T) {
 	})
 }
 
-func TestAccNewRelicTagRule_complete(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_new_relic_tag_rule", "test")
-	r := NewRelicTagRuleResource{}
+func TestAccNewRelicMonitoredSubscription_complete(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_new_relic_monitored_subscription", "test")
+	r := NewRelicMonitoredSubscriptionResource{}
 	email := "672d9312-65a7-484c-870d-94584850a423@example.com"
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
@@ -68,9 +66,9 @@ func TestAccNewRelicTagRule_complete(t *testing.T) {
 	})
 }
 
-func TestAccNewRelicTagRule_update(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_new_relic_tag_rule", "test")
-	r := NewRelicTagRuleResource{}
+func TestAccNewRelicMonitoredSubscription_update(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_new_relic_monitored_subscription", "test")
+	r := NewRelicMonitoredSubscriptionResource{}
 	email := "f0ff47c3-3aed-45b0-b239-260d9625045a@example.com"
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
@@ -90,14 +88,15 @@ func TestAccNewRelicTagRule_update(t *testing.T) {
 	})
 }
 
-func (r NewRelicTagRuleResource) Exists(ctx context.Context, clients *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
-	id, err := tagrules.ParseTagRuleID(state.ID)
+func (r NewRelicMonitoredSubscriptionResource) Exists(ctx context.Context, clients *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
+	id, err := parse.NewRelicMonitoredSubscriptionID(state.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	client := clients.NewRelic.Client.TagRules
-	resp, err := client.Get(ctx, *id)
+	client := clients.NewRelic.Client.MonitoredSubscriptions
+	monitorId := monitoredsubscriptions.NewMonitorID(id.SubscriptionId, id.ResourceGroup, id.MonitorName)
+	resp, err := client.Get(ctx, monitorId)
 	if err != nil {
 		if response.WasNotFound(resp.HttpResponse) {
 			return utils.Bool(false), nil
@@ -107,7 +106,7 @@ func (r NewRelicTagRuleResource) Exists(ctx context.Context, clients *clients.Cl
 	return utils.Bool(resp.Model != nil), nil
 }
 
-func (r NewRelicTagRuleResource) template(data acceptance.TestData, email string) string {
+func (r NewRelicMonitoredSubscriptionResource) template(data acceptance.TestData, email string) string {
 	year, month, day := time.Now().Add(time.Hour * 72).Date()
 	effectiveDate := time.Date(year, month, day, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
 
@@ -136,7 +135,7 @@ resource "azurerm_new_relic_monitor" "test" {
 `, data.RandomInteger, data.Locations.Primary, effectiveDate, email)
 }
 
-func (r NewRelicTagRuleResource) basic(data acceptance.TestData, email string) string {
+func (r NewRelicMonitoredSubscriptionResource) basic(data acceptance.TestData, email string) string {
 	template := r.template(data, email)
 	return fmt.Sprintf(`
 provider "azurerm" {
@@ -144,24 +143,24 @@ provider "azurerm" {
 }
 				%s
 
-resource "azurerm_new_relic_tag_rule" "test" {
+resource "azurerm_new_relic_monitored_subscription" "test" {
   monitor_id = azurerm_new_relic_monitor.test.id
 }
 `, template)
 }
 
-func (r NewRelicTagRuleResource) requiresImport(data acceptance.TestData, email string) string {
+func (r NewRelicMonitoredSubscriptionResource) requiresImport(data acceptance.TestData, email string) string {
 	config := r.basic(data, email)
 	return fmt.Sprintf(`
 			%s
 
-resource "azurerm_new_relic_tag_rule" "import" {
-  monitor_id = azurerm_new_relic_tag_rule.test.monitor_id
+resource "azurerm_new_relic_monitored_subscription" "import" {
+  monitor_id = azurerm_new_relic_monitored_subscription.test.monitor_id
 }
 `, config)
 }
 
-func (r NewRelicTagRuleResource) complete(data acceptance.TestData, email string) string {
+func (r NewRelicMonitoredSubscriptionResource) complete(data acceptance.TestData, email string) string {
 	template := r.template(data, email)
 	return fmt.Sprintf(`
 provider "azurerm" {
@@ -169,8 +168,10 @@ provider "azurerm" {
 }
 			%s
 
-resource "azurerm_new_relic_tag_rule" "test" {
+resource "azurerm_new_relic_monitored_subscription" "test" {
   monitor_id                         = azurerm_new_relic_monitor.test.id
+  monitored_subcription {
+    subscription_id=%s
   azure_active_directory_log_enabled = true
   activity_log_enabled               = true
   metric_enabled                     = true
@@ -199,11 +200,12 @@ resource "azurerm_new_relic_tag_rule" "test" {
     action = "Exclude"
     value  = ""
   }
+    }
 }
-`, template)
+`, template, data.Subscriptions.Secondary)
 }
 
-func (r NewRelicTagRuleResource) update(data acceptance.TestData, email string) string {
+func (r NewRelicMonitoredSubscriptionResource) update(data acceptance.TestData, email string) string {
 	template := r.template(data, email)
 	return fmt.Sprintf(`
 provider "azurerm" {
@@ -211,8 +213,11 @@ provider "azurerm" {
 }
 			%s
 
-resource "azurerm_new_relic_tag_rule" "test" {
+resource "azurerm_new_relic_monitored_subscription" "test" {
   monitor_id                         = azurerm_new_relic_monitor.test.id
+
+  monitored_subcription {
+    subcription_id = %s
   azure_active_directory_log_enabled = false
   activity_log_enabled               = false
   metric_enabled                     = false
@@ -241,6 +246,7 @@ resource "azurerm_new_relic_tag_rule" "test" {
     action = "Include"
     value  = "metric1"
   }
+  }
 }
-`, template)
+`, template, data.Subscriptions.Secondary)
 }

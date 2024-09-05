@@ -104,7 +104,7 @@ func (r NewRelicMonitorResource) Exists(ctx context.Context, clients *clients.Cl
 		return nil, err
 	}
 
-	client := clients.NewRelic.MonitorsClient
+	client := clients.NewRelic.Client.Monitors
 	resp, err := client.Get(ctx, *id)
 	if err != nil {
 		if response.WasNotFound(resp.HttpResponse) {

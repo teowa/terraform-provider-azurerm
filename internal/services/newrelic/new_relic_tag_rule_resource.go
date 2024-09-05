@@ -153,7 +153,7 @@ func (r NewRelicTagRuleResource) Create() sdk.ResourceFunc {
 				return fmt.Errorf("decoding: %+v", err)
 			}
 
-			client := metadata.Client.NewRelic.TagRulesClient
+			client := metadata.Client.NewRelic.Client.TagRules
 			monitorId, err := monitors.ParseMonitorID(model.NewRelicMonitorId)
 			if err != nil {
 				return err
@@ -176,7 +176,7 @@ func (r NewRelicTagRuleResource) Create() sdk.ResourceFunc {
 				SendSubscriptionLogs: pointer.To(tagrules.SendSubscriptionLogsStatusDisabled),
 			}
 
-			email, err := r.getEmail(ctx, metadata.Client.NewRelic.MonitorsClient, monitorId)
+			email, err := r.getEmail(ctx, metadata.Client.NewRelic.Client.Monitors, monitorId)
 			if err != nil {
 				return err
 			}
@@ -224,7 +224,7 @@ func (r NewRelicTagRuleResource) Update() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.NewRelic.TagRulesClient
+			client := metadata.Client.NewRelic.Client.TagRules
 
 			id, err := tagrules.ParseTagRuleID(metadata.ResourceData.Id())
 			if err != nil {
@@ -259,7 +259,7 @@ func (r NewRelicTagRuleResource) Update() sdk.ResourceFunc {
 				return err
 			}
 
-			email, err := r.getEmail(ctx, metadata.Client.NewRelic.MonitorsClient, monitorId)
+			email, err := r.getEmail(ctx, metadata.Client.NewRelic.Client.Monitors, monitorId)
 			if err != nil {
 				return err
 			}
@@ -319,7 +319,7 @@ func (r NewRelicTagRuleResource) Read() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 5 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.NewRelic.TagRulesClient
+			client := metadata.Client.NewRelic.Client.TagRules
 
 			id, err := tagrules.ParseTagRuleID(metadata.ResourceData.Id())
 			if err != nil {
@@ -363,7 +363,7 @@ func (r NewRelicTagRuleResource) Delete() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.NewRelic.TagRulesClient
+			client := metadata.Client.NewRelic.Client.TagRules
 
 			id, err := tagrules.ParseTagRuleID(metadata.ResourceData.Id())
 			if err != nil {

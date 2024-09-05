@@ -245,7 +245,7 @@ func (r NewRelicMonitorResource) Create() sdk.ResourceFunc {
 				return fmt.Errorf("decoding: %+v", err)
 			}
 
-			client := metadata.Client.NewRelic.MonitorsClient
+			client := metadata.Client.NewRelic.Client.Monitors
 			subscriptionId := metadata.Client.Account.SubscriptionId
 			id := monitors.NewMonitorID(subscriptionId, model.ResourceGroupName, model.Name)
 			existing, err := client.Get(ctx, id)
@@ -291,7 +291,7 @@ func (r NewRelicMonitorResource) Read() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 5 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.NewRelic.MonitorsClient
+			client := metadata.Client.NewRelic.Client.Monitors
 
 			id, err := monitors.ParseMonitorID(metadata.ResourceData.Id())
 			if err != nil {
@@ -360,7 +360,7 @@ func (r NewRelicMonitorResource) Delete() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.NewRelic.MonitorsClient
+			client := metadata.Client.NewRelic.Client.Monitors
 			id, err := monitors.ParseMonitorID(metadata.ResourceData.Id())
 			if err != nil {
 				return err

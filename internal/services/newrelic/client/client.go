@@ -6,33 +6,24 @@ package client
 import (
 	"fmt"
 
-	"github.com/hashicorp/go-azure-sdk/resource-manager/newrelic/2024-03-01/monitors"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/newrelic/2024-03-01/tagrules"
+	newRelic20240301 "github.com/hashicorp/go-azure-sdk/resource-manager/newrelic/2024-03-01"
+	"github.com/hashicorp/go-azure-sdk/sdk/client/resourcemanager"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/common"
 )
 
 type Client struct {
-	MonitorsClient *monitors.MonitorsClient
-	TagRulesClient *tagrules.TagRulesClient
+	*newRelic20240301.Client
 }
 
 func NewClient(o *common.ClientOptions) (*Client, error) {
-	monitorsClient, err := monitors.NewMonitorsClientWithBaseURI(o.Environment.ResourceManager)
+	client, err := newRelic20240301.NewClientWithBaseURI(o.Environment.ResourceManager, func(c *resourcemanager.Client) {
+		o.Configure(c, o.Authorizers.ResourceManager)
+	})
 	if err != nil {
-		return nil, fmt.Errorf("building Monitors client: %+v", err)
+		return nil, fmt.Errorf("building clients for Network: %+v", err)
 	}
-
-	o.Configure(monitorsClient.Client, o.Authorizers.ResourceManager)
-
-	tagRulesClient, err := tagrules.NewTagRulesClientWithBaseURI(o.Environment.ResourceManager)
-	if err != nil {
-		return nil, fmt.Errorf("building TagRules client: %+v", err)
-	}
-
-	o.Configure(tagRulesClient.Client, o.Authorizers.ResourceManager)
 
 	return &Client{
-		MonitorsClient: monitorsClient,
-		TagRulesClient: tagRulesClient,
+		Client: client,
 	}, nil
 }
