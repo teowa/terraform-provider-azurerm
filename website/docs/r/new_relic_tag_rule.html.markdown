@@ -66,11 +66,11 @@ The following arguments are supported:
 
 * `activity_log_enabled` - (Optional) Whether activity logs from Azure resources should be sent for the Monitor resource. Defaults to `false`.
 
-* `log_tag_filter` - (Optional) A `log_tag_filter` block as defined below.
+* `log_tag_filter` - (Optional) One or more `log_tag_filter` blocks as defined below.
 
 * `metric_enabled` - (Optional) Whether metrics should be sent for the Monitor resource. Defaults to `false`.
 
-* `metric_tag_filter` - (Optional) A `metric_tag_filter` block as defined below.
+* `metric_tag_filter` - (Optional) One or more `metric_tag_filter` blocks as defined below.
 
 * `subscription_log_enabled` - (Optional) Whether subscription logs should be sent for the Monitor resource. Defaults to `false`.
 

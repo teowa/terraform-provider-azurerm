@@ -61,7 +61,7 @@ func (r NewRelicMonitoredSubscriptionResource) Arguments() map[string]*pluginsdk
 
 		"monitored_subscription": {
 			Type:     pluginsdk.TypeList,
-			Required: true,
+			Optional: true,
 			MinItems: 1,
 			Elem: &pluginsdk.Resource{
 				Schema: map[string]*pluginsdk.Schema{

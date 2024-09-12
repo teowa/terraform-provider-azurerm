@@ -141,7 +141,8 @@ func (r NewRelicMonitoredSubscriptionResource) basic(data acceptance.TestData, e
 provider "azurerm" {
   features {}
 }
-				%s
+
+%s
 
 resource "azurerm_new_relic_monitored_subscription" "test" {
   monitor_id = azurerm_new_relic_monitor.test.id
@@ -152,7 +153,7 @@ resource "azurerm_new_relic_monitored_subscription" "test" {
 func (r NewRelicMonitoredSubscriptionResource) requiresImport(data acceptance.TestData, email string) string {
 	config := r.basic(data, email)
 	return fmt.Sprintf(`
-			%s
+%s
 
 resource "azurerm_new_relic_monitored_subscription" "import" {
   monitor_id = azurerm_new_relic_monitored_subscription.test.monitor_id
@@ -166,41 +167,42 @@ func (r NewRelicMonitoredSubscriptionResource) complete(data acceptance.TestData
 provider "azurerm" {
   features {}
 }
-			%s
+
+%s
 
 resource "azurerm_new_relic_monitored_subscription" "test" {
-  monitor_id                         = azurerm_new_relic_monitor.test.id
+  monitor_id = azurerm_new_relic_monitor.test.id
   monitored_subcription {
-    subscription_id=%s
-  azure_active_directory_log_enabled = true
-  activity_log_enabled               = true
-  metric_enabled                     = true
-  subscription_log_enabled           = true
+    subscription_id                    = %s
+    azure_active_directory_log_enabled = true
+    activity_log_enabled               = true
+    metric_enabled                     = true
+    subscription_log_enabled           = true
 
-  log_tag_filter {
-    name   = "log1"
-    action = "Include"
-    value  = "log1"
-  }
-
-  log_tag_filter {
-    name   = "log2"
-    action = "Exclude"
-    value  = ""
-  }
-
-  metric_tag_filter {
-    name   = "metric1"
-    action = "Include"
-    value  = "metric1"
-  }
-
-  metric_tag_filter {
-    name   = "metric2"
-    action = "Exclude"
-    value  = ""
-  }
+    log_tag_filter {
+      name   = "log1"
+      action = "Include"
+      value  = "log1"
     }
+
+    log_tag_filter {
+      name   = "log2"
+      action = "Exclude"
+      value  = ""
+    }
+
+    metric_tag_filter {
+      name   = "metric1"
+      action = "Include"
+      value  = "metric1"
+    }
+
+    metric_tag_filter {
+      name   = "metric2"
+      action = "Exclude"
+      value  = ""
+    }
+  }
 }
 `, template, data.Subscriptions.Secondary)
 }
@@ -211,41 +213,42 @@ func (r NewRelicMonitoredSubscriptionResource) update(data acceptance.TestData, 
 provider "azurerm" {
   features {}
 }
-			%s
+
+%s
 
 resource "azurerm_new_relic_monitored_subscription" "test" {
-  monitor_id                         = azurerm_new_relic_monitor.test.id
+  monitor_id = azurerm_new_relic_monitor.test.id
 
   monitored_subcription {
-    subcription_id = %s
-  azure_active_directory_log_enabled = false
-  activity_log_enabled               = false
-  metric_enabled                     = false
-  subscription_log_enabled           = false
+    subcription_id                     = %s
+    azure_active_directory_log_enabled = false
+    activity_log_enabled               = false
+    metric_enabled                     = false
+    subscription_log_enabled           = false
 
-  log_tag_filter {
-    name   = "log2"
-    action = "Exclude"
-    value  = ""
-  }
+    log_tag_filter {
+      name   = "log2"
+      action = "Exclude"
+      value  = ""
+    }
 
-  log_tag_filter {
-    name   = "log1"
-    action = "Include"
-    value  = "log1"
-  }
+    log_tag_filter {
+      name   = "log1"
+      action = "Include"
+      value  = "log1"
+    }
 
-  metric_tag_filter {
-    name   = "metric1"
-    action = "Exclude"
-    value  = ""
-  }
+    metric_tag_filter {
+      name   = "metric1"
+      action = "Exclude"
+      value  = ""
+    }
 
-  metric_tag_filter {
-    name   = "metric2"
-    action = "Include"
-    value  = "metric1"
-  }
+    metric_tag_filter {
+      name   = "metric2"
+      action = "Include"
+      value  = "metric1"
+    }
   }
 }
 `, template, data.Subscriptions.Secondary)
