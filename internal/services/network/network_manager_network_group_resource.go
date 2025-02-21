@@ -19,6 +19,7 @@ import (
 
 type ManagerNetworkGroupModel struct {
 	Name             string `tfschema:"name"`
+	MemberType       string `tfschema:"member_type"`
 	NetworkManagerId string `tfschema:"network_manager_id"`
 	Description      string `tfschema:"description"`
 }
@@ -53,6 +54,13 @@ func (r ManagerNetworkGroupResource) Arguments() map[string]*pluginsdk.Schema {
 			Required:     true,
 			ForceNew:     true,
 			ValidateFunc: networkgroups.ValidateNetworkManagerID,
+		},
+
+		"member_type": {
+			Type:         pluginsdk.TypeString,
+			Optional:     true,
+			Default:      string(networkgroups.GroupMemberTypeVirtualNetwork),
+			ValidateFunc: validation.StringInSlice(networkgroups.PossibleValuesForGroupMemberType(), false),
 		},
 
 		"description": {
@@ -97,6 +105,10 @@ func (r ManagerNetworkGroupResource) Create() sdk.ResourceFunc {
 
 			if model.Description != "" {
 				group.Properties.Description = &model.Description
+			}
+
+			if model.MemberType != "" {
+				group.Properties.MemberType = pointer.To(networkgroups.GroupMemberType(model.MemberType))
 			}
 
 			if _, err := client.CreateOrUpdate(ctx, id, group, networkgroups.DefaultCreateOrUpdateOperationOptions()); err != nil {
@@ -145,6 +157,10 @@ func (r ManagerNetworkGroupResource) Update() sdk.ResourceFunc {
 				}
 			}
 
+			if metadata.ResourceData.HasChange("member_type") {
+				properties.MemberType = pointer.To(networkgroups.GroupMemberType(model.MemberType))
+			}
+
 			if _, err := client.CreateOrUpdate(ctx, *id, *existing.Model, networkgroups.DefaultCreateOrUpdateOperationOptions()); err != nil {
 				return fmt.Errorf("updating %s: %+v", *id, err)
 			}
@@ -184,6 +200,7 @@ func (r ManagerNetworkGroupResource) Read() sdk.ResourceFunc {
 			state := ManagerNetworkGroupModel{
 				Name:             id.NetworkGroupName,
 				NetworkManagerId: networkgroups.NewNetworkManagerID(id.SubscriptionId, id.ResourceGroupName, id.NetworkManagerName).ID(),
+				MemberType:       string(pointer.From(properties.MemberType)),
 				Description:      pointer.From(properties.Description),
 			}
 

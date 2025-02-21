@@ -79,6 +79,20 @@ func testAccNetworkManagerNetworkGroup_update(t *testing.T) {
 			),
 		},
 		data.ImportStep(),
+		{
+			Config: r.complete(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+		{
+			Config: r.basic(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
 	})
 }
 
@@ -151,6 +165,7 @@ func (r ManagerNetworkGroupResource) complete(data acceptance.TestData) string {
 resource "azurerm_network_manager_network_group" "test" {
   name               = "acctest-nmng-%d"
   network_manager_id = azurerm_network_manager.test.id
+  member_type        = "Subnet"
   description        = "test complete"
 }
 `, template, data.RandomInteger)
@@ -163,6 +178,7 @@ func (r ManagerNetworkGroupResource) update(data acceptance.TestData) string {
 resource "azurerm_network_manager_network_group" "test" {
   name               = "acctest-nmng-%d"
   network_manager_id = azurerm_network_manager.test.id
+  member_type        = "VirtualNetwork"
   description        = "test update"
 }
 `, template, data.RandomInteger)

@@ -47,6 +47,20 @@ func testAccNetworkManagerStaticMember_requiresImport(t *testing.T) {
 	})
 }
 
+func testAccNetworkManagerStaticMember_subnet(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_network_manager_static_member", "test")
+	r := ManagerStaticMemberResource{}
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.subnet(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
 func (r ManagerStaticMemberResource) Exists(ctx context.Context, clients *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
 	id, err := staticmembers.ParseStaticMemberID(state.ID)
 	if err != nil {
@@ -126,4 +140,30 @@ resource "azurerm_network_manager_static_member" "import" {
   target_virtual_network_id = azurerm_network_manager_static_member.test.target_virtual_network_id
 }
 `, config)
+}
+
+func (r ManagerStaticMemberResource) subnet(data acceptance.TestData) string {
+	template := r.template(data)
+	return fmt.Sprintf(`
+%s
+
+resource "azurerm_network_manager_network_group" "test2" {
+  name               = "acctest-nmng-%d"
+  network_manager_id = azurerm_network_manager.test.id
+  member_type        = "Subnet"
+}
+
+resource "azurerm_subnet" "test" {
+  name                 = "acctest-subnet-%[2]d"
+  resource_group_name  = azurerm_resource_group.test.name
+  virtual_network_name = azurerm_virtual_network.test.name
+  address_prefixes     = ["10.0.2.0/24"]
+}
+
+resource "azurerm_network_manager_static_member" "test" {
+  name                      = "acctest-nmsm-%[2]d"
+  network_group_id          = azurerm_network_manager_network_group.test2.id
+  target_virtual_network_id = azurerm_subnet.test.id
+}
+`, template, data.RandomInteger)
 }

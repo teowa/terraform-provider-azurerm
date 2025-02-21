@@ -59,6 +59,7 @@ func TestAccNetworkManager(t *testing.T) {
 		},
 		"StaticMember": {
 			"basic":          testAccNetworkManagerStaticMember_basic,
+			"subnet":         testAccNetworkManagerStaticMember_subnet,
 			"requiresImport": testAccNetworkManagerStaticMember_requiresImport,
 		},
 		"ConnectivityConfiguration": {
