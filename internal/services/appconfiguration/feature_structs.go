@@ -97,6 +97,11 @@ func (p ClientFilter) MarshalJSON() ([]byte, error) {
 	return json.Marshal(p.Filters)
 }
 
+type CustomFilter struct {
+	Name  string `tfschema:"name"`
+	Value string `tfschema:"value"`
+}
+
 type PercentageFilterParameters struct {
 	Value float64 `json:"Value"`
 }
@@ -116,9 +121,15 @@ type TargetingFilterParameters struct {
 }
 
 type TargetingFilterAudience struct {
-	DefaultRolloutPercentage int64                     `json:"DefaultRolloutPercentage" tfschema:"default_rollout_percentage"`
-	Users                    []string                  `json:"Users"                    tfschema:"users"`
-	Groups                   []TargetingGroupParameter `json:"Groups"                   tfschema:"groups"`
+	DefaultRolloutPercentage int64                      `json:"DefaultRolloutPercentage" tfschema:"default_rollout_percentage"`
+	Exclusion                []TargetingFilterExclusion `json:"Exclusion"                tfschema:"exclusion"`
+	Groups                   []TargetingGroupParameter  `json:"Groups"                   tfschema:"groups"`
+	Users                    []string                   `json:"Users"                    tfschema:"users"`
+}
+
+type TargetingFilterExclusion struct {
+	Groups []string `json:"Groups"                   tfschema:"groups"`
+	Users  []string `json:"Users"                    tfschema:"users"`
 }
 
 type TargetingFeatureFilter struct {
@@ -127,8 +138,25 @@ type TargetingFeatureFilter struct {
 }
 
 type TimewindowFilterParameters struct {
-	Start string `json:"Start" tfschema:"start"`
-	End   string `json:"End"   tfschema:"end"`
+	Start      string                       `json:"Start"      tfschema:"start"`
+	End        string                       `json:"End"        tfschema:"end"`
+	Recurrence []TimewindowFilterRecurrence `json:"Recurrence" tfschema:"recurrence"`
+}
+
+type TimewindowFilterRecurrence struct {
+	Daily   []RecurrenceDaily  `tfschema:"daily"`
+	Weekly  []RecurrenceWeekly `tfschema:"weekly"`
+	EndDate string             `tfschema:"end_date"`
+}
+
+type RecurrenceDaily struct {
+	Interval int64 `json:"interval" tfschema:"interval"`
+}
+
+type RecurrenceWeekly struct {
+	Interval       int64    `json:"interval"          tfschema:"interval"`
+	FirstDayOfWeek string   `json:"first_day_of_week" tfschema:"first_day_of_week"`
+	DaysOfWeek     []string `json:"days_of_week"      tfschema:"days_of_week"`
 }
 
 type TimewindowFeatureFilter struct {
@@ -145,4 +173,34 @@ type FeatureValue struct {
 	Description string     `json:"description"`
 	Enabled     bool       `json:"enabled"`
 	Conditions  Conditions `json:"conditions"`
+}
+
+type FeatureAllocation struct {
+	DefaultVariantWhenDisabled string                           `tfschema:"default_variant_when_disabled"`
+	DefaultVariantWhenEnabled  string                           `tfschema:"default_variant_when_enabled"`
+	GroupOverride              []FeatureAllocationGroupOverride `tfschema:"group_override"`
+	Percentile                 []FeatureAllocationPercentile    `tfschema:"percentile"`
+	Seed                       string                           `tfschema:"seed"`
+	UserOverride               []FeatureAllocationUserOverride  `tfschema:"user_override"`
+}
+
+type FeatureAllocationGroupOverride struct {
+	Groups  []string `tfschema:"groups"`
+	Variant string   `tfschema:"variant"`
+}
+
+type FeatureAllocationUserOverride struct {
+	Users   []string `tfschema:"users"`
+	Variant string   `tfschema:"variant"`
+}
+
+type FeatureAllocationPercentile struct {
+	Variant string `json:"variant" tfschema:"variant"`
+	From    int64  `json:"from"    tfschema:"from"`
+	To      int64  `json:"to"      tfschema:"to"`
+}
+
+type FeatureVariant struct {
+	Name  string `tfschema:"name"`
+	Value string `tfschema:"value"`
 }

@@ -17,7 +17,6 @@ import (
 	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/appconfiguration/2024-05-01/configurationstores"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appconfiguration/migration"
@@ -43,17 +42,21 @@ var _ sdk.ResourceWithUpdate = FeatureResource{}
 var _ sdk.ResourceWithStateMigration = FeatureResource{}
 
 type FeatureResourceModel struct {
+	Allocation           []FeatureAllocation          `tfschema:"allocation"`
 	ConfigurationStoreId string                       `tfschema:"configuration_store_id"`
+	CustomFilter         []CustomFilter               `tfschema:"custom_filter"`
 	Description          string                       `tfschema:"description"`
 	Enabled              bool                         `tfschema:"enabled"`
 	Key                  string                       `tfschema:"key"`
-	Name                 string                       `tfschema:"name"`
 	Label                string                       `tfschema:"label"`
 	Locked               bool                         `tfschema:"locked"`
-	Tags                 map[string]interface{}       `tfschema:"tags"`
+	Name                 string                       `tfschema:"name"`
 	PercentageFilter     float64                      `tfschema:"percentage_filter_value"`
-	TimewindowFilters    []TimewindowFilterParameters `tfschema:"timewindow_filter"`
 	TargetingFilters     []TargetingFilterAudience    `tfschema:"targeting_filter"`
+	Tags                 map[string]interface{}       `tfschema:"tags"`
+	TelemetryEnabled     bool                         `tfschema:"telemetry_enabled"`
+	TimewindowFilters    []TimewindowFilterParameters `tfschema:"timewindow_filter"`
+	Variant              []FeatureVariant             `tfschema:"variant"`
 }
 
 func (k FeatureResource) Arguments() map[string]*pluginsdk.Schema {
@@ -67,14 +70,158 @@ func (k FeatureResource) Arguments() map[string]*pluginsdk.Schema {
 			DiffSuppressFunc: suppress.CaseDifference,
 			ValidateFunc:     configurationstores.ValidateConfigurationStoreID,
 		},
+
+		"name": {
+			Type:         pluginsdk.TypeString,
+			Required:     true,
+			ForceNew:     true,
+			ValidateFunc: validate.AppConfigurationFeatureName,
+		},
+
+		"allocation": {
+			Type:          pluginsdk.TypeList,
+			Optional:      true,
+			ConflictsWith: []string{"custom_filter", "timewindow_filter", "targeting_filter", "percentage_filter_value", "filter_requirement_type"},
+			Elem: &pluginsdk.Resource{
+				Schema: map[string]*pluginsdk.Schema{
+					"default_variant_when_disabled": {
+						Type:         pluginsdk.TypeString,
+						Optional:     true,
+						ValidateFunc: validation.StringIsNotEmpty,
+					},
+
+					"default_variant_when_enabled": {
+						Type:         pluginsdk.TypeString,
+						Optional:     true,
+						ValidateFunc: validation.StringIsNotEmpty,
+					},
+
+					"group_override": {
+						Type:     pluginsdk.TypeList,
+						Optional: true,
+						Elem: &pluginsdk.Resource{
+							Schema: map[string]*pluginsdk.Schema{
+								"groups": {
+									Type:     pluginsdk.TypeList,
+									Optional: true,
+									Elem: &pluginsdk.Schema{
+										Type:         pluginsdk.TypeString,
+										ValidateFunc: validation.StringIsNotEmpty,
+									},
+								},
+
+								"variant": {
+									Type:         pluginsdk.TypeString,
+									Optional:     true,
+									ValidateFunc: validation.StringIsNotEmpty,
+								},
+							},
+						},
+					},
+
+					"percentile": {
+						Type:     pluginsdk.TypeList,
+						Optional: true,
+						Elem: &pluginsdk.Resource{
+							Schema: map[string]*pluginsdk.Schema{
+								"variant": {
+									Type:         pluginsdk.TypeString,
+									Optional:     true,
+									ValidateFunc: validation.StringIsNotEmpty,
+								},
+
+								"from": {
+									Type:         pluginsdk.TypeInt,
+									Optional:     true,
+									ValidateFunc: validation.IntBetween(0, 100),
+								},
+
+								"to": {
+									Type:         pluginsdk.TypeInt,
+									Optional:     true,
+									ValidateFunc: validation.IntBetween(0, 100),
+								},
+							},
+						},
+					},
+
+					"seed": {
+						Type:         pluginsdk.TypeString,
+						Optional:     true,
+						ValidateFunc: validation.StringIsNotEmpty,
+					},
+
+					"user_override": {
+						Type:     pluginsdk.TypeList,
+						Optional: true,
+						Elem: &pluginsdk.Resource{
+							Schema: map[string]*pluginsdk.Schema{
+								"users": {
+									Type:     pluginsdk.TypeList,
+									Optional: true,
+									Elem: &pluginsdk.Schema{
+										Type:         pluginsdk.TypeString,
+										ValidateFunc: validation.StringIsNotEmpty,
+									},
+								},
+
+								"variant": {
+									Type:         pluginsdk.TypeString,
+									Optional:     true,
+									ValidateFunc: validation.StringIsNotEmpty,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+
+		"filter_requirement_type": {
+			Type:          pluginsdk.TypeString,
+			Optional:      true,
+			ConflictsWith: []string{"allocation", "variant"},
+			ValidateFunc:  validation.StringInSlice([]string{"All"}, false),
+		},
+
+		"custom_filter": {
+			Type:          pluginsdk.TypeList,
+			Optional:      true,
+			ConflictsWith: []string{"allocation", "variant"},
+			Elem: &pluginsdk.Resource{
+				Schema: map[string]*pluginsdk.Schema{
+					"name": {
+						Type:         pluginsdk.TypeString,
+						Required:     true,
+						ValidateFunc: validation.StringIsNotEmpty,
+					},
+					"parameters": {
+						Type:             pluginsdk.TypeString,
+						Required:         true,
+						ValidateFunc:     validation.StringIsJSON,
+						DiffSuppressFunc: pluginsdk.SuppressJsonDiff,
+					},
+				},
+			},
+		},
+
 		"description": {
 			Type:     pluginsdk.TypeString,
 			Optional: true,
 		},
+
 		"enabled": {
 			Type:     pluginsdk.TypeBool,
 			Optional: true,
 		},
+
+		"etag": {
+			Type: pluginsdk.TypeString,
+			// NOTE: O+C The value of this is updated anytime the resource changes so this should remain Computed
+			Computed: true,
+			Optional: true,
+		},
+
 		"key": {
 			Type:     pluginsdk.TypeString,
 			Optional: true,
@@ -83,53 +230,74 @@ func (k FeatureResource) Arguments() map[string]*pluginsdk.Schema {
 			ForceNew:     true,
 			ValidateFunc: validate.AppConfigurationFeatureKey,
 		},
-		"name": {
-			Type:         pluginsdk.TypeString,
-			Required:     true,
-			ForceNew:     true,
-			ValidateFunc: validate.AppConfigurationFeatureName,
-		},
-		"etag": {
-			Type: pluginsdk.TypeString,
-			// NOTE: O+C The value of this is updated anytime the resource changes so this should remain Computed
-			Computed: true,
-			Optional: true,
-		},
+
 		"label": {
 			Type:     pluginsdk.TypeString,
 			Optional: true,
 			ForceNew: true,
 		},
+
 		"locked": {
 			Type:     pluginsdk.TypeBool,
 			Optional: true,
 			Default:  false,
 		},
+
 		"percentage_filter_value": {
-			Type:         pluginsdk.TypeFloat,
-			Optional:     true,
-			ValidateFunc: validation.FloatBetween(0, 100),
+			Type:          pluginsdk.TypeFloat,
+			Optional:      true,
+			ConflictsWith: []string{"allocation", "variant"},
+			ValidateFunc:  validation.FloatBetween(0, 100),
 		},
+
 		"targeting_filter": {
-			Type:     pluginsdk.TypeList,
-			Optional: true,
+			Type:          pluginsdk.TypeList,
+			Optional:      true,
+			ConflictsWith: []string{"allocation", "variant"},
 			Elem: &pluginsdk.Resource{
-				Schema: map[string]*schema.Schema{
+				Schema: map[string]*pluginsdk.Schema{
 					"default_rollout_percentage": {
 						Type:         pluginsdk.TypeInt,
 						Required:     true,
 						ValidateFunc: validation.IntBetween(0, 100),
 					},
 
+					"exclusion": {
+						Type:     pluginsdk.TypeList,
+						Optional: true,
+						Elem: &pluginsdk.Resource{
+							Schema: map[string]*pluginsdk.Schema{
+								"groups": {
+									Type:     pluginsdk.TypeList,
+									Optional: true,
+									Elem: &pluginsdk.Schema{
+										Type:         pluginsdk.TypeString,
+										ValidateFunc: validation.StringIsNotEmpty,
+									},
+								},
+
+								"users": {
+									Type:     pluginsdk.TypeList,
+									Optional: true,
+									Elem: &pluginsdk.Schema{
+										Type:         pluginsdk.TypeString,
+										ValidateFunc: validation.StringIsNotEmpty,
+									},
+								},
+							},
+						},
+					},
+
 					"groups": {
 						Type:     pluginsdk.TypeList,
 						Optional: true,
 						Elem: &pluginsdk.Resource{
-							Schema: map[string]*schema.Schema{
+							Schema: map[string]*pluginsdk.Schema{
 								"name": {
 									Type:     pluginsdk.TypeString,
 									Required: true,
 								},
+
 								"rollout_percentage": {
 									Type:         pluginsdk.TypeInt,
 									Required:     true,
@@ -138,35 +306,129 @@ func (k FeatureResource) Arguments() map[string]*pluginsdk.Schema {
 							},
 						},
 					},
+
 					"users": {
 						Type:     pluginsdk.TypeList,
 						Optional: true,
-						Elem: &schema.Schema{
-							Type:         schema.TypeString,
+						Elem: &pluginsdk.Schema{
+							Type:         pluginsdk.TypeString,
 							ValidateFunc: validation.StringIsNotEmpty,
 						},
 					},
 				},
 			},
 		},
-		"timewindow_filter": {
-			Type:     pluginsdk.TypeList,
+
+		"telemetry_enabled": {
+			Type:     pluginsdk.TypeBool,
 			Optional: true,
+			Default:  false,
+		},
+
+		"timewindow_filter": {
+			Type:          pluginsdk.TypeList,
+			Optional:      true,
+			ConflictsWith: []string{"allocation", "variant"},
 			Elem: &pluginsdk.Resource{
-				Schema: map[string]*schema.Schema{
+				Schema: map[string]*pluginsdk.Schema{
 					"start": {
 						Type:         pluginsdk.TypeString,
 						Optional:     true,
 						ValidateFunc: validation.IsRFC3339Time,
 					},
+
 					"end": {
 						Type:         pluginsdk.TypeString,
 						Optional:     true,
 						ValidateFunc: validation.IsRFC3339Time,
 					},
+
+					"recurrence": {
+						Type:     pluginsdk.TypeList,
+						Optional: true,
+						MaxItems: 1,
+						Elem: &pluginsdk.Resource{
+							Schema: map[string]*pluginsdk.Schema{
+								"daily": {
+									Type:     pluginsdk.TypeList,
+									Optional: true,
+									MaxItems: 1,
+									Elem: &pluginsdk.Resource{
+										Schema: map[string]*pluginsdk.Schema{
+											"interval": {
+												Type:         pluginsdk.TypeInt,
+												Required:     true,
+												ValidateFunc: validation.IntAtLeast(1),
+											},
+										},
+									},
+								},
+
+								"weekly": {
+									Type:     pluginsdk.TypeList,
+									Optional: true,
+									MaxItems: 1,
+									Elem: &pluginsdk.Resource{
+										Schema: map[string]*pluginsdk.Schema{
+											"interval": {
+												Type:         pluginsdk.TypeInt,
+												Required:     true,
+												ValidateFunc: validation.IntAtLeast(1),
+											},
+
+											"first_day_of_week": {
+												Type:         pluginsdk.TypeString,
+												Optional:     true,
+												Default:      "Sunday",
+												ValidateFunc: validation.StringInSlice([]string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}, false),
+											},
+
+											"days_of_week": {
+												Type:     pluginsdk.TypeString,
+												Required: true,
+												Elem: &pluginsdk.Schema{
+													Type:         pluginsdk.TypeString,
+													ValidateFunc: validation.StringInSlice([]string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}, false),
+												},
+											},
+										},
+									},
+								},
+
+								"end_date": {
+									Type:         pluginsdk.TypeString,
+									Optional:     true,
+									ValidateFunc: validation.IsRFC3339Time,
+								},
+							},
+						},
+					},
 				},
 			},
 		},
+
+		"variant": {
+			Type:          pluginsdk.TypeList,
+			Optional:      true,
+			ConflictsWith: []string{"custom_filter", "timewindow_filter", "targeting_filter", "percentage_filter_value", "filter_requirement_type"},
+			Elem: &pluginsdk.Resource{
+				Schema: map[string]*pluginsdk.Schema{
+					"name": {
+						Type:         pluginsdk.TypeString,
+						Optional:     true,
+						ValidateFunc: validation.StringIsNotEmpty,
+					},
+
+					"value": {
+						Type:             pluginsdk.TypeString,
+						Optional:         true,
+						ValidateFunc:     validation.StringIsJSON,
+						DiffSuppressFunc: pluginsdk.SuppressJsonDiff,
+					},
+				},
+			},
+		},
+
 		"tags": tags.Schema(),
 	}
 }
