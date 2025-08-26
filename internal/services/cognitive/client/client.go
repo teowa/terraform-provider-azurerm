@@ -6,6 +6,7 @@ package client
 import (
 	"fmt"
 
+	"github.com/hashicorp/go-azure-sdk/resource-manager/cognitive/2025-06-01/accountconnectionresource"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cognitive/2025-06-01/cognitiveservicesaccounts"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cognitive/2025-06-01/deployments"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cognitive/2025-06-01/raiblocklists"
@@ -14,10 +15,11 @@ import (
 )
 
 type Client struct {
-	AccountsClient      *cognitiveservicesaccounts.CognitiveServicesAccountsClient
-	DeploymentsClient   *deployments.DeploymentsClient
-	RaiBlocklistsClient *raiblocklists.RaiBlocklistsClient
-	RaiPoliciesClient   *raipolicies.RaiPoliciesClient
+	AccountsClient           *cognitiveservicesaccounts.CognitiveServicesAccountsClient
+	AccountConnectionsClient *accountconnectionresource.AccountConnectionResourceClient
+	DeploymentsClient        *deployments.DeploymentsClient
+	RaiBlocklistsClient      *raiblocklists.RaiBlocklistsClient
+	RaiPoliciesClient        *raipolicies.RaiPoliciesClient
 }
 
 func NewClient(o *common.ClientOptions) (*Client, error) {
@@ -26,6 +28,12 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 		return nil, fmt.Errorf("building Accounts client: %+v", err)
 	}
 	o.Configure(accountsClient.Client, o.Authorizers.ResourceManager)
+
+	accountConnectionsClient, err := accountconnectionresource.NewAccountConnectionResourceClientWithBaseURI(o.Environment.ResourceManager)
+	if err != nil {
+		return nil, fmt.Errorf("building Account Connections client: %+v", err)
+	}
+	o.Configure(accountConnectionsClient.Client, o.Authorizers.ResourceManager)
 
 	deploymentsClient, err := deployments.NewDeploymentsClientWithBaseURI(o.Environment.ResourceManager)
 	if err != nil {
@@ -46,9 +54,10 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 	o.Configure(raiBlobklistsClient.Client, o.Authorizers.ResourceManager)
 
 	return &Client{
-		AccountsClient:      accountsClient,
-		DeploymentsClient:   deploymentsClient,
-		RaiBlocklistsClient: raiBlobklistsClient,
-		RaiPoliciesClient:   raiPoliciesClient,
+		AccountsClient:           accountsClient,
+		AccountConnectionsClient: accountConnectionsClient,
+		DeploymentsClient:        deploymentsClient,
+		RaiBlocklistsClient:      raiBlobklistsClient,
+		RaiPoliciesClient:        raiPoliciesClient,
 	}, nil
 }

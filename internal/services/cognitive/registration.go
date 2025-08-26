@@ -42,6 +42,7 @@ func (r Registration) SupportedDataSources() map[string]*pluginsdk.Resource {
 func (r Registration) SupportedResources() map[string]*pluginsdk.Resource {
 	return map[string]*pluginsdk.Resource{
 		"azurerm_cognitive_account":                      resourceCognitiveAccount(),
+		"azurerm_cognitive_account_connection":           resourceCognitiveAccountConnection(),
 		"azurerm_cognitive_account_customer_managed_key": resourceCognitiveAccountCustomerManagedKey(),
 	}
 }
