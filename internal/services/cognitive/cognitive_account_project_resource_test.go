@@ -113,16 +113,16 @@ resource "azurerm_resource_group" "test" {
 }
 
 resource "azurerm_cognitive_account" "test" {
-  name                = "acctestcogacc-%[1]d"
-  location            = azurerm_resource_group.test.location
-  resource_group_name = azurerm_resource_group.test.name
-  kind                = "AIServices"
-  sku_name            = "S0"
-	project_management_enabled = true
-  custom_subdomain_name              = "acctestaiservices-%[1]d"
-	identity {
-		type = "SystemAssigned"
-	}
+  name                       = "acctestcogacc-%[1]d"
+  location                   = azurerm_resource_group.test.location
+  resource_group_name        = azurerm_resource_group.test.name
+  kind                       = "AIServices"
+  sku_name                   = "S0"
+  project_management_enabled = true
+  custom_subdomain_name      = "acctestaiservices-%[1]d"
+  identity {
+    type = "SystemAssigned"
+  }
 }
 `, data.RandomInteger, data.Locations.Primary)
 }
@@ -139,9 +139,9 @@ resource "azurerm_cognitive_account_project" "test" {
   name                 = "acctest-project-%d"
   cognitive_account_id = azurerm_cognitive_account.test.id
   location             = azurerm_resource_group.test.location
-	identity {
-		type = "SystemAssigned"
-	}
+  identity {
+    type = "SystemAssigned"
+  }
 }
 `, r.template(data), data.RandomInteger)
 }
