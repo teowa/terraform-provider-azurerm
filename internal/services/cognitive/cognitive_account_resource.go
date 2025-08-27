@@ -70,6 +70,7 @@ func resourceCognitiveAccount() *pluginsdk.Resource {
 				Required: true,
 				ForceNew: true,
 				ValidateFunc: validation.StringInSlice([]string{
+					"AIServices",
 					"Academic",
 					"AnomalyDetector",
 					"Bing.Autosuggest",
@@ -115,6 +116,12 @@ func resourceCognitiveAccount() *pluginsdk.Resource {
 				ValidateFunc: validation.StringInSlice([]string{
 					"F0", "F1", "S0", "S", "S1", "S2", "S3", "S4", "S5", "S6", "P0", "P1", "P2", "E0", "DC0",
 				}, false),
+			},
+
+			"project_management_enabled": {
+				Type:     pluginsdk.TypeBool,
+				Optional: true,
+				Default:  false,
 			},
 
 			"custom_subdomain_name": {
@@ -388,15 +395,15 @@ func resourceCognitiveAccountCreate(d *pluginsdk.ResourceData, meta interface{})
 		Location: utils.String(azure.NormalizeLocation(d.Get("location").(string))),
 		Sku:      &sku,
 		Properties: &cognitiveservicesaccounts.AccountProperties{
-			ApiProperties:                 apiProps,
-			NetworkAcls:                   networkAcls,
-			CustomSubDomainName:           utils.String(d.Get("custom_subdomain_name").(string)),
-			AllowedFqdnList:               utils.ExpandStringSlice(d.Get("fqdns").([]interface{})),
+			ApiProperties:          apiProps,
+			NetworkAcls:            networkAcls,
+			CustomSubDomainName:    utils.String(d.Get("custom_subdomain_name").(string)),
+			AllowedFqdnList:        utils.ExpandStringSlice(d.Get("fqdns").([]interface{})),
+			AllowProjectManagement: pointer.To(d.Get("project_management_enabled").(bool)), DynamicThrottlingEnabled: utils.Bool(d.Get("dynamic_throttling_enabled").(bool)),
 			PublicNetworkAccess:           &publicNetworkAccess,
 			UserOwnedStorage:              expandCognitiveAccountStorage(d.Get("storage").([]interface{})),
 			RestrictOutboundNetworkAccess: utils.Bool(d.Get("outbound_network_access_restricted").(bool)),
 			DisableLocalAuth:              utils.Bool(!d.Get("local_auth_enabled").(bool)),
-			DynamicThrottlingEnabled:      utils.Bool(d.Get("dynamic_throttling_enabled").(bool)),
 			Encryption:                    expandCognitiveAccountCustomerManagedKey(d.Get("customer_managed_key").([]interface{})),
 		},
 		Tags: tags.Expand(d.Get("tags").(map[string]interface{})),
@@ -408,7 +415,7 @@ func resourceCognitiveAccountCreate(d *pluginsdk.ResourceData, meta interface{})
 	}
 	props.Identity = identity
 
-	if _, err := client.AccountsCreate(ctx, id, props); err != nil {
+	if err := client.AccountsCreateThenPoll(ctx, id, props); err != nil {
 		return fmt.Errorf("creating %s: %+v", id, err)
 	}
 
@@ -584,6 +591,8 @@ func resourceCognitiveAccountRead(d *pluginsdk.ResourceData, meta interface{}) e
 			d.Set("dynamic_throttling_enabled", dynamicThrottlingEnabled)
 
 			d.Set("fqdns", utils.FlattenStringSlice(props.AllowedFqdnList))
+
+			d.Set("project_management_enabled", props.AllowProjectManagement)
 
 			publicNetworkAccess := true
 			if props.PublicNetworkAccess != nil {
