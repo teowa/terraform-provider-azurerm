@@ -33,6 +33,10 @@ resource "azurerm_cognitive_account_project" "example" {
   description          = "Example project description"
   display_name         = "Example Project"
 
+  identity {
+    type = "SystemAssigned"
+  }
+
   tags = {
     Environment = "Production"
   }
@@ -49,11 +53,11 @@ The following arguments are supported:
 
 * `location` - (Required) The Azure Region where the Cognitive Account Project should exist. Changing this forces a new resource to be created.
 
+* `identity` - (Required) An `identity` block as defined below.
+
 * `description` - (Optional) The description of the Cognitive Account Project.
 
 * `display_name` - (Optional) The display name of the Cognitive Account Project.
-
-* `identity` - (Optional) An `identity` block as defined below.
 
 * `tags` - (Optional) A mapping of tags to assign to the resource.
 
@@ -64,8 +68,6 @@ An `identity` block supports the following:
 * `type` - (Required) Specifies the type of Managed Service Identity that should be configured on this Cognitive Account Project. Possible values are `SystemAssigned`, `UserAssigned`, `SystemAssigned, UserAssigned` (to enable both).
 
 * `identity_ids` - (Optional) Specifies a list of User Assigned Managed Identity IDs to be assigned to this Cognitive Account Project.
-
-~> **Note:** This is required when `type` is set to `UserAssigned` or `SystemAssigned, UserAssigned`.
 
 ## Attributes Reference
 
@@ -78,6 +80,16 @@ In addition to the Arguments listed above - the following Attributes are exporte
 * `is_default` - Whether this project is the default project for the Cognitive Account.
 
 * `provisioning_state` - The provisioning state of the Cognitive Account Project.
+
+* `identity` - An `identity` block as defined below.
+
+---
+
+An `identity` block exports the following:
+
+* `principal_id` - The Principal ID associated with this Managed Service Identity.
+
+* `tenant_id` - The Tenant ID associated with this Managed Service Identity.
 
 ## Timeouts
 
@@ -95,3 +107,9 @@ Cognitive Account Projects can be imported using the `resource id`, e.g.
 ```shell
 terraform import azurerm_cognitive_account_project.example /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/group1/providers/Microsoft.CognitiveServices/accounts/account1/projects/project1
 ```
+
+## API Providers
+<!-- This section is generated, changes will be overwritten -->
+This resource uses the following Azure API Providers:
+
+* `Microsoft.CognitiveServices` - 2025-06-01
