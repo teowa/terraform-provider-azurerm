@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
+	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cognitive/2025-06-01/cognitiveservicesaccounts"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cognitive/2025-06-01/deployments"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/locks"
@@ -22,10 +23,13 @@ import (
 type cognitiveDeploymentModel struct {
 	Name                     string                 `tfschema:"name"`
 	CognitiveAccountId       string                 `tfschema:"cognitive_account_id"`
+	CurrentCapacity          int64                  `tfschema:"current_capacity"`
 	DynamicThrottlingEnabled bool                   `tfschema:"dynamic_throttling_enabled"`
 	Model                    []DeploymentModelModel `tfschema:"model"`
 	RaiPolicyName            string                 `tfschema:"rai_policy_name"`
 	Sku                      []DeploymentSkuModel   `tfschema:"sku"`
+	SpilloverDeploymentName  string                 `tfschema:"spillover_deployment_name"`
+	Tags                     map[string]string      `tfschema:"tags"`
 	VersionUpgradeOption     string                 `tfschema:"version_upgrade_option"`
 }
 
@@ -73,11 +77,6 @@ func (r CognitiveDeploymentResource) Arguments() map[string]*pluginsdk.Schema {
 			Required:     true,
 			ForceNew:     true,
 			ValidateFunc: cognitiveservicesaccounts.ValidateAccountID,
-		},
-
-		"dynamic_throttling_enabled": {
-			Type:     pluginsdk.TypeBool,
-			Optional: true,
 		},
 
 		"model": {
@@ -166,9 +165,21 @@ func (r CognitiveDeploymentResource) Arguments() map[string]*pluginsdk.Schema {
 			},
 		},
 
+		"dynamic_throttling_enabled": {
+			Type:     pluginsdk.TypeBool,
+			Optional: true,
+		},
+
 		"rai_policy_name": {
 			Type:         pluginsdk.TypeString,
 			Optional:     true,
+			ValidateFunc: validation.StringIsNotEmpty,
+		},
+
+		"spillover_deployment_name": {
+			Type:         pluginsdk.TypeString,
+			Optional:     true,
+			ForceNew:     true,
 			ValidateFunc: validation.StringIsNotEmpty,
 		},
 
@@ -182,11 +193,18 @@ func (r CognitiveDeploymentResource) Arguments() map[string]*pluginsdk.Schema {
 				string(deployments.DeploymentModelVersionUpgradeOptionNoAutoUpgrade),
 			}, false),
 		},
+
+		"tags": commonschema.Tags(),
 	}
 }
 
 func (r CognitiveDeploymentResource) Attributes() map[string]*pluginsdk.Schema {
-	return map[string]*pluginsdk.Schema{}
+	return map[string]*pluginsdk.Schema{
+		"current_capacity": {
+			Type:     pluginsdk.TypeInt,
+			Computed: true,
+		},
+	}
 }
 
 func (r CognitiveDeploymentResource) Create() sdk.ResourceFunc {
@@ -219,6 +237,7 @@ func (r CognitiveDeploymentResource) Create() sdk.ResourceFunc {
 
 			properties := &deployments.Deployment{
 				Properties: &deployments.DeploymentProperties{},
+				Tags:       pointer.To(model.Tags),
 			}
 
 			properties.Properties.Model = expandDeploymentModelModel(model.Model)
@@ -234,6 +253,10 @@ func (r CognitiveDeploymentResource) Create() sdk.ResourceFunc {
 			if model.VersionUpgradeOption != "" {
 				option := deployments.DeploymentModelVersionUpgradeOption(model.VersionUpgradeOption)
 				properties.Properties.VersionUpgradeOption = &option
+			}
+
+			if model.SpilloverDeploymentName != "" {
+				properties.Properties.SpilloverDeploymentName = pointer.To(model.SpilloverDeploymentName)
 			}
 
 			properties.Sku = expandDeploymentSkuModel(model.Sku)
@@ -293,6 +316,10 @@ func (r CognitiveDeploymentResource) Update() sdk.ResourceFunc {
 				properties.Properties.Model.Version = pointer.To(model.Model[0].Version)
 			}
 
+			if metadata.ResourceData.HasChange("tags") {
+				properties.Tags = pointer.To(model.Tags)
+			}
+
 			properties.Properties.VersionUpgradeOption = pointer.To(deployments.DeploymentModelVersionUpgradeOption(model.VersionUpgradeOption))
 
 			if err := client.CreateOrUpdateThenPoll(ctx, *id, *properties); err != nil {
@@ -333,13 +360,15 @@ func (r CognitiveDeploymentResource) Read() sdk.ResourceFunc {
 			state := cognitiveDeploymentModel{
 				Name:               id.DeploymentName,
 				CognitiveAccountId: cognitiveservicesaccounts.NewAccountID(id.SubscriptionId, id.ResourceGroupName, id.AccountName).ID(),
+				Tags:               pointer.From(model.Tags),
 			}
 
 			if properties := model.Properties; properties != nil {
 				state.Model = flattenDeploymentModelModel(properties.Model)
-
+				state.CurrentCapacity = pointer.From(properties.CurrentCapacity)
 				state.DynamicThrottlingEnabled = pointer.From(properties.DynamicThrottlingEnabled)
 				state.RaiPolicyName = pointer.From(properties.RaiPolicyName)
+				state.SpilloverDeploymentName = pointer.From(properties.SpilloverDeploymentName)
 				state.VersionUpgradeOption = string(pointer.From(properties.VersionUpgradeOption))
 			}
 			if sku := flattenDeploymentSkuModel(model.Sku); sku != nil {

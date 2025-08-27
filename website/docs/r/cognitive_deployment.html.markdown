@@ -59,7 +59,11 @@ The following arguments are supported:
 
 * `rai_policy_name` - (Optional) The name of RAI policy.
 
+* `spillover_deployment_name` - (Optional) The name of a spillover deployment to use when routing requests if the primary deployment is unavailable.
+
 * `version_upgrade_option` - (Optional) Deployment model version upgrade option. Possible values are `OnceNewDefaultVersionAvailable`, `OnceCurrentVersionExpired`, and `NoAutoUpgrade`. Defaults to `OnceNewDefaultVersionAvailable`.
+
+* `tags` - (Optional) A mapping of tags to assign to the resource.
 
 ---
 
@@ -94,6 +98,8 @@ A `sku` block supports the following:
 In addition to the Arguments listed above - the following Attributes are exported:
 
 * `id` - The ID of the Deployment for Azure Cognitive Services Account.
+
+* `current_capacity` - The current capacity in tokens-per-minute (TPM) for the deployment.
 
 ## Timeouts
 

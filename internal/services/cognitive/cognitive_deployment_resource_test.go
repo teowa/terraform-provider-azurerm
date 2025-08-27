@@ -114,6 +114,20 @@ func TestAccCognitiveDeployment_update(t *testing.T) {
 	})
 }
 
+func TestAccCognitiveDeployment_globalProvisionedManaged(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_cognitive_deployment", "test")
+	r := CognitiveDeploymentTestResource{}
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.globalProvisionedManaged(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
 func (r CognitiveDeploymentTestResource) Exists(ctx context.Context, clients *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
 	id, err := deployments.ParseDeploymentID(state.ID)
 	if err != nil {
@@ -281,4 +295,51 @@ resource "azurerm_cognitive_deployment" "test" {
   }
 }
 `, template, data.RandomInteger, versionUpgradeOption)
+}
+
+func (r CognitiveDeploymentTestResource) globalProvisionedManaged(data acceptance.TestData) string {
+	template := r.template(data)
+	return fmt.Sprintf(`
+%s
+
+resource "azurerm_ai_services" "test" {
+  name                = "acctestcogacc-%d"
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
+  sku_name            = "S0"
+}
+
+resource "azurerm_cognitive_deployment" "testsp" {
+  name                   = "acctest-cd-sp-%[2]d"
+  cognitive_account_id   = azurerm_ai_services.test.id
+  rai_policy_name        = "Microsoft.DefaultV2"
+  version_upgrade_option = "OnceNewDefaultVersionAvailable"
+  model {
+    format  = "OpenAI"
+    name    = "gpt-4o-mini"
+    version = "2024-07-18"
+  }
+  sku {
+    name = "GlobalStandard"
+  }
+}
+
+resource "azurerm_cognitive_deployment" "test" {
+  name                       = "acctest-cd-%[2]d"
+  cognitive_account_id       = azurerm_ai_services.test.id
+  dynamic_throttling_enabled = true
+  spillover_deployment_name  = azurerm_cognitive_deployment.testsp.name
+  rai_policy_name            = "Microsoft.DefaultV2"
+  version_upgrade_option     = "OnceNewDefaultVersionAvailable"
+  model {
+    format  = "OpenAI"
+    name    = "gpt-4o-mini"
+    version = "2024-07-18"
+  }
+  sku {
+    name     = "GlobalProvisionedManaged"
+    capacity = 15
+  }
+}
+`, template, data.RandomInteger)
 }
