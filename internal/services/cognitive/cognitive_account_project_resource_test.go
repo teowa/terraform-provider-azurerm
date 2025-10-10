@@ -54,7 +54,7 @@ func TestAccCognitiveAccountProject_complete(t *testing.T) {
 			Config: r.complete(data),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
-				check.That(data.ResourceName).Key("endpoints").IsNotEmpty(),
+				check.That(data.ResourceName).Key("endpoints.%").IsNotEmpty(),
 				check.That(data.ResourceName).Key("is_default").IsNotEmpty(),
 			),
 		},
@@ -148,16 +148,15 @@ resource "azurerm_cognitive_account_project" "test" {
 
 func (r CognitiveAccountProjectResource) requiresImport(data acceptance.TestData) string {
 	return fmt.Sprintf(`
-provider "azurerm" {
-  features {}
-}
-
 %s
 
 resource "azurerm_cognitive_account_project" "import" {
   name                 = azurerm_cognitive_account_project.test.name
   cognitive_account_id = azurerm_cognitive_account_project.test.cognitive_account_id
   location             = azurerm_cognitive_account_project.test.location
+	identity {
+		type = azurerm_cognitive_account_project.test.identity[0].type
+	}
 }
 `, r.basic(data))
 }
