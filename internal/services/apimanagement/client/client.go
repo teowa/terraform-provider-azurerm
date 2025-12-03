@@ -51,6 +51,7 @@ import (
 	"github.com/hashicorp/go-azure-sdk/resource-manager/apimanagement/2022-08-01/tag"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/apimanagement/2022-08-01/tenantaccess"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/apimanagement/2022-08-01/user"
+	api_v2024_05_01 "github.com/hashicorp/go-azure-sdk/resource-manager/apimanagement/2024-05-01/api"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/apimanagement/2024-05-01/apigateway"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/apimanagement/2024-05-01/apimanagementservice"
 	apiversionset_v2024_05_01 "github.com/hashicorp/go-azure-sdk/resource-manager/apimanagement/2024-05-01/apiversionset"
@@ -117,6 +118,7 @@ type Client struct {
 	TagClient                          *tag.TagClient
 	TenantAccessClient                 *tenantaccess.TenantAccessClient
 	UsersClient                        *user.UserClient
+	WorkspaceApiClient                 *api_v2024_05_01.ApiClient
 	WorkspaceClient                    *workspace.WorkspaceClient
 }
 
@@ -445,6 +447,12 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 	}
 	o.Configure(workspaceClient.Client, o.Authorizers.ResourceManager)
 
+	workspaceApiClient, err := api_v2024_05_01.NewApiClientWithBaseURI(o.Environment.ResourceManager)
+	if err != nil {
+		return nil, fmt.Errorf("building workspace API client: %+v", err)
+	}
+	o.Configure(workspaceApiClient.Client, o.Authorizers.ResourceManager)
+
 	return &Client{
 		ApiClient:                          apiClient,
 		ApiDiagnosticClient:                apiDiagnosticClient,
@@ -499,6 +507,7 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 		TagClient:                          tagClient,
 		TenantAccessClient:                 tenantAccessClient,
 		UsersClient:                        usersClient,
+		WorkspaceApiClient:                 workspaceApiClient,
 		WorkspaceClient:                    workspaceClient,
 	}, nil
 }
