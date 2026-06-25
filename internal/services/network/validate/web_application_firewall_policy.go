@@ -7,9 +7,7 @@ import (
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
 )
 
-// ValidateWebApplicationFirewallPolicyRuleGroupName the following command will return a list of available Rule Group Names with information on whether the rules are GA, Deprecated, etc.:
-// az rest --method get --url “https://management.azure.com/subscriptions/{subscription_id_here}/providers/Microsoft.Network/locations/{location}/applicationGatewayWafDynamicManifests/default?api-version=2023-05-01” --query “properties.availableRuleSets[].ruleGroups[].ruleGroupName” | sort | uniq
-var ValidateWebApplicationFirewallPolicyRuleGroupName = validation.StringInSlice([]string{
+var webApplicationFirewallPolicyRuleGroupNames = []string{
 	"BadBots",
 	"crs_20_protocol_violations",
 	"crs_21_protocol_anomalies",
@@ -56,7 +54,23 @@ var ValidateWebApplicationFirewallPolicyRuleGroupName = validation.StringInSlice
 	"MS-ThreatIntel-SQLI",
 	"MS-ThreatIntel-CVEs",
 	"MS-ThreatIntel-XSS",
-}, false)
+}
+
+var webApplicationFirewallPolicyManagedRuleGroupNames = append(append([]string{}, webApplicationFirewallPolicyRuleGroupNames...), "ExcessiveRequests")
+
+var webApplicationFirewallPolicyRuleSetTypes = []string{
+	"OWASP",
+	"Microsoft_BotManagerRuleSet",
+	"Microsoft_DefaultRuleSet",
+}
+
+var webApplicationFirewallPolicyManagedRuleSetTypes = append(append([]string{}, webApplicationFirewallPolicyRuleSetTypes...), "Microsoft_HTTPDDoSRuleSet")
+
+// ValidateWebApplicationFirewallPolicyRuleGroupName the following command will return a list of available Rule Group Names with information on whether the rules are GA, Deprecated, etc.:
+// az rest --method get --url “https://management.azure.com/subscriptions/{subscription_id_here}/providers/Microsoft.Network/locations/{location}/applicationGatewayWafDynamicManifests/default?api-version=2023-05-01” --query “properties.availableRuleSets[].ruleGroups[].ruleGroupName” | sort | uniq
+var ValidateWebApplicationFirewallPolicyRuleGroupName = validation.StringInSlice(webApplicationFirewallPolicyRuleGroupNames, false)
+
+var ValidateWebApplicationFirewallPolicyManagedRuleGroupName = validation.StringInSlice(webApplicationFirewallPolicyManagedRuleGroupNames, false)
 
 var ValidateWebApplicationFirewallPolicyRuleSetVersion = validation.StringInSlice([]string{
 	"0.1",
@@ -70,11 +84,9 @@ var ValidateWebApplicationFirewallPolicyRuleSetVersion = validation.StringInSlic
 	"3.2",
 }, false)
 
-var ValidateWebApplicationFirewallPolicyRuleSetType = validation.StringInSlice([]string{
-	"OWASP",
-	"Microsoft_BotManagerRuleSet",
-	"Microsoft_DefaultRuleSet",
-}, false)
+var ValidateWebApplicationFirewallPolicyRuleSetType = validation.StringInSlice(webApplicationFirewallPolicyRuleSetTypes, false)
+
+var ValidateWebApplicationFirewallPolicyManagedRuleSetType = validation.StringInSlice(webApplicationFirewallPolicyManagedRuleSetTypes, false)
 
 var ValidateWebApplicationFirewallPolicyExclusionRuleSetVersion = validation.StringInSlice([]string{
 	"1.0",

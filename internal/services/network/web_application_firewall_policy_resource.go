@@ -289,7 +289,7 @@ func resourceWebApplicationFirewallPolicy() *pluginsdk.Resource {
 										Type:         pluginsdk.TypeString,
 										Optional:     true,
 										Default:      "OWASP",
-										ValidateFunc: validate.ValidateWebApplicationFirewallPolicyRuleSetType,
+										ValidateFunc: validate.ValidateWebApplicationFirewallPolicyManagedRuleSetType,
 									},
 									"version": {
 										Type:         pluginsdk.TypeString,
@@ -304,7 +304,7 @@ func resourceWebApplicationFirewallPolicy() *pluginsdk.Resource {
 												"rule_group_name": {
 													Type:         pluginsdk.TypeString,
 													Required:     true,
-													ValidateFunc: validate.ValidateWebApplicationFirewallPolicyRuleGroupName,
+													ValidateFunc: validate.ValidateWebApplicationFirewallPolicyManagedRuleGroupName,
 												},
 												"rule": {
 													Type:     pluginsdk.TypeList,
@@ -333,6 +333,12 @@ func resourceWebApplicationFirewallPolicy() *pluginsdk.Resource {
 																	string(webapplicationfirewallpolicies.ActionTypeJSChallenge),
 																	string(webapplicationfirewallpolicies.ActionTypeLog),
 																}, false),
+															},
+
+															"sensitivity": {
+																Type:         pluginsdk.TypeString,
+																Optional:     true,
+																ValidateFunc: validation.StringInSlice(webapplicationfirewallpolicies.PossibleValuesForSensitivityType(), false),
 															},
 														},
 													},
@@ -947,6 +953,11 @@ func expandWebApplicationFirewallPolicyOverrideRules(input []interface{}) *[]web
 			result.Action = pointer.To(webapplicationfirewallpolicies.ActionType(action))
 		}
 
+		sensitivity := v["sensitivity"].(string)
+		if sensitivity != "" {
+			result.Sensitivity = pointer.To(webapplicationfirewallpolicies.SensitivityType(sensitivity))
+		}
+
 		results = append(results, result)
 	}
 
@@ -1213,6 +1224,7 @@ func flattenWebApplicationFirewallPolicyOverrideRules(input *[]webapplicationfir
 		v["enabled"] = pointer.From(item.State) == webapplicationfirewallpolicies.ManagedRuleEnabledStateEnabled
 
 		v["action"] = string(pointer.From(item.Action))
+		v["sensitivity"] = string(pointer.From(item.Sensitivity))
 
 		results = append(results, v)
 	}

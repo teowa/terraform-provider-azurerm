@@ -367,6 +367,27 @@ func TestAccWebApplicationFirewallPolicy_ManagedRuleSetDRS(t *testing.T) {
 	})
 }
 
+func TestAccWebApplicationFirewallPolicy_ManagedRuleSetHTTPDDoS(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_web_application_firewall_policy", "test")
+	r := WebApplicationFirewallPolicyResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.withManagedRuleSetHTTPDDoS(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("managed_rules.0.managed_rule_set.0.type").HasValue("Microsoft_HTTPDDoSRuleSet"),
+				check.That(data.ResourceName).Key("managed_rules.0.managed_rule_set.0.version").HasValue("1.0"),
+				check.That(data.ResourceName).Key("managed_rules.0.managed_rule_set.0.rule_group_override.0.rule_group_name").HasValue("ExcessiveRequests"),
+				check.That(data.ResourceName).Key("managed_rules.0.managed_rule_set.0.rule_group_override.0.rule.0.id").HasValue("500100"),
+				check.That(data.ResourceName).Key("managed_rules.0.managed_rule_set.0.rule_group_override.0.rule.0.action").HasValue("Block"),
+				check.That(data.ResourceName).Key("managed_rules.0.managed_rule_set.0.rule_group_override.0.rule.0.sensitivity").HasValue("High"),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
 func TestAccWebApplicationFirewallPolicy_updateCustomRules(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_web_application_firewall_policy", "test")
 	r := WebApplicationFirewallPolicyResource{}
@@ -1786,6 +1807,48 @@ resource "azurerm_web_application_firewall_policy" "test" {
           id      = "99032001"
           enabled = false
           action  = "Log"
+        }
+      }
+    }
+  }
+}
+`, data.RandomInteger, data.Locations.Primary)
+}
+
+func (WebApplicationFirewallPolicyResource) withManagedRuleSetHTTPDDoS(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_resource_group" "test" {
+  name     = "acctestRG-%[1]d"
+  location = "%[2]s"
+}
+
+resource "azurerm_web_application_firewall_policy" "test" {
+  name                = "acctestwafpolicy-%[1]d"
+  resource_group_name = azurerm_resource_group.test.name
+  location            = azurerm_resource_group.test.location
+
+  policy_settings {
+    enabled = true
+    mode    = "Detection"
+  }
+
+  managed_rules {
+    managed_rule_set {
+      type    = "Microsoft_HTTPDDoSRuleSet"
+      version = "1.0"
+
+      rule_group_override {
+        rule_group_name = "ExcessiveRequests"
+
+        rule {
+          id          = "500100"
+          enabled     = true
+          action      = "Block"
+          sensitivity = "High"
         }
       }
     }
