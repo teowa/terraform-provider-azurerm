@@ -81,19 +81,23 @@ The following arguments are supported:
 
 * `private_link_service_network_policies_enabled` - (Optional) Enable or Disable network policies for the private link service on the subnet. Defaults to `true`.
 
--> **Note:** When configuring Azure Private Link service, the explicit setting `private_link_service_network_policies_enabled` must be set to `false` in the subnet since Private Link Service does not support network policies like user-defined Routes and Network Security Groups. This setting only affects the Private Link service. For other resources in the subnet, access is controlled based on the Network Security Group which can be configured using the `azurerm_subnet_network_security_group_association` resource. See more details from [Manage network policies for Private Link Services](https://learn.microsoft.com/en-gb/azure/private-link/disable-private-link-service-network-policy?tabs=private-link-network-policy-powershell).
+-> **Note:** When configuring Azure Private Link service, the explicit setting `private_link_service_network_policies_enabled` must be set to `false` in the subnet since Private Link Service does not support network policies like user-defined Routes and Network Security Groups. This setting only affects the Private Link service. For other resources in the subnet, access is controlled based on the Network Security Group which can be configured using the `azurerm_subnet_network_security_group_association` resource. See more details from [Manage network policies for Private Link Services](https://learn.microsoft.com/azure/private-link/disable-private-link-service-network-policy?tabs=private-link-network-policy-powershell).
 
-* `sharing_scope` - (Optional) The sharing scope of the subnet. Possible value is `Tenant`.
+* `sharing_scope` - (Optional) The sharing scope of the subnet. The only possible value is `Tenant`.
 
 ~> **Note:** This property cannot be set if `default_outbound_access_enabled` is set to `true`.
 
 !> **Note:** The `sharing_scope` property is only available to users who have been explicitly registered and granted access by the Azure Networking Product Group.
 
-* `service_endpoints` - (Optional) The list of Service endpoints to associate with the subnet. Possible values include: `Microsoft.AzureActiveDirectory`, `Microsoft.AzureCosmosDB`, `Microsoft.ContainerRegistry`, `Microsoft.EventHub`, `Microsoft.KeyVault`, `Microsoft.ServiceBus`, `Microsoft.Sql`, `Microsoft.Storage`, `Microsoft.Storage.Global` and `Microsoft.Web`.
+* `service_endpoint` - (Optional) One or more `service_endpoint` blocks as defined below.
 
--> **Note:** In order to use `Microsoft.Storage.Global` service endpoint (which allows access to virtual networks in other regions), you must enable the `AllowGlobalTagsForStorage` feature in your subscription. This is currently a preview feature, please see the [official documentation](https://learn.microsoft.com/en-us/azure/storage/common/storage-network-security?tabs=azure-cli#enabling-access-to-virtual-networks-in-other-regions-preview) for more information.
+~> **Note:** Each `service_endpoint` block must specify at least one of `locations` or `network_identifier_id`, and a service cannot be configured in both `service_endpoints` and `service_endpoint`.
 
 * `service_endpoint_policy_ids` - (Optional) The list of IDs of Service Endpoint Policies to associate with the subnet.
+
+* `service_endpoints` - (Optional) The list of Service endpoints to associate with the subnet. Possible values are `Microsoft.AzureActiveDirectory`, `Microsoft.AzureCosmosDB`, `Microsoft.ContainerRegistry`, `Microsoft.EventHub`, `Microsoft.KeyVault`, `Microsoft.ServiceBus`, `Microsoft.Sql`, `Microsoft.Storage`, `Microsoft.Storage.Global`, and `Microsoft.Web`.
+
+-> **Note:** In order to use `Microsoft.Storage.Global` service endpoint (which allows access to virtual networks in other regions), you must enable the `AllowGlobalTagsForStorage` feature in your subscription. This is currently a preview feature, please see the [official documentation](https://learn.microsoft.com/azure/storage/common/storage-network-security?tabs=azure-cli#enabling-access-to-virtual-networks-in-other-regions-preview) for more information.
 
 ---
 
@@ -112,6 +116,16 @@ An `ip_address_pool` block supports the following:
 * `number_of_ip_addresses` - (Required) The number of IP addresses to allocated to the subnet. The value must be a string that represents a positive number, e.g., `"100"`.
 
 ~> **Note:** `number_of_ip_addresses` cannot be decreased.
+
+---
+
+A `service_endpoint` block supports the following:
+
+* `service` - (Required) The service endpoint to associate with the subnet.
+
+* `locations` - (Optional) The list of locations to scope the service endpoint to.
+
+* `network_identifier_id` - (Optional) The resource ID to use as the network identifier for the service endpoint.
 
 ---
 

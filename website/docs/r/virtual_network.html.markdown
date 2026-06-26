@@ -149,15 +149,19 @@ The `subnet` block supports:
 
 * `private_link_service_network_policies_enabled` - (Optional) Enable or Disable network policies for the private link service on the subnet. Defaults to `true`.
 
--> **Note:** When configuring Azure Private Link service, the explicit setting `private_link_service_network_policies_enabled` must be set to `false` in the subnet since Private Link Service does not support network policies like user-defined Routes and Network Security Groups. This setting only affects the Private Link service. For other resources in the subnet, access is controlled based on the Network Security Group which can be configured using the `azurerm_subnet_network_security_group_association` resource. See more details from [Manage network policies for Private Link Services](https://learn.microsoft.com/en-gb/azure/private-link/disable-private-link-service-network-policy?tabs=private-link-network-policy-powershell).
+-> **Note:** When configuring Azure Private Link service, the explicit setting `private_link_service_network_policies_enabled` must be set to `false` in the subnet since Private Link Service does not support network policies like user-defined Routes and Network Security Groups. This setting only affects the Private Link service. For other resources in the subnet, access is controlled based on the Network Security Group which can be configured using the `azurerm_subnet_network_security_group_association` resource. See more details from [Manage network policies for Private Link Services](https://learn.microsoft.com/azure/private-link/disable-private-link-service-network-policy?tabs=private-link-network-policy-powershell).
 
 * `route_table_id` - (Optional) The ID of the Route Table that should be associated with this subnet.
 
 -> **Note:** If you declare the subnet inline inside `azurerm_virtual_network`, set `route_table_id` in that `subnet` block — do not also create an `azurerm_subnet_route_table_association` for the same subnet. The association resource is for when you manage the subnet as a separate `azurerm_subnet` resource.
 
-* `service_endpoints` - (Optional) The list of Service endpoints to associate with the subnet. Possible values include: `Microsoft.AzureActiveDirectory`, `Microsoft.AzureCosmosDB`, `Microsoft.ContainerRegistry`, `Microsoft.EventHub`, `Microsoft.KeyVault`, `Microsoft.ServiceBus`, `Microsoft.Sql`, `Microsoft.Storage`, `Microsoft.Storage.Global` and `Microsoft.Web`.
+* `service_endpoint` - (Optional) One or more `service_endpoint` blocks as defined below.
+
+~> **Note:** Each `service_endpoint` block must specify at least one of `locations` or `network_identifier_id`, and a service cannot be configured in both `service_endpoints` and `service_endpoint`.
 
 * `service_endpoint_policy_ids` - (Optional) The list of IDs of Service Endpoint Policies to associate with the subnet.
+
+* `service_endpoints` - (Optional) The list of Service endpoints to associate with the subnet. Possible values are `Microsoft.AzureActiveDirectory`, `Microsoft.AzureCosmosDB`, `Microsoft.ContainerRegistry`, `Microsoft.EventHub`, `Microsoft.KeyVault`, `Microsoft.ServiceBus`, `Microsoft.Sql`, `Microsoft.Storage`, `Microsoft.Storage.Global`, and `Microsoft.Web`.
 
 ---
 
@@ -166,6 +170,16 @@ A `delegation` block supports the following:
 * `name` - (Required) A name for this delegation.
 
 * `service_delegation` - (Required) A `service_delegation` block as defined below.
+
+---
+
+A `service_endpoint` block supports the following:
+
+* `service` - (Required) The service endpoint to associate with the subnet.
+
+* `locations` - (Optional) The list of locations to scope the service endpoint to.
+
+* `network_identifier_id` - (Optional) The resource ID to use as the network identifier for the service endpoint.
 
 ---
 

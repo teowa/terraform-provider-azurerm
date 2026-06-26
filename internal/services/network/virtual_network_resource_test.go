@@ -1004,7 +1004,12 @@ resource "azurerm_virtual_network" "test" {
     address_prefixes                              = ["10.0.1.0/24", "ace:cab:deca::/64"]
     private_link_service_network_policies_enabled = false
     private_endpoint_network_policies             = "Enabled"
-    service_endpoints                             = ["Microsoft.Sql", "Microsoft.Storage"]
+    service_endpoints                             = ["Microsoft.Storage"]
+    service_endpoint {
+      service               = "Microsoft.Sql"
+      locations             = ["eastus2"]
+      network_identifier_id = azurerm_virtual_network.test.id
+    }
     service_endpoint_policy_ids                   = [azurerm_subnet_service_endpoint_storage_policy.test.id]
 
     delegation {
@@ -1073,6 +1078,10 @@ resource "azurerm_virtual_network" "test" {
     private_link_service_network_policies_enabled = true
     private_endpoint_network_policies             = "Enabled"
     service_endpoints                             = ["Microsoft.Storage"]
+    service_endpoint {
+      service   = "Microsoft.Sql"
+      locations = ["eastus2"]
+    }
 
     delegation {
       name = "first"

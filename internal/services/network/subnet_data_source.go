@@ -71,6 +71,8 @@ func dataSourceSubnet() *pluginsdk.Resource {
 				},
 			},
 
+			"service_endpoint": subnetServiceEndpointDataSourceSchema(),
+
 			"default_outbound_access_enabled": {
 				Type:     pluginsdk.TypeBool,
 				Computed: true,
@@ -143,9 +145,13 @@ func dataSourceSubnetRead(d *pluginsdk.ResourceData, meta interface{}) error {
 			}
 			d.Set("route_table_id", routeTableId)
 
-			serviceEndpoints := flattenSubnetServiceEndpoints(props.ServiceEndpoints)
+			serviceEndpoints, serviceEndpointConfigurations := flattenSubnetServiceEndpoints(props.ServiceEndpoints)
 			if err := d.Set("service_endpoints", serviceEndpoints); err != nil {
 				return fmt.Errorf("setting `service_endpoints`: %+v", err)
+			}
+
+			if err := d.Set("service_endpoint", serviceEndpointConfigurations); err != nil {
+				return fmt.Errorf("setting `service_endpoint`: %+v", err)
 			}
 		}
 	}

@@ -111,7 +111,8 @@ func TestAccDataSourceSubnet_serviceEndpoints(t *testing.T) {
 				check.That(data.ResourceName).Key("address_prefix").Exists(),
 				check.That(data.ResourceName).Key("network_security_group_id").HasValue(""),
 				check.That(data.ResourceName).Key("route_table_id").HasValue(""),
-				check.That(data.ResourceName).Key("service_endpoints.#").HasValue("2"),
+				check.That(data.ResourceName).Key("service_endpoints.#").HasValue("1"),
+				check.That(data.ResourceName).Key("service_endpoint.#").HasValue("1"),
 			),
 		},
 	})
