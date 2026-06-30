@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
 )
@@ -31,6 +32,7 @@ func TestAccDataSourceatGateway_basic(t *testing.T) {
 func TestAccDataSourceatGateway_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "data.azurerm_nat_gateway", "test")
 	r := NatGatewayDataSource{}
+	sourceVirtualNetworkId := commonids.NewVirtualNetworkID(data.Subscriptions.Primary, fmt.Sprintf("acctestRG-network-%d", data.RandomInteger), fmt.Sprintf("acctestvnet1-%d", data.RandomInteger)).ID()
 	// Using alt location because the resource currently in private preview and is only available in eastus2.
 
 	data.DataSourceTest(t, []acceptance.TestStep{
@@ -39,6 +41,7 @@ func TestAccDataSourceatGateway_complete(t *testing.T) {
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).Key("sku_name").HasValue("Standard"),
 				check.That(data.ResourceName).Key("idle_timeout_in_minutes").HasValue("10"),
+				check.That(data.ResourceName).Key("source_virtual_network_id").HasValue(sourceVirtualNetworkId),
 			),
 		},
 	})

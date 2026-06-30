@@ -71,6 +71,11 @@ func dataSourceNatGateway() *pluginsdk.Resource {
 				Computed: true,
 			},
 
+			"source_virtual_network_id": {
+				Type:     pluginsdk.TypeString,
+				Computed: true,
+			},
+
 			"zones": commonschema.ZonesMultipleComputed(),
 
 			"tags": commonschema.TagsDataSource(),
@@ -117,6 +122,13 @@ func dataSourceNatGatewayRead(d *pluginsdk.ResourceData, meta interface{}) error
 			if err := d.Set("public_ip_prefix_ids", flattenNetworkSubResourceID(props.PublicIPPrefixes)); err != nil {
 				return fmt.Errorf("setting `public_ip_prefix_ids`: %+v", err)
 			}
+
+			sourceVirtualNetworkId, err := flattenNatGatewaySourceVirtualNetworkID(props.SourceVirtualNetwork)
+			if err != nil {
+				return err
+			}
+
+			d.Set("source_virtual_network_id", sourceVirtualNetworkId)
 		}
 		return tags.FlattenAndSet(d, model.Tags)
 	}

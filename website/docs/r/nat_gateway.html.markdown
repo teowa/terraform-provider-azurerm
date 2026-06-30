@@ -35,13 +35,15 @@ The following arguments are supported:
 
 * `name` - (Required) Specifies the name of the NAT Gateway. Changing this forces a new resource to be created.
 
-* `resource_group_name` - (Required) Specifies the name of the Resource Group in which the NAT Gateway should exist. Changing this forces a new resource to be created.
-
 * `location` - (Required) Specifies the supported Azure location where the NAT Gateway should exist. Changing this forces a new resource to be created.
+
+* `resource_group_name` - (Required) Specifies the name of the Resource Group in which the NAT Gateway should exist. Changing this forces a new resource to be created.
 
 * `idle_timeout_in_minutes` - (Optional) The idle timeout which should be used in minutes. Defaults to `4`.
 
 * `sku_name` - (Optional) The SKU which should be used. Possible values are `Standard` and `StandardV2`. Defaults to `Standard`. Changing this forces a new resource to be created.
+
+* `source_virtual_network_id` - (Optional) The ID of the source Virtual Network for the NAT Gateway.
 
 * `zones` - (Optional) A list of Availability Zones in which this NAT Gateway should be located. Changing this forces a new resource to be created.
 
@@ -73,7 +75,7 @@ The `timeouts` block allows you to specify [timeouts](https://developer.hashicor
 A NAT Gateway can be imported using the `resource id`, e.g.
 
 ```shell
-terraform import azurerm_nat_gateway.test /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/group1/providers/Microsoft.Network/natGateways/gateway1
+terraform import azurerm_nat_gateway.example /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/resourceGroup1/providers/Microsoft.Network/natGateways/natGateway1
 ```
 
 ## API Providers

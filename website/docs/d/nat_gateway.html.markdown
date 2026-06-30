@@ -1,7 +1,7 @@
 ---
 subcategory: "Network"
 layout: "azurerm"
-page_title: "Azure Resource Manager: azurerm_nat_gateway"
+page_title: "Azure Resource Manager: Data Source: azurerm_nat_gateway"
 description: |-
   Gets information about an existing NAT Gateway
 ---
@@ -9,6 +9,15 @@ description: |-
 # Data Source: azurerm_nat_gateway
 
 Use this data source to access information about an existing NAT Gateway.
+
+## Example Usage
+
+```hcl
+data "azurerm_nat_gateway" "example" {
+  name                = "existing-nat-gateway"
+  resource_group_name = "existing-resource-group"
+}
+```
 
 ## Arguments Reference
 
@@ -20,19 +29,23 @@ The following arguments are supported:
 
 ## Attributes Reference
 
-The following attributes are exported:
+In addition to the Arguments listed above - the following Attributes are exported:
 
-* `location` - The location where the NAT Gateway exists.
+* `id` - The ID of the NAT Gateway.
 
 * `idle_timeout_in_minutes` - The idle timeout in minutes which is used for the NAT Gateway.
 
-* `public_ip_address_ids` - A list of existing Public IP Address resource IDs which the NAT Gateway is using.
+* `location` - The location where the NAT Gateway exists.
 
-* `public_ip_prefix_ids` - A list of existing Public IP Prefix resource IDs which the NAT Gateway is using.
+* `public_ip_address_ids` - A list of Public IP Address resource IDs which the NAT Gateway is using.
+
+* `public_ip_prefix_ids` - A list of Public IP Prefix resource IDs which the NAT Gateway is using.
 
 * `resource_guid` - The Resource GUID of the NAT Gateway.
 
 * `sku_name` - The SKU used by the NAT Gateway.
+
+* `source_virtual_network_id` - The ID of the source Virtual Network for the NAT Gateway.
 
 * `tags` - A mapping of tags assigned to the resource.
 

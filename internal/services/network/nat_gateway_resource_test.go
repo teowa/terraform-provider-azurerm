@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
+	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/natgateways"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
@@ -36,6 +37,7 @@ func TestAccNatGateway_basic(t *testing.T) {
 func TestAccNatGateway_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_nat_gateway", "test")
 	r := NatGatewayResource{}
+	sourceVirtualNetworkId := natGatewaySourceVirtualNetworkID(data, fmt.Sprintf("acctestvnet1-%d", data.RandomInteger))
 
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
@@ -44,6 +46,7 @@ func TestAccNatGateway_complete(t *testing.T) {
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("sku_name").HasValue("Standard"),
 				check.That(data.ResourceName).Key("idle_timeout_in_minutes").HasValue("10"),
+				check.That(data.ResourceName).Key("source_virtual_network_id").HasValue(sourceVirtualNetworkId),
 				check.That(data.ResourceName).Key("zones.#").HasValue("1"),
 			),
 		},
@@ -54,12 +57,15 @@ func TestAccNatGateway_complete(t *testing.T) {
 func TestAccNatGateway_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_nat_gateway", "test")
 	r := NatGatewayResource{}
+	sourceVirtualNetworkId := natGatewaySourceVirtualNetworkID(data, fmt.Sprintf("acctestvnet1-%d", data.RandomInteger))
+	updatedSourceVirtualNetworkId := natGatewaySourceVirtualNetworkID(data, fmt.Sprintf("acctestvnet2-%d", data.RandomInteger))
 
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("source_virtual_network_id").HasValue(sourceVirtualNetworkId),
 			),
 		},
 		{
@@ -68,6 +74,7 @@ func TestAccNatGateway_update(t *testing.T) {
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("sku_name").HasValue("Standard"),
 				check.That(data.ResourceName).Key("idle_timeout_in_minutes").HasValue("20"),
+				check.That(data.ResourceName).Key("source_virtual_network_id").HasValue(updatedSourceVirtualNetworkId),
 				check.That(data.ResourceName).Key("zones.#").HasValue("1"),
 			),
 		},
@@ -151,12 +158,20 @@ resource "azurerm_public_ip_prefix" "test" {
   zones               = ["1"]
 }
 
+resource "azurerm_virtual_network" "test" {
+  name                = "acctestvnet1-%d"
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
+  address_space       = ["10.0.0.0/16"]
+}
+
 resource "azurerm_nat_gateway" "test" {
   name                    = "acctestnatGateway-%d"
   location                = azurerm_resource_group.test.location
   resource_group_name     = azurerm_resource_group.test.name
   sku_name                = "Standard"
   idle_timeout_in_minutes = 10
+  source_virtual_network_id = azurerm_virtual_network.test.id
   zones                   = ["1"]
 }
 
@@ -169,7 +184,7 @@ resource "azurerm_nat_gateway_public_ip_prefix_association" "test" {
   nat_gateway_id      = azurerm_nat_gateway.test.id
   public_ip_prefix_id = azurerm_public_ip_prefix.test.id
 }
-`, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger, data.RandomInteger)
+`, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger, data.RandomInteger, data.RandomInteger)
 }
 
 func (NatGatewayResource) completeUpdate(data acceptance.TestData) string {
@@ -200,12 +215,27 @@ resource "azurerm_public_ip_prefix" "test" {
   zones               = ["1"]
 }
 
+resource "azurerm_virtual_network" "test" {
+  name                = "acctestvnet1-%d"
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
+  address_space       = ["10.0.0.0/16"]
+}
+
+resource "azurerm_virtual_network" "test2" {
+  name                = "acctestvnet2-%d"
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
+  address_space       = ["10.1.0.0/16"]
+}
+
 resource "azurerm_nat_gateway" "test" {
   name                    = "acctestnatGateway-%d"
   location                = azurerm_resource_group.test.location
   resource_group_name     = azurerm_resource_group.test.name
   sku_name                = "Standard"
   idle_timeout_in_minutes = 20
+  source_virtual_network_id = azurerm_virtual_network.test2.id
   zones                   = ["1"]
   tags = {
     updated = "true"
@@ -221,7 +251,7 @@ resource "azurerm_nat_gateway_public_ip_prefix_association" "test" {
   nat_gateway_id      = azurerm_nat_gateway.test.id
   public_ip_prefix_id = azurerm_public_ip_prefix.test.id
 }
-`, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger, data.RandomInteger)
+`, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger, data.RandomInteger, data.RandomInteger, data.RandomInteger)
 }
 
 func (NatGatewayResource) standardVTwo(data acceptance.TestData) string {
@@ -242,4 +272,9 @@ resource "azurerm_nat_gateway" "test" {
   sku_name            = "StandardV2"
 }
 `, data.RandomInteger, data.Locations.Primary, data.RandomInteger)
+}
+
+func natGatewaySourceVirtualNetworkID(data acceptance.TestData, virtualNetworkName string) string {
+	resourceGroupName := fmt.Sprintf("acctestRG-network-%d", data.RandomInteger)
+	return commonids.NewVirtualNetworkID(data.Subscriptions.Primary, resourceGroupName, virtualNetworkName).ID()
 }

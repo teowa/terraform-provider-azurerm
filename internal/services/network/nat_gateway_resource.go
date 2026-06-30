@@ -13,6 +13,7 @@ import (
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
+	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
@@ -94,6 +95,12 @@ func resourceNatGatewaySchema() map[string]*pluginsdk.Schema {
 			ValidateFunc: validation.StringInSlice(natgateways.PossibleValuesForNatGatewaySkuName(), false),
 		},
 
+		"source_virtual_network_id": {
+			Type:         pluginsdk.TypeString,
+			Optional:     true,
+			ValidateFunc: commonids.ValidateVirtualNetworkID,
+		},
+
 		"zones": {
 			Type:                  schema.TypeSet,
 			Optional:              true,
@@ -156,6 +163,12 @@ func resourceNatGatewayCreate(d *pluginsdk.ResourceData, meta interface{}) error
 		parameters.Zones = &zones
 	}
 
+	if v, ok := d.GetOk("source_virtual_network_id"); ok {
+		parameters.Properties.SourceVirtualNetwork = &natgateways.SubResource{
+			Id: pointer.To(v.(string)),
+		}
+	}
+
 	if err := client.CreateOrUpdateCallbackThenPoll(ctx, id, parameters, sdk.SetIDCallback(meta, &id, d)); err != nil {
 		return fmt.Errorf("creating %s: %+v", id, err)
 	}
@@ -204,6 +217,7 @@ func resourceNatGatewayUpdate(d *pluginsdk.ResourceData, meta interface{}) error
 			IdleTimeoutInMinutes: props.IdleTimeoutInMinutes,
 			PublicIPAddresses:    props.PublicIPAddresses, // note: these can be managed via the separate resource
 			PublicIPPrefixes:     props.PublicIPPrefixes,
+			SourceVirtualNetwork: props.SourceVirtualNetwork,
 		},
 		Sku:   existing.Model.Sku,
 		Tags:  existing.Model.Tags,
@@ -223,6 +237,17 @@ func resourceNatGatewayUpdate(d *pluginsdk.ResourceData, meta interface{}) error
 
 	if d.HasChange("tags") {
 		payload.Tags = tags.Expand(d.Get("tags").(map[string]interface{}))
+	}
+
+	if d.HasChange("source_virtual_network_id") {
+		sourceVirtualNetworkId := d.Get("source_virtual_network_id").(string)
+		if sourceVirtualNetworkId == "" {
+			payload.Properties.SourceVirtualNetwork = nil
+		} else {
+			payload.Properties.SourceVirtualNetwork = &natgateways.SubResource{
+				Id: pointer.To(sourceVirtualNetworkId),
+			}
+		}
 	}
 
 	if err := client.CreateOrUpdateThenPoll(ctx, *id, payload); err != nil {
@@ -269,6 +294,12 @@ func resourceNatGatewayFlatten(d *pluginsdk.ResourceData, id *natgateways.NatGat
 		if props := model.Properties; props != nil {
 			d.Set("idle_timeout_in_minutes", props.IdleTimeoutInMinutes)
 			d.Set("resource_guid", props.ResourceGuid)
+
+			sourceVirtualNetworkId, err := flattenNatGatewaySourceVirtualNetworkID(props.SourceVirtualNetwork)
+			if err != nil {
+				return err
+			}
+			d.Set("source_virtual_network_id", sourceVirtualNetworkId)
 		}
 		if err := tags.FlattenAndSet(d, model.Tags); err != nil {
 			return err
@@ -276,6 +307,19 @@ func resourceNatGatewayFlatten(d *pluginsdk.ResourceData, id *natgateways.NatGat
 	}
 
 	return pluginsdk.SetResourceIdentityData(d, id)
+}
+
+func flattenNatGatewaySourceVirtualNetworkID(input *natgateways.SubResource) (string, error) {
+	if input == nil || input.Id == nil || *input.Id == "" {
+		return "", nil
+	}
+
+	id, err := commonids.ParseVirtualNetworkIDInsensitively(*input.Id)
+	if err != nil {
+		return "", err
+	}
+
+	return id.ID(), nil
 }
 
 func resourceNatGatewayDelete(d *pluginsdk.ResourceData, meta interface{}) error {
