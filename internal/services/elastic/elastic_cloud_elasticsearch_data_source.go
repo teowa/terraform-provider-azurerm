@@ -11,8 +11,8 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2023-06-01/monitorsresource"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2023-06-01/rules"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2024-03-01/rules"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2025-06-01/elasticmonitorresources"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/elastic/validate"
@@ -127,6 +127,8 @@ func dataSourceElasticsearch() *pluginsdk.Resource {
 				Type:     pluginsdk.TypeString,
 				Computed: true,
 			},
+
+			"monitor_properties": elasticsearchMonitorPropertiesSchema(),
 		},
 	}
 }
@@ -138,7 +140,7 @@ func dataSourceElasticsearchRead(d *schema.ResourceData, meta interface{}) error
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
-	id := monitorsresource.NewMonitorID(subscriptionId, d.Get("resource_group_name").(string), d.Get("name").(string))
+	id := elasticmonitorresources.NewMonitorID(subscriptionId, d.Get("resource_group_name").(string), d.Get("name").(string))
 	resp, err := client.MonitorsGet(ctx, id)
 	if err != nil {
 		if response.WasNotFound(resp.HttpResponse) {
@@ -165,7 +167,7 @@ func dataSourceElasticsearchRead(d *schema.ResourceData, meta interface{}) error
 		if props := model.Properties; props != nil {
 			monitoringEnabled := false
 			if props.MonitoringStatus != nil {
-				monitoringEnabled = *props.MonitoringStatus == monitorsresource.MonitoringStatusEnabled
+				monitoringEnabled = *props.MonitoringStatus == elasticmonitorresources.MonitoringStatusEnabled
 			}
 			d.Set("monitoring_enabled", monitoringEnabled)
 
@@ -184,6 +186,10 @@ func dataSourceElasticsearchRead(d *schema.ResourceData, meta interface{}) error
 					d.Set("elastic_cloud_sso_default_url", elastic.ElasticCloudUser.ElasticCloudSsoDefaultURL)
 				}
 			}
+		}
+
+		if err := d.Set("monitor_properties", flattenMonitorProperties(model.Properties)); err != nil {
+			return fmt.Errorf("setting `monitor_properties`: %+v", err)
 		}
 
 		skuName := ""

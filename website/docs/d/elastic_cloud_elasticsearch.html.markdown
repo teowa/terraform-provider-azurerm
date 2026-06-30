@@ -1,15 +1,15 @@
 ---
 subcategory: "Elastic"
 layout: "azurerm"
-page_title: "Azure Resource Manager: azurerm_elastic_cloud_elasticsearch"
-description: |- 
-    Gets information about an existing Elasticsearch resource.
+page_title: "Azure Resource Manager: Data Source: azurerm_elastic_cloud_elasticsearch"
+description: |-
+  Gets information about an existing Elasticsearch resource.
 
 ---
 
 # Data Source: azurerm_elastic_cloud_elasticsearch
 
-Use this data source to access information about an existing Elasticsearch resource.
+Gets information about an existing Elasticsearch resource.
 
 ## Example Usage
 
@@ -34,11 +34,11 @@ The following arguments are supported:
 
 * `name` - (Required) The name of the Elasticsearch resource.
 
-* `resource_group_name` - (Required) The name of the resource group in which the Elasticsearch exists.
+* `resource_group_name` - (Required) The name of the Resource Group in which the Elasticsearch exists.
 
 ## Attributes Reference
 
-The following attributes are exported:
+In addition to the Arguments listed above - the following Attributes are exported:
 
 * `id` - The ID of the Elasticsearch.
 
@@ -60,7 +60,9 @@ The following attributes are exported:
 
 * `logs` - A `logs` block as defined below.
 
-* `monitoring_enabled` - Specifies if monitoring is enabled on this Elasticsearch or not.
+* `monitor_properties` - A `monitor_properties` block as defined below.
+
+* `monitoring_enabled` - Whether `monitoring` is enabled.
 
 * `sku_name` - The name of the SKU used for this Elasticsearch.
 
@@ -68,7 +70,7 @@ The following attributes are exported:
 
 ---
 
-The `filtering_tag` block exports the following:
+A `filtering_tag` block exports the following:
 
 * `action` - The type of action which is taken when the Tag matches the `name` and `value`.
 
@@ -78,15 +80,97 @@ The `filtering_tag` block exports the following:
 
 ---
 
-The `logs` block exports the following:
+A `logs` block exports the following:
 
 * `filtering_tag` - A list of `filtering_tag` blocks as defined above.
 
-* `send_activity_logs` - Should the Azure Activity Logs should be sent to the Elasticsearch cluster?
+* `send_activity_logs` - Whether Azure Activity Logs are sent to the Elasticsearch cluster.
 
-* `send_azuread_logs` - Should the AzureAD Logs should be sent to the Elasticsearch cluster?
+* `send_azuread_logs` - Whether Azure AD logs are sent to the Elasticsearch cluster.
 
-* `send_subscription_logs` - Should the Azure Subscription Logs should be sent to the Elasticsearch cluster?
+* `send_subscription_logs` - Whether Azure Subscription Logs are sent to the Elasticsearch cluster.
+
+---
+
+A `monitor_properties` block exports the following:
+
+* `generate_api_key` - Whether an API key is generated for this Elasticsearch.
+
+* `hosting_type` - The hosting type for this Elasticsearch.
+
+* `liftr_resource_category` - The Liftr resource category for this Elasticsearch.
+
+* `liftr_resource_preference` - The Liftr resource preference for this Elasticsearch.
+
+* `monitoring_status` - The monitoring status for this Elasticsearch.
+
+* `plan_details` - A `plan_details` block as defined below.
+
+* `project_details` - A `project_details` block as defined below.
+
+* `provisioning_state` - The provisioning state of this Elasticsearch.
+
+* `saas_azure_subscription_status` - The SaaS Azure subscription status for this Elasticsearch.
+
+* `source_campaign_id` - The source campaign ID for this Elasticsearch.
+
+* `source_campaign_name` - The source campaign name for this Elasticsearch.
+
+* `subscription_state` - The subscription state for this Elasticsearch.
+
+* `user_info` - A `user_info` block as defined below.
+
+* `version` - The Elastic version for this Elasticsearch.
+
+---
+
+A `plan_details` block exports the following:
+
+* `offer_id` - The Marketplace offer ID for this Elasticsearch.
+
+* `plan_id` - The Marketplace plan ID for this Elasticsearch.
+
+* `plan_name` - The Marketplace plan name for this Elasticsearch.
+
+* `publisher_id` - The Marketplace publisher ID for this Elasticsearch.
+
+* `term_id` - The Marketplace term ID for this Elasticsearch.
+
+---
+
+A `project_details` block exports the following:
+
+* `configuration_type` - The project configuration type for this Elasticsearch.
+
+* `project_type` - The project type for this Elasticsearch.
+
+---
+
+A `user_info` block exports the following:
+
+* `company_info` - A `company_info` block as defined below.
+
+* `company_name` - The company name associated with this Elasticsearch.
+
+* `email_address` - The email address associated with this Elasticsearch.
+
+* `first_name` - The first name associated with this Elasticsearch.
+
+* `last_name` - The last name associated with this Elasticsearch.
+
+---
+
+A `company_info` block exports the following:
+
+* `business` - The business associated with this Elasticsearch.
+
+* `country` - The country associated with this Elasticsearch.
+
+* `domain` - The domain associated with this Elasticsearch.
+
+* `employees_number` - The employee count associated with this Elasticsearch.
+
+* `state` - The state associated with this Elasticsearch.
 
 ## Timeouts
 
@@ -98,4 +182,4 @@ The `timeouts` block allows you to specify [timeouts](https://developer.hashicor
 <!-- This section is generated, changes will be overwritten -->
 This data source uses the following Azure API Providers:
 
-* `Microsoft.Elastic` - 2023-06-01
+* `Microsoft.Elastic` - 2025-06-01

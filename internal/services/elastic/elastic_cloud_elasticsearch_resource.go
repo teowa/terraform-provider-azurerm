@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2023-06-01/monitorsresource"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2023-06-01/rules"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2024-03-01/rules"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2025-06-01/elasticmonitorresources"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
@@ -39,7 +39,7 @@ func resourceElasticsearch() *pluginsdk.Resource {
 		},
 
 		Importer: pluginsdk.ImporterValidatingResourceId(func(id string) error {
-			_, err := monitorsresource.ParseMonitorID(id)
+			_, err := elasticmonitorresources.ParseMonitorID(id)
 			return err
 		}),
 
@@ -155,6 +155,7 @@ func resourceElasticsearch() *pluginsdk.Resource {
 				Type:     pluginsdk.TypeString,
 				Computed: true,
 			},
+			"monitor_properties": elasticsearchMonitorPropertiesSchema(),
 		},
 	}
 }
@@ -165,13 +166,13 @@ func resourceElasticsearchCreate(d *pluginsdk.ResourceData, meta interface{}) er
 	ctx, cancel := timeouts.ForCreate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
-	id := monitorsresource.NewMonitorID(subscriptionId, d.Get("resource_group_name").(string), d.Get("name").(string))
+	id := elasticmonitorresources.NewMonitorID(subscriptionId, d.Get("resource_group_name").(string), d.Get("name").(string))
 
 	if !meta.(*clients.Client).Features.SkipImportCheckOnCreateAndAllowOverwritingExistingResources {
 		existing, err := client.MonitorsGet(ctx, id)
 		if err != nil {
 			if !response.WasNotFound(existing.HttpResponse) {
-				return fmt.Errorf("checking for existing %q: %+v", id, err)
+				return fmt.Errorf("checking for existing `%s`: %+v", id, err)
 			}
 		}
 		if !response.WasNotFound(existing.HttpResponse) {
@@ -179,20 +180,20 @@ func resourceElasticsearchCreate(d *pluginsdk.ResourceData, meta interface{}) er
 		}
 	}
 
-	monitoringStatus := monitorsresource.MonitoringStatusDisabled
+	monitoringStatus := elasticmonitorresources.MonitoringStatusDisabled
 	if d.Get("monitoring_enabled").(bool) {
-		monitoringStatus = monitorsresource.MonitoringStatusEnabled
+		monitoringStatus = elasticmonitorresources.MonitoringStatusEnabled
 	}
 
-	body := monitorsresource.ElasticMonitorResource{
+	body := elasticmonitorresources.ElasticMonitorResource{
 		Location: location.Normalize(d.Get("location").(string)),
-		Properties: &monitorsresource.MonitorProperties{
+		Properties: &elasticmonitorresources.MonitorProperties{
 			MonitoringStatus: &monitoringStatus,
-			UserInfo: &monitorsresource.UserInfo{
+			UserInfo: &elasticmonitorresources.UserInfo{
 				EmailAddress: pointer.To(d.Get("elastic_cloud_email_address").(string)),
 			},
 		},
-		Sku: &monitorsresource.ResourceSku{
+		Sku: &elasticmonitorresources.ResourceSku{
 			Name: d.Get("sku_name").(string),
 		},
 		Tags: tags.Expand(d.Get("tags").(map[string]interface{})),
@@ -226,7 +227,7 @@ func resourceElasticsearchRead(d *pluginsdk.ResourceData, meta interface{}) erro
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
-	id, err := monitorsresource.ParseMonitorID(d.Id())
+	id, err := elasticmonitorresources.ParseMonitorID(d.Id())
 	if err != nil {
 		return err
 	}
@@ -259,7 +260,7 @@ func resourceElasticsearchRead(d *pluginsdk.ResourceData, meta interface{}) erro
 		if props := model.Properties; props != nil {
 			monitoringEnabled := false
 			if props.MonitoringStatus != nil {
-				monitoringEnabled = *props.MonitoringStatus == monitorsresource.MonitoringStatusEnabled
+				monitoringEnabled = *props.MonitoringStatus == elasticmonitorresources.MonitoringStatusEnabled
 			}
 			d.Set("monitoring_enabled", monitoringEnabled)
 
@@ -278,6 +279,10 @@ func resourceElasticsearchRead(d *pluginsdk.ResourceData, meta interface{}) erro
 					d.Set("elastic_cloud_sso_default_url", elastic.ElasticCloudUser.ElasticCloudSsoDefaultURL)
 				}
 			}
+		}
+
+		if err := d.Set("monitor_properties", flattenMonitorProperties(model.Properties)); err != nil {
+			return fmt.Errorf("setting `monitor_properties`: %+v", err)
 		}
 
 		skuName := ""
@@ -302,7 +307,7 @@ func resourceElasticsearchUpdate(d *pluginsdk.ResourceData, meta interface{}) er
 	ctx, cancel := timeouts.ForUpdate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
-	id, err := monitorsresource.ParseMonitorID(d.Id())
+	id, err := elasticmonitorresources.ParseMonitorID(d.Id())
 	if err != nil {
 		return err
 	}
@@ -323,7 +328,7 @@ func resourceElasticsearchUpdate(d *pluginsdk.ResourceData, meta interface{}) er
 
 	if d.HasChange("tags") {
 		client := meta.(*clients.Client).Elastic.MonitorClient
-		body := monitorsresource.ElasticMonitorResourceUpdateParameters{
+		body := elasticmonitorresources.ElasticMonitorResourceUpdateParameters{
 			Tags: tags.Expand(d.Get("tags").(map[string]interface{})),
 		}
 		if _, err := client.MonitorsUpdate(ctx, *id, body); err != nil {
@@ -339,7 +344,7 @@ func resourceElasticsearchDelete(d *pluginsdk.ResourceData, meta interface{}) er
 	ctx, cancel := timeouts.ForDelete(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
-	id, err := monitorsresource.ParseMonitorID(d.Id())
+	id, err := elasticmonitorresources.ParseMonitorID(d.Id())
 	if err != nil {
 		return err
 	}
@@ -349,6 +354,383 @@ func resourceElasticsearchDelete(d *pluginsdk.ResourceData, meta interface{}) er
 	}
 
 	return nil
+}
+
+func elasticsearchMonitorPropertiesSchema() *pluginsdk.Schema {
+	return &pluginsdk.Schema{
+		Type:     pluginsdk.TypeList,
+		Computed: true,
+		MaxItems: 1,
+		Elem: &pluginsdk.Resource{
+			Schema: map[string]*pluginsdk.Schema{
+				"generate_api_key": {
+					Type:     pluginsdk.TypeBool,
+					Computed: true,
+				},
+				"hosting_type": {
+					Type:     pluginsdk.TypeString,
+					Computed: true,
+				},
+				"liftr_resource_category": {
+					Type:     pluginsdk.TypeString,
+					Computed: true,
+				},
+				"liftr_resource_preference": {
+					Type:     pluginsdk.TypeInt,
+					Computed: true,
+				},
+				"monitoring_status": {
+					Type:     pluginsdk.TypeString,
+					Computed: true,
+				},
+				"plan_details": {
+					Type:     pluginsdk.TypeList,
+					Computed: true,
+					MaxItems: 1,
+					Elem: &pluginsdk.Resource{
+						Schema: map[string]*pluginsdk.Schema{
+							"offer_id": {
+								Type:     pluginsdk.TypeString,
+								Computed: true,
+							},
+							"plan_id": {
+								Type:     pluginsdk.TypeString,
+								Computed: true,
+							},
+							"plan_name": {
+								Type:     pluginsdk.TypeString,
+								Computed: true,
+							},
+							"publisher_id": {
+								Type:     pluginsdk.TypeString,
+								Computed: true,
+							},
+							"term_id": {
+								Type:     pluginsdk.TypeString,
+								Computed: true,
+							},
+						},
+					},
+				},
+				"project_details": {
+					Type:     pluginsdk.TypeList,
+					Computed: true,
+					MaxItems: 1,
+					Elem: &pluginsdk.Resource{
+						Schema: map[string]*pluginsdk.Schema{
+							"configuration_type": {
+								Type:     pluginsdk.TypeString,
+								Computed: true,
+							},
+							"project_type": {
+								Type:     pluginsdk.TypeString,
+								Computed: true,
+							},
+						},
+					},
+				},
+				"provisioning_state": {
+					Type:     pluginsdk.TypeString,
+					Computed: true,
+				},
+				"saas_azure_subscription_status": {
+					Type:     pluginsdk.TypeString,
+					Computed: true,
+				},
+				"source_campaign_id": {
+					Type:     pluginsdk.TypeString,
+					Computed: true,
+				},
+				"source_campaign_name": {
+					Type:     pluginsdk.TypeString,
+					Computed: true,
+				},
+				"subscription_state": {
+					Type:     pluginsdk.TypeString,
+					Computed: true,
+				},
+				"user_info": {
+					Type:     pluginsdk.TypeList,
+					Computed: true,
+					MaxItems: 1,
+					Elem: &pluginsdk.Resource{
+						Schema: map[string]*pluginsdk.Schema{
+							"company_info": {
+								Type:     pluginsdk.TypeList,
+								Computed: true,
+								MaxItems: 1,
+								Elem: &pluginsdk.Resource{
+									Schema: map[string]*pluginsdk.Schema{
+										"business": {
+											Type:     pluginsdk.TypeString,
+											Computed: true,
+										},
+										"country": {
+											Type:     pluginsdk.TypeString,
+											Computed: true,
+										},
+										"domain": {
+											Type:     pluginsdk.TypeString,
+											Computed: true,
+										},
+										"employees_number": {
+											Type:     pluginsdk.TypeString,
+											Computed: true,
+										},
+										"state": {
+											Type:     pluginsdk.TypeString,
+											Computed: true,
+										},
+									},
+								},
+							},
+							"company_name": {
+								Type:     pluginsdk.TypeString,
+								Computed: true,
+							},
+							"email_address": {
+								Type:     pluginsdk.TypeString,
+								Computed: true,
+							},
+							"first_name": {
+								Type:     pluginsdk.TypeString,
+								Computed: true,
+							},
+							"last_name": {
+								Type:     pluginsdk.TypeString,
+								Computed: true,
+							},
+						},
+					},
+				},
+				"version": {
+					Type:     pluginsdk.TypeString,
+					Computed: true,
+				},
+			},
+		},
+	}
+}
+
+func flattenMonitorProperties(input *elasticmonitorresources.MonitorProperties) []interface{} {
+	if input == nil {
+		return []interface{}{}
+	}
+
+	generateAPIKey := false
+	if input.GenerateApiKey != nil {
+		generateAPIKey = *input.GenerateApiKey
+	}
+
+	hostingType := ""
+	if input.HostingType != nil {
+		hostingType = string(*input.HostingType)
+	}
+
+	liftrResourceCategory := ""
+	if input.LiftrResourceCategory != nil {
+		liftrResourceCategory = string(*input.LiftrResourceCategory)
+	}
+
+	liftrResourcePreference := 0
+	if input.LiftrResourcePreference != nil {
+		liftrResourcePreference = int(*input.LiftrResourcePreference)
+	}
+
+	monitoringStatus := ""
+	if input.MonitoringStatus != nil {
+		monitoringStatus = string(*input.MonitoringStatus)
+	}
+
+	provisioningState := ""
+	if input.ProvisioningState != nil {
+		provisioningState = string(*input.ProvisioningState)
+	}
+
+	sourceCampaignID := ""
+	if input.SourceCampaignId != nil {
+		sourceCampaignID = *input.SourceCampaignId
+	}
+
+	sourceCampaignName := ""
+	if input.SourceCampaignName != nil {
+		sourceCampaignName = *input.SourceCampaignName
+	}
+
+	saaSAzureSubscriptionStatus := ""
+	if input.SaaSAzureSubscriptionStatus != nil {
+		saaSAzureSubscriptionStatus = *input.SaaSAzureSubscriptionStatus
+	}
+
+	subscriptionState := ""
+	if input.SubscriptionState != nil {
+		subscriptionState = *input.SubscriptionState
+	}
+
+	version := ""
+	if input.Version != nil {
+		version = *input.Version
+	}
+
+	return []interface{}{
+		map[string]interface{}{
+			"generate_api_key":               generateAPIKey,
+			"hosting_type":                   hostingType,
+			"liftr_resource_category":        liftrResourceCategory,
+			"liftr_resource_preference":      liftrResourcePreference,
+			"monitoring_status":              monitoringStatus,
+			"plan_details":                   flattenMonitorPlanDetails(input.PlanDetails),
+			"project_details":                flattenMonitorProjectDetails(input.ProjectDetails),
+			"provisioning_state":             provisioningState,
+			"saas_azure_subscription_status": saaSAzureSubscriptionStatus,
+			"source_campaign_id":             sourceCampaignID,
+			"source_campaign_name":           sourceCampaignName,
+			"subscription_state":             subscriptionState,
+			"user_info":                      flattenMonitorUserInfo(input.UserInfo),
+			"version":                        version,
+		},
+	}
+}
+
+func flattenMonitorPlanDetails(input *elasticmonitorresources.PlanDetails) []interface{} {
+	if input == nil {
+		return []interface{}{}
+	}
+
+	offerID := ""
+	if input.OfferID != nil {
+		offerID = *input.OfferID
+	}
+
+	planID := ""
+	if input.PlanID != nil {
+		planID = *input.PlanID
+	}
+
+	planName := ""
+	if input.PlanName != nil {
+		planName = *input.PlanName
+	}
+
+	publisherID := ""
+	if input.PublisherID != nil {
+		publisherID = *input.PublisherID
+	}
+
+	termID := ""
+	if input.TermID != nil {
+		termID = *input.TermID
+	}
+
+	return []interface{}{
+		map[string]interface{}{
+			"offer_id":     offerID,
+			"plan_id":      planID,
+			"plan_name":    planName,
+			"publisher_id": publisherID,
+			"term_id":      termID,
+		},
+	}
+}
+
+func flattenMonitorProjectDetails(input *elasticmonitorresources.ProjectDetails) []interface{} {
+	if input == nil {
+		return []interface{}{}
+	}
+
+	configurationType := ""
+	if input.ConfigurationType != nil {
+		configurationType = string(*input.ConfigurationType)
+	}
+
+	projectType := ""
+	if input.ProjectType != nil {
+		projectType = string(*input.ProjectType)
+	}
+
+	return []interface{}{
+		map[string]interface{}{
+			"configuration_type": configurationType,
+			"project_type":       projectType,
+		},
+	}
+}
+
+func flattenMonitorUserInfo(input *elasticmonitorresources.UserInfo) []interface{} {
+	if input == nil {
+		return []interface{}{}
+	}
+
+	companyName := ""
+	if input.CompanyName != nil {
+		companyName = *input.CompanyName
+	}
+
+	emailAddress := ""
+	if input.EmailAddress != nil {
+		emailAddress = *input.EmailAddress
+	}
+
+	firstName := ""
+	if input.FirstName != nil {
+		firstName = *input.FirstName
+	}
+
+	lastName := ""
+	if input.LastName != nil {
+		lastName = *input.LastName
+	}
+
+	return []interface{}{
+		map[string]interface{}{
+			"company_info":  flattenMonitorCompanyInfo(input.CompanyInfo),
+			"company_name":  companyName,
+			"email_address": emailAddress,
+			"first_name":    firstName,
+			"last_name":     lastName,
+		},
+	}
+}
+
+func flattenMonitorCompanyInfo(input *elasticmonitorresources.CompanyInfo) []interface{} {
+	if input == nil {
+		return []interface{}{}
+	}
+
+	business := ""
+	if input.Business != nil {
+		business = *input.Business
+	}
+
+	country := ""
+	if input.Country != nil {
+		country = *input.Country
+	}
+
+	domain := ""
+	if input.Domain != nil {
+		domain = *input.Domain
+	}
+
+	employeesNumber := ""
+	if input.EmployeesNumber != nil {
+		employeesNumber = *input.EmployeesNumber
+	}
+
+	state := ""
+	if input.State != nil {
+		state = *input.State
+	}
+
+	return []interface{}{
+		map[string]interface{}{
+			"business":         business,
+			"country":          country,
+			"domain":           domain,
+			"employees_number": employeesNumber,
+			"state":            state,
+		},
+	}
 }
 
 func expandTagRule(input []interface{}) *rules.LogRules {
