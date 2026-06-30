@@ -229,6 +229,7 @@ resource "azurerm_palo_alto_next_generation_firewall_virtual_hub_local_rulestack
     network_virtual_appliance_id = azurerm_palo_alto_virtual_network_appliance.test.id
     public_ip_address_ids        = [azurerm_public_ip.test.id]
     egress_nat_ip_address_ids    = [azurerm_public_ip.egress.id]
+    private_source_nat_destination_ip_addresses = ["20.22.92.111"]
     trusted_address_ranges       = ["20.22.92.11"]
   }
 

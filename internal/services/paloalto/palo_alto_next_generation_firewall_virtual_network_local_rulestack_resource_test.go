@@ -241,6 +241,7 @@ resource "azurerm_palo_alto_next_generation_firewall_virtual_network_local_rules
   network_profile {
     public_ip_address_ids     = [azurerm_public_ip.test.id]
     egress_nat_ip_address_ids = [azurerm_public_ip.egress.id]
+    private_source_nat_destination_ip_addresses = ["20.22.92.111"]
     trusted_address_ranges    = ["20.22.92.11", "20.23.92.11"]
 
     vnet_configuration {

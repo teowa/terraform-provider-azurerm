@@ -18,9 +18,10 @@ type NetworkProfileVnet struct {
 	PublicIPIDs []string `tfschema:"public_ip_address_ids"`
 
 	// Optional
-	EgressNatIPIDs    []string            `tfschema:"egress_nat_ip_address_ids"`
-	TrustedRanges     []string            `tfschema:"trusted_address_ranges"`
-	VnetConfiguration []VnetConfiguration `tfschema:"vnet_configuration"`
+	EgressNatIPIDs                 []string            `tfschema:"egress_nat_ip_address_ids"`
+	PrivateSourceNatDestinationIPs []string            `tfschema:"private_source_nat_destination_ip_addresses"`
+	TrustedRanges                  []string            `tfschema:"trusted_address_ranges"`
+	VnetConfiguration              []VnetConfiguration `tfschema:"vnet_configuration"`
 
 	// Computed
 	PublicIPs   []string `tfschema:"public_ip_addresses"`
@@ -32,8 +33,9 @@ type NetworkProfileVHub struct {
 	PublicIPIDs []string `tfschema:"public_ip_address_ids"`
 
 	// Optional
-	EgressNatIPIDs []string `tfschema:"egress_nat_ip_address_ids"`
-	TrustedRanges  []string `tfschema:"trusted_address_ranges"`
+	EgressNatIPIDs                 []string `tfschema:"egress_nat_ip_address_ids"`
+	PrivateSourceNatDestinationIPs []string `tfschema:"private_source_nat_destination_ip_addresses"`
+	TrustedRanges                  []string `tfschema:"trusted_address_ranges"`
 
 	// Computed
 	PublicIPs       []string `tfschema:"public_ip_addresses"`
@@ -83,6 +85,16 @@ func VnetNetworkProfileSchema() *pluginsdk.Schema {
 					},
 				},
 
+				"private_source_nat_destination_ip_addresses": {
+					Type:     pluginsdk.TypeList,
+					Optional: true,
+					MinItems: 1,
+					Elem: &pluginsdk.Schema{
+						Type:         pluginsdk.TypeString,
+						ValidateFunc: validation.IsIPv4Address,
+					},
+				},
+
 				"vnet_configuration": VnetConfigurationSchema(),
 
 				// Computed
@@ -109,9 +121,10 @@ func VnetNetworkProfileSchema() *pluginsdk.Schema {
 
 func ExpandNetworkProfileVnet(input []NetworkProfileVnet) firewalls.NetworkProfile {
 	result := firewalls.NetworkProfile{
-		EnableEgressNat: firewalls.EgressNatDISABLED,
-		NetworkType:     firewalls.NetworkTypeVNET,
-		TrustedRanges:   &[]string{},
+		EnableEgressNat:                  firewalls.EgressNatDISABLED,
+		NetworkType:                      firewalls.NetworkTypeVNET,
+		PrivateSourceNatRulesDestination: &[]string{},
+		TrustedRanges:                    &[]string{},
 	}
 
 	if len(input) == 0 {
@@ -143,6 +156,10 @@ func ExpandNetworkProfileVnet(input []NetworkProfileVnet) firewalls.NetworkProfi
 
 	if len(profile.TrustedRanges) > 0 {
 		result.TrustedRanges = pointer.To(profile.TrustedRanges)
+	}
+
+	if len(profile.PrivateSourceNatDestinationIPs) > 0 {
+		result.PrivateSourceNatRulesDestination = pointer.To(profile.PrivateSourceNatDestinationIPs)
 	}
 
 	vnet := profile.VnetConfiguration[0]
@@ -197,6 +214,12 @@ func FlattenNetworkProfileVnet(input firewalls.NetworkProfile) []NetworkProfileV
 		trustedRanges = pointer.From(v)
 	}
 	result.TrustedRanges = trustedRanges
+
+	privateSourceNatDestinationIPs := make([]string, 0)
+	if v := input.PrivateSourceNatRulesDestination; v != nil {
+		privateSourceNatDestinationIPs = pointer.From(v)
+	}
+	result.PrivateSourceNatDestinationIPs = privateSourceNatDestinationIPs
 
 	if v := input.VnetConfiguration; v != nil {
 		vNet := VnetConfiguration{}
@@ -268,6 +291,16 @@ func VHubNetworkProfileSchema() *pluginsdk.Schema {
 					},
 				},
 
+				"private_source_nat_destination_ip_addresses": {
+					Type:     pluginsdk.TypeList,
+					Optional: true,
+					MinItems: 1,
+					Elem: &pluginsdk.Schema{
+						Type:         pluginsdk.TypeString,
+						ValidateFunc: validation.IsIPv4Address,
+					},
+				},
+
 				"trusted_subnet_id": {
 					Type:     pluginsdk.TypeString,
 					Computed: true,
@@ -305,9 +338,10 @@ func VHubNetworkProfileSchema() *pluginsdk.Schema {
 
 func ExpandNetworkProfileVHub(input []NetworkProfileVHub) firewalls.NetworkProfile {
 	result := firewalls.NetworkProfile{
-		EnableEgressNat: firewalls.EgressNatDISABLED,
-		EgressNatIP:     &[]firewalls.IPAddress{},
-		TrustedRanges:   &[]string{},
+		EnableEgressNat:                  firewalls.EgressNatDISABLED,
+		EgressNatIP:                      &[]firewalls.IPAddress{},
+		PrivateSourceNatRulesDestination: &[]string{},
+		TrustedRanges:                    &[]string{},
 	}
 	if len(input) == 0 {
 		return result
@@ -339,6 +373,10 @@ func ExpandNetworkProfileVHub(input []NetworkProfileVHub) firewalls.NetworkProfi
 
 	if len(profile.TrustedRanges) > 0 {
 		result.TrustedRanges = pointer.To(profile.TrustedRanges)
+	}
+
+	if len(profile.PrivateSourceNatDestinationIPs) > 0 {
+		result.PrivateSourceNatRulesDestination = pointer.To(profile.PrivateSourceNatDestinationIPs)
 	}
 
 	result.NetworkType = firewalls.NetworkTypeVWAN
@@ -389,6 +427,12 @@ func FlattenNetworkProfileVHub(input firewalls.NetworkProfile) (*NetworkProfileV
 		trustedRanges = pointer.From(v)
 	}
 	result.TrustedRanges = trustedRanges
+
+	privateSourceNatDestinationIPs := make([]string, 0)
+	if v := input.PrivateSourceNatRulesDestination; v != nil {
+		privateSourceNatDestinationIPs = pointer.From(v)
+	}
+	result.PrivateSourceNatDestinationIPs = privateSourceNatDestinationIPs
 
 	if v := input.VwanConfiguration; v != nil {
 		result.VHubID = pointer.From(v.VHub.ResourceId)
