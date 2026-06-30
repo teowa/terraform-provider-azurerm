@@ -281,6 +281,14 @@ func SchemaDefaultNodePool() *pluginsdk.Schema {
 						Type:     pluginsdk.TypeBool,
 						Optional: true,
 					},
+					"secure_boot_enabled": {
+						Type:     pluginsdk.TypeBool,
+						Optional: true,
+					},
+					"vtpm_enabled": {
+						Type:     pluginsdk.TypeBool,
+						Optional: true,
+					},
 				}
 			}(),
 		},
@@ -799,6 +807,12 @@ func ConvertDefaultNodePoolToAgentPool(input *[]managedclusters.ManagedClusterAg
 	if osSku := defaultCluster.OsSKU; osSku != nil {
 		agentpool.Properties.OsSKU = pointer.To(agentpools.OSSKU(*osSku))
 	}
+	if securityProfile := defaultCluster.SecurityProfile; securityProfile != nil {
+		agentpool.Properties.SecurityProfile = &agentpools.AgentPoolSecurityProfile{
+			EnableSecureBoot: securityProfile.EnableSecureBoot,
+			EnableVTPM:       securityProfile.EnableVTPM,
+		}
+	}
 	if kubeletDiskTypeNodePool := defaultCluster.KubeletDiskType; kubeletDiskTypeNodePool != nil {
 		agentpool.Properties.KubeletDiskType = pointer.To(agentpools.KubeletDiskType(string(*kubeletDiskTypeNodePool)))
 	}
@@ -923,6 +937,15 @@ func ExpandDefaultNodePool(d *pluginsdk.ResourceData) (*[]managedclusters.Manage
 
 	if osSku := raw["os_sku"].(string); osSku != "" {
 		profile.OsSKU = pointer.To(managedclusters.OSSKU(osSku))
+	}
+
+	secureBootEnabled := raw["secure_boot_enabled"].(bool)
+	vtpmEnabled := raw["vtpm_enabled"].(bool)
+	if secureBootEnabled || vtpmEnabled {
+		profile.SecurityProfile = &managedclusters.AgentPoolSecurityProfile{
+			EnableSecureBoot: pointer.To(secureBootEnabled),
+			EnableVTPM:       pointer.To(vtpmEnabled),
+		}
 	}
 
 	if podSubnetID := raw["pod_subnet_id"].(string); podSubnetID != "" {
@@ -1266,6 +1289,17 @@ func FlattenDefaultNodePool(input *[]managedclusters.ManagedClusterAgentPoolProf
 		enableHostEncryption = *agentPool.EnableEncryptionAtHost
 	}
 
+	secureBootEnabled := false
+	vtpmEnabled := false
+	if agentPool.SecurityProfile != nil {
+		if agentPool.SecurityProfile.EnableSecureBoot != nil {
+			secureBootEnabled = *agentPool.SecurityProfile.EnableSecureBoot
+		}
+		if agentPool.SecurityProfile.EnableVTPM != nil {
+			vtpmEnabled = *agentPool.SecurityProfile.EnableVTPM
+		}
+	}
+
 	gpuInstanceProfile := ""
 	if agentPool.GpuInstanceProfile != nil {
 		gpuInstanceProfile = string(*agentPool.GpuInstanceProfile)
@@ -1428,12 +1462,14 @@ func FlattenDefaultNodePool(input *[]managedclusters.ManagedClusterAgentPoolProf
 		"os_disk_type":                  string(osDiskType),
 		"os_sku":                        osSKU,
 		"scale_down_mode":               string(scaleDownMode),
+		"secure_boot_enabled":           secureBootEnabled,
 		"snapshot_id":                   snapshotId,
 		"tags":                          tags.Flatten(agentPool.Tags),
 		"temporary_name_for_rotation":   temporaryName,
 		"type":                          agentPoolType,
 		"ultra_ssd_enabled":             enableUltraSSD,
 		"vm_size":                       vmSize,
+		"vtpm_enabled":                  vtpmEnabled,
 		"workload_runtime":              workloadRunTime,
 		"pod_subnet_id":                 podSubnetId,
 		"orchestrator_version":          orchestratorVersion,

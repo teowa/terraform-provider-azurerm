@@ -483,6 +483,14 @@ func resourceKubernetesClusterNodePoolSchema() map[string]*pluginsdk.Schema {
 			Type:     pluginsdk.TypeBool,
 			Optional: true,
 		},
+		"secure_boot_enabled": {
+			Type:     pluginsdk.TypeBool,
+			Optional: true,
+		},
+		"vtpm_enabled": {
+			Type:     pluginsdk.TypeBool,
+			Optional: true,
+		},
 	}
 
 	return s
@@ -566,6 +574,8 @@ func resourceKubernetesClusterNodePoolCreate(d *pluginsdk.ResourceData, meta int
 	enableAutoScaling := d.Get("auto_scaling_enabled").(bool)
 	hostEncryption := d.Get("host_encryption_enabled").(bool)
 	nodeIp := d.Get("node_public_ip_enabled").(bool)
+	secureBoot := d.Get("secure_boot_enabled").(bool)
+	vtpm := d.Get("vtpm_enabled").(bool)
 
 	evictionPolicy := d.Get("eviction_policy").(string)
 	mode := agentpools.AgentPoolMode(d.Get("mode").(string))
@@ -601,6 +611,13 @@ func resourceKubernetesClusterNodePoolCreate(d *pluginsdk.ResourceData, meta int
 	if gpuDriver := d.Get("gpu_driver").(string); gpuDriver != "" {
 		profile.GpuProfile = &agentpools.GPUProfile{
 			Driver: pointer.To(agentpools.GPUDriver(gpuDriver)),
+		}
+	}
+
+	if secureBoot || vtpm {
+		profile.SecurityProfile = &agentpools.AgentPoolSecurityProfile{
+			EnableSecureBoot: pointer.To(secureBoot),
+			EnableVTPM:       pointer.To(vtpm),
 		}
 	}
 
@@ -832,6 +849,15 @@ func resourceKubernetesClusterNodePoolUpdate(d *pluginsdk.ResourceData, meta int
 		props.EnableEncryptionAtHost = pointer.To(d.Get("host_encryption_enabled").(bool))
 	}
 
+	if d.HasChange("secure_boot_enabled") || d.HasChange("vtpm_enabled") {
+		if props.SecurityProfile == nil {
+			props.SecurityProfile = &agentpools.AgentPoolSecurityProfile{}
+		}
+
+		props.SecurityProfile.EnableSecureBoot = pointer.To(d.Get("secure_boot_enabled").(bool))
+		props.SecurityProfile.EnableVTPM = pointer.To(d.Get("vtpm_enabled").(bool))
+	}
+
 	if d.HasChange("kubelet_config") {
 		kubeletConfigRaw := d.Get("kubelet_config").([]interface{})
 		props.KubeletConfig = expandAgentPoolKubeletConfig(kubeletConfigRaw)
@@ -1017,9 +1043,11 @@ func resourceKubernetesClusterNodePoolUpdate(d *pluginsdk.ResourceData, meta int
 		"os_disk_size_gb",
 		"os_disk_type",
 		"pod_subnet_id",
+		"secure_boot_enabled",
 		"snapshot_id",
 		"ultra_ssd_enabled",
 		"vm_size",
+		"vtpm_enabled",
 		"vnet_subnet_id",
 		"zones",
 	}
@@ -1138,7 +1166,19 @@ func resourceKubernetesClusterNodePoolRead(d *pluginsdk.ResourceData, meta inter
 		d.Set("node_public_ip_enabled", props.EnableNodePublicIP)
 		d.Set("host_encryption_enabled", props.EnableEncryptionAtHost)
 		d.Set("fips_enabled", props.EnableFIPS)
+		secureBootEnabled := false
+		vtpmEnabled := false
+		if props.SecurityProfile != nil {
+			if props.SecurityProfile.EnableSecureBoot != nil {
+				secureBootEnabled = *props.SecurityProfile.EnableSecureBoot
+			}
+			if props.SecurityProfile.EnableVTPM != nil {
+				vtpmEnabled = *props.SecurityProfile.EnableVTPM
+			}
+		}
+		d.Set("secure_boot_enabled", secureBootEnabled)
 		d.Set("ultra_ssd_enabled", props.EnableUltraSSD)
+		d.Set("vtpm_enabled", vtpmEnabled)
 
 		if v := props.KubeletDiskType; v != nil {
 			d.Set("kubelet_disk_type", string(*v))
