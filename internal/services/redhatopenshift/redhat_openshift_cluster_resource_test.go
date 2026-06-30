@@ -93,6 +93,37 @@ func TestAccOpenShiftCluster_userDefinedRouting(t *testing.T) {
 	})
 }
 
+func TestAccOpenShiftCluster_managedOutboundIPs(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_redhat_openshift_cluster", "test")
+	r := OpenShiftClusterResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.managedOutboundIPs(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("network_profile.0.managed_outbound_ip_count").HasValue("2"),
+			),
+		},
+		data.ImportStep("service_principal.0.client_secret"),
+	})
+}
+
+func TestAccOpenShiftCluster_withUserAssignedIdentity(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_redhat_openshift_cluster", "test")
+	r := OpenShiftClusterResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.withUserAssignedIdentity(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep("service_principal.0.client_secret"),
+	})
+}
+
 func TestAccOpenShiftCluster_encryptionAtHost(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_redhat_openshift_cluster", "test")
 	r := OpenShiftClusterResource{}
@@ -527,6 +558,122 @@ resource "azurerm_redhat_openshift_cluster" "test" {
 
   ingress_profile {
     visibility = "Private"
+  }
+
+  service_principal {
+    client_id     = azuread_application.test.client_id
+    client_secret = azuread_service_principal_password.test.value
+  }
+
+  depends_on = [
+    "azurerm_role_assignment.role_network1",
+    "azurerm_role_assignment.role_network2",
+  ]
+}
+  `, r.template(data), data.RandomInteger, data.RandomString)
+}
+
+func (r OpenShiftClusterResource) managedOutboundIPs(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+%[1]s
+
+resource "azurerm_redhat_openshift_cluster" "test" {
+  name                = "acctestaro%[2]d"
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
+
+  cluster_profile {
+    domain  = "aro-%[3]s.com"
+    version = "4.19.20"
+  }
+
+  network_profile {
+    pod_cidr                  = "10.128.0.0/14"
+    service_cidr              = "172.30.0.0/16"
+    managed_outbound_ip_count = 2
+  }
+
+  main_profile {
+    vm_size   = "Standard_D8s_v3"
+    subnet_id = azurerm_subnet.main_subnet.id
+  }
+
+  worker_profile {
+    vm_size      = "Standard_D4s_v3"
+    disk_size_gb = 128
+    node_count   = 3
+    subnet_id    = azurerm_subnet.worker_subnet.id
+  }
+
+  api_server_profile {
+    visibility = "Public"
+  }
+
+  ingress_profile {
+    visibility = "Public"
+  }
+
+  service_principal {
+    client_id     = azuread_application.test.client_id
+    client_secret = azuread_service_principal_password.test.value
+  }
+
+  depends_on = [
+    "azurerm_role_assignment.role_network1",
+    "azurerm_role_assignment.role_network2",
+  ]
+}
+  `, r.template(data), data.RandomInteger, data.RandomString)
+}
+
+func (r OpenShiftClusterResource) withUserAssignedIdentity(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+%[1]s
+
+resource "azurerm_user_assigned_identity" "test" {
+  name                = "acctestuai-%[2]d"
+  resource_group_name = azurerm_resource_group.test.name
+  location            = azurerm_resource_group.test.location
+}
+
+resource "azurerm_redhat_openshift_cluster" "test" {
+  name                = "acctestaro%[2]d"
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
+
+  cluster_profile {
+    domain  = "aro-%[3]s.com"
+    version = "4.19.20"
+  }
+
+  network_profile {
+    pod_cidr     = "10.128.0.0/14"
+    service_cidr = "172.30.0.0/16"
+  }
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.test.id]
+  }
+
+  main_profile {
+    vm_size   = "Standard_D8s_v3"
+    subnet_id = azurerm_subnet.main_subnet.id
+  }
+
+  worker_profile {
+    vm_size      = "Standard_D4s_v3"
+    disk_size_gb = 128
+    node_count   = 3
+    subnet_id    = azurerm_subnet.worker_subnet.id
+  }
+
+  api_server_profile {
+    visibility = "Public"
+  }
+
+  ingress_profile {
+    visibility = "Public"
   }
 
   service_principal {

@@ -6,12 +6,14 @@ package redhatopenshift
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
+	"github.com/hashicorp/go-azure-helpers/resourcemanager/identity"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/redhatopenshift/2025-07-25/openshiftclusters"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -29,18 +31,20 @@ var _ sdk.ResourceWithUpdate = RedHatOpenShiftCluster{}
 type RedHatOpenShiftCluster struct{}
 
 type RedHatOpenShiftClusterModel struct {
-	Tags             map[string]string  `tfschema:"tags"`
-	Name             string             `tfschema:"name"`
-	Location         string             `tfschema:"location"`
-	ResourceGroup    string             `tfschema:"resource_group_name"`
-	ConsoleUrl       string             `tfschema:"console_url"`
-	ServicePrincipal []ServicePrincipal `tfschema:"service_principal"`
-	ClusterProfile   []ClusterProfile   `tfschema:"cluster_profile"`
-	NetworkProfile   []NetworkProfile   `tfschema:"network_profile"`
-	MainProfile      []MainProfile      `tfschema:"main_profile"`
-	WorkerProfile    []WorkerProfile    `tfschema:"worker_profile"`
-	ApiServerProfile []ApiServerProfile `tfschema:"api_server_profile"`
-	IngressProfile   []IngressProfile   `tfschema:"ingress_profile"`
+	Tags               map[string]string            `tfschema:"tags"`
+	Name               string                       `tfschema:"name"`
+	Location           string                       `tfschema:"location"`
+	ResourceGroup      string                       `tfschema:"resource_group_name"`
+	ConsoleUrl         string                       `tfschema:"console_url"`
+	Identity           []identity.ModelUserAssigned `tfschema:"identity"`
+	ServicePrincipal   []ServicePrincipal           `tfschema:"service_principal"`
+	ClusterProfile     []ClusterProfile             `tfschema:"cluster_profile"`
+	NetworkProfile     []NetworkProfile             `tfschema:"network_profile"`
+	MainProfile        []MainProfile                `tfschema:"main_profile"`
+	WorkerProfile      []WorkerProfile              `tfschema:"worker_profile"`
+	ApiServerProfile   []ApiServerProfile           `tfschema:"api_server_profile"`
+	IngressProfile     []IngressProfile             `tfschema:"ingress_profile"`
+	WorkloadIdentities []WorkloadIdentity           `tfschema:"workload_identities"`
 }
 
 type ServicePrincipal struct {
@@ -58,10 +62,12 @@ type ClusterProfile struct {
 }
 
 type NetworkProfile struct {
-	OutboundType                             string `tfschema:"outbound_type"`
-	PodCidr                                  string `tfschema:"pod_cidr"`
-	ServiceCidr                              string `tfschema:"service_cidr"`
-	PreconfiguredNetworkSecurityGroupEnabled bool   `tfschema:"preconfigured_network_security_group_enabled"`
+	OutboundType                             string   `tfschema:"outbound_type"`
+	PodCidr                                  string   `tfschema:"pod_cidr"`
+	ServiceCidr                              string   `tfschema:"service_cidr"`
+	PreconfiguredNetworkSecurityGroupEnabled bool     `tfschema:"preconfigured_network_security_group_enabled"`
+	ManagedOutboundIpCount                   int64    `tfschema:"managed_outbound_ip_count"`
+	EffectiveOutboundIpIds                   []string `tfschema:"effective_outbound_ip_ids"`
 }
 
 type MainProfile struct {
@@ -90,6 +96,13 @@ type ApiServerProfile struct {
 	Visibility string `tfschema:"visibility"`
 	IpAddress  string `tfschema:"ip_address"`
 	Url        string `tfschema:"url"`
+}
+
+type WorkloadIdentity struct {
+	ClientId     string `tfschema:"client_id"`
+	ObjectId     string `tfschema:"object_id"`
+	OperatorName string `tfschema:"operator_name"`
+	ResourceId   string `tfschema:"resource_id"`
 }
 
 func (r RedHatOpenShiftCluster) Arguments() map[string]*pluginsdk.Schema {
@@ -179,6 +192,8 @@ func (r RedHatOpenShiftCluster) Arguments() map[string]*pluginsdk.Schema {
 			},
 		},
 
+		"identity": redHatOpenShiftClusterIdentitySchema(),
+
 		"network_profile": {
 			Type:     pluginsdk.TypeList,
 			Required: true,
@@ -213,6 +228,20 @@ func (r RedHatOpenShiftCluster) Arguments() map[string]*pluginsdk.Schema {
 						Optional: true,
 						ForceNew: true,
 						Default:  false,
+					},
+					"managed_outbound_ip_count": {
+						Type:         pluginsdk.TypeInt,
+						Optional:     true,
+						Computed:     true,
+						ForceNew:     true,
+						ValidateFunc: validation.IntBetween(1, 20),
+					},
+					"effective_outbound_ip_ids": {
+						Type:     pluginsdk.TypeSet,
+						Computed: true,
+						Elem: &pluginsdk.Schema{
+							Type: pluginsdk.TypeString,
+						},
 					},
 				},
 			},
@@ -362,6 +391,30 @@ func (r RedHatOpenShiftCluster) Attributes() map[string]*pluginsdk.Schema {
 			Type:     pluginsdk.TypeString,
 			Computed: true,
 		},
+		"workload_identities": {
+			Type:     pluginsdk.TypeList,
+			Computed: true,
+			Elem: &pluginsdk.Resource{
+				Schema: map[string]*pluginsdk.Schema{
+					"client_id": {
+						Type:     pluginsdk.TypeString,
+						Computed: true,
+					},
+					"object_id": {
+						Type:     pluginsdk.TypeString,
+						Computed: true,
+					},
+					"operator_name": {
+						Type:     pluginsdk.TypeString,
+						Computed: true,
+					},
+					"resource_id": {
+						Type:     pluginsdk.TypeString,
+						Computed: true,
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -386,7 +439,7 @@ func (r RedHatOpenShiftCluster) Create() sdk.ResourceFunc {
 
 			var config RedHatOpenShiftClusterModel
 			if err := metadata.Decode(&config); err != nil {
-				return fmt.Errorf("decoding %+v", err)
+				return fmt.Errorf("decoding: %+v", err)
 			}
 
 			id := openshiftclusters.NewOpenShiftClusterID(subscriptionId, config.ResourceGroup, config.Name)
@@ -395,7 +448,7 @@ func (r RedHatOpenShiftCluster) Create() sdk.ResourceFunc {
 				existing, err := client.Get(ctx, id)
 				if err != nil {
 					if !response.WasNotFound(existing.HttpResponse) {
-						return fmt.Errorf("checking for presence of existing %s: %s", id, err)
+						return fmt.Errorf("checking for presence of existing %s: %+v", id, err)
 					}
 				}
 
@@ -404,8 +457,20 @@ func (r RedHatOpenShiftCluster) Create() sdk.ResourceFunc {
 				}
 			}
 
+			var (
+				expandedIdentity *identity.UserAssignedMap
+				err              error
+			)
+			if len(config.Identity) > 0 {
+				expandedIdentity, err = expandOpenShiftIdentity(config.Identity)
+				if err != nil {
+					return fmt.Errorf("expanding `identity`: %+v", err)
+				}
+			}
+
 			parameters := openshiftclusters.OpenShiftCluster{
 				Name:     pointer.To(id.OpenShiftClusterName),
+				Identity: expandedIdentity,
 				Location: location.Normalize(config.Location),
 				Properties: &openshiftclusters.OpenShiftClusterProperties{
 					ClusterProfile:          expandOpenshiftClusterProfile(config.ClusterProfile, id.SubscriptionId),
@@ -457,6 +522,14 @@ func (r RedHatOpenShiftCluster) Update() sdk.ResourceFunc {
 				}
 			}
 
+			if metadata.ResourceData.HasChange("identity") {
+				expandedIdentity, err := expandOpenShiftIdentity(state.Identity)
+				if err != nil {
+					return fmt.Errorf("expanding `identity`: %+v", err)
+				}
+				parameter.Identity = expandedIdentity
+			}
+
 			if err := client.UpdateThenPoll(ctx, *id, parameter); err != nil {
 				return fmt.Errorf("updating %s: %+v", id, err)
 			}
@@ -488,7 +561,7 @@ func (r RedHatOpenShiftCluster) Read() sdk.ResourceFunc {
 
 			var config RedHatOpenShiftClusterModel
 			if err := metadata.Decode(&config); err != nil {
-				return fmt.Errorf("decoding %+v", err)
+				return fmt.Errorf("decoding: %+v", err)
 			}
 
 			state := RedHatOpenShiftClusterModel{
@@ -499,6 +572,11 @@ func (r RedHatOpenShiftCluster) Read() sdk.ResourceFunc {
 			if model := resp.Model; model != nil {
 				state.Location = location.Normalize(model.Location)
 				state.Tags = pointer.From(model.Tags)
+				flattenedIdentity, err := identity.FlattenUserAssignedMapToModel(model.Identity)
+				if err != nil {
+					return fmt.Errorf("flattening `identity`: %+v", err)
+				}
+				state.Identity = pointer.From(flattenedIdentity)
 
 				if props := model.Properties; props != nil {
 					clusterProfile, err := flattenOpenShiftClusterProfile(props.ClusterProfile, config)
@@ -508,10 +586,19 @@ func (r RedHatOpenShiftCluster) Read() sdk.ResourceFunc {
 					state.ClusterProfile = *clusterProfile
 
 					state.ServicePrincipal = flattenOpenShiftServicePrincipalProfile(props.ServicePrincipalProfile, config)
-					state.NetworkProfile = flattenOpenShiftNetworkProfile(props.NetworkProfile)
+					networkProfile, err := flattenOpenShiftNetworkProfile(props.NetworkProfile)
+					if err != nil {
+						return fmt.Errorf("flattening network profile: %+v", err)
+					}
+					state.NetworkProfile = networkProfile
 					state.MainProfile = flattenOpenShiftMainProfile(props.MasterProfile)
 					state.ApiServerProfile = flattenOpenShiftAPIServerProfile(props.ApiserverProfile)
 					state.IngressProfile = flattenOpenShiftIngressProfiles(props.IngressProfiles)
+					workloadIdentities, err := flattenOpenShiftWorkloadIdentities(props.PlatformWorkloadIdentityProfile)
+					if err != nil {
+						return fmt.Errorf("flattening workload identities: %+v", err)
+					}
+					state.WorkloadIdentities = workloadIdentities
 
 					workerProfiles, err := flattenOpenShiftWorkerProfiles(props.WorkerProfiles)
 					if err != nil {
@@ -627,6 +714,10 @@ func expandOpenshiftServicePrincipalProfile(input []ServicePrincipal) *openshift
 	}
 }
 
+func expandOpenShiftIdentity(input []identity.ModelUserAssigned) (*identity.UserAssignedMap, error) {
+	return identity.ExpandUserAssignedMapFromModel(input)
+}
+
 func flattenOpenShiftServicePrincipalProfile(profile *openshiftclusters.ServicePrincipalProfile, config RedHatOpenShiftClusterModel) []ServicePrincipal {
 	if profile == nil {
 		return []ServicePrincipal{}
@@ -657,21 +748,27 @@ func expandOpenshiftNetworkProfile(input []NetworkProfile) *openshiftclusters.Ne
 	}
 
 	return &openshiftclusters.NetworkProfile{
-		OutboundType:     pointer.To(openshiftclusters.OutboundType(input[0].OutboundType)),
-		PodCidr:          pointer.To(input[0].PodCidr),
-		ServiceCidr:      pointer.To(input[0].ServiceCidr),
-		PreconfiguredNSG: pointer.To(preconfiguredNSG),
+		OutboundType:        pointer.To(openshiftclusters.OutboundType(input[0].OutboundType)),
+		PodCidr:             pointer.To(input[0].PodCidr),
+		ServiceCidr:         pointer.To(input[0].ServiceCidr),
+		PreconfiguredNSG:    pointer.To(preconfiguredNSG),
+		LoadBalancerProfile: expandOpenShiftLoadBalancerProfile(input[0]),
 	}
 }
 
-func flattenOpenShiftNetworkProfile(profile *openshiftclusters.NetworkProfile) []NetworkProfile {
+func flattenOpenShiftNetworkProfile(profile *openshiftclusters.NetworkProfile) ([]NetworkProfile, error) {
 	if profile == nil {
-		return []NetworkProfile{}
+		return []NetworkProfile{}, nil
 	}
 
 	preconfiguredNetworkSecurityGroupEnabled := false
 	if profile.PreconfiguredNSG != nil {
 		preconfiguredNetworkSecurityGroupEnabled = *profile.PreconfiguredNSG == openshiftclusters.PreconfiguredNSGEnabled
+	}
+
+	managedOutboundIpCount, effectiveOutboundIpIds, err := flattenOpenShiftLoadBalancerProfile(profile.LoadBalancerProfile)
+	if err != nil {
+		return nil, err
 	}
 
 	return []NetworkProfile{
@@ -680,8 +777,10 @@ func flattenOpenShiftNetworkProfile(profile *openshiftclusters.NetworkProfile) [
 			PodCidr:                                  pointer.From(profile.PodCidr),
 			ServiceCidr:                              pointer.From(profile.ServiceCidr),
 			PreconfiguredNetworkSecurityGroupEnabled: preconfiguredNetworkSecurityGroupEnabled,
+			ManagedOutboundIpCount:                   managedOutboundIpCount,
+			EffectiveOutboundIpIds:                   effectiveOutboundIpIds,
 		},
-	}
+	}, nil
 }
 
 func expandOpenshiftMainProfile(input []MainProfile) *openshiftclusters.MasterProfile {
@@ -842,4 +941,109 @@ func flattenOpenShiftIngressProfiles(profiles *[]openshiftclusters.IngressProfil
 	}
 
 	return results
+}
+
+func expandOpenShiftLoadBalancerProfile(input NetworkProfile) *openshiftclusters.LoadBalancerProfile {
+	if input.ManagedOutboundIpCount == 0 {
+		return nil
+	}
+
+	return &openshiftclusters.LoadBalancerProfile{
+		ManagedOutboundIPs: &openshiftclusters.ManagedOutboundIPs{
+			Count: pointer.To(input.ManagedOutboundIpCount),
+		},
+	}
+}
+
+func flattenOpenShiftLoadBalancerProfile(profile *openshiftclusters.LoadBalancerProfile) (int64, []string, error) {
+	if profile == nil {
+		return 0, []string{}, nil
+	}
+
+	managedOutboundIpCount := int64(0)
+	if profile.ManagedOutboundIPs != nil && profile.ManagedOutboundIPs.Count != nil {
+		managedOutboundIpCount = *profile.ManagedOutboundIPs.Count
+	}
+
+	effectiveOutboundIpIds := make([]string, 0)
+	if profile.EffectiveOutboundIPs != nil {
+		for _, outboundIp := range *profile.EffectiveOutboundIPs {
+			if outboundIp.Id == nil {
+				continue
+			}
+
+			outboundIpId, err := commonids.ParsePublicIPAddressIDInsensitively(*outboundIp.Id)
+			if err != nil {
+				return 0, nil, err
+			}
+
+			effectiveOutboundIpIds = append(effectiveOutboundIpIds, outboundIpId.ID())
+		}
+	}
+	sort.Strings(effectiveOutboundIpIds)
+
+	return managedOutboundIpCount, effectiveOutboundIpIds, nil
+}
+
+func flattenOpenShiftWorkloadIdentities(profile *openshiftclusters.PlatformWorkloadIdentityProfile) ([]WorkloadIdentity, error) {
+	if profile == nil || profile.PlatformWorkloadIdentities == nil {
+		return []WorkloadIdentity{}, nil
+	}
+
+	operatorNames := make([]string, 0, len(*profile.PlatformWorkloadIdentities))
+	for operatorName := range *profile.PlatformWorkloadIdentities {
+		operatorNames = append(operatorNames, operatorName)
+	}
+	sort.Strings(operatorNames)
+
+	identities := make([]WorkloadIdentity, 0, len(operatorNames))
+	for _, operatorName := range operatorNames {
+		workloadIdentity := (*profile.PlatformWorkloadIdentities)[operatorName]
+		resourceId := pointer.From(workloadIdentity.ResourceId)
+		if resourceId != "" {
+			parsedResourceId, err := commonids.ParseUserAssignedIdentityIDInsensitively(resourceId)
+			if err != nil {
+				return nil, err
+			}
+			resourceId = parsedResourceId.ID()
+		}
+
+		identities = append(identities, WorkloadIdentity{
+			ClientId:     pointer.From(workloadIdentity.ClientId),
+			ObjectId:     pointer.From(workloadIdentity.ObjectId),
+			OperatorName: operatorName,
+			ResourceId:   resourceId,
+		})
+	}
+
+	return identities, nil
+}
+
+func redHatOpenShiftClusterIdentitySchema() *pluginsdk.Schema {
+	return &pluginsdk.Schema{
+		Type:     pluginsdk.TypeList,
+		Optional: true,
+		MaxItems: 1,
+		Elem: &pluginsdk.Resource{
+			Schema: map[string]*pluginsdk.Schema{
+				"type": {
+					Type:     pluginsdk.TypeString,
+					Required: true,
+					ValidateFunc: validation.StringInSlice([]string{
+						string(identity.TypeUserAssigned),
+					}, false),
+				},
+				"identity_ids": {
+					Type:     pluginsdk.TypeSet,
+					Required: true,
+					MinItems: 1,
+					MaxItems: 1,
+					Elem: &pluginsdk.Schema{
+						Type:         pluginsdk.TypeString,
+						ValidateFunc: commonids.ValidateUserAssignedIdentityID,
+					},
+				},
+			},
+		},
+	}
 }

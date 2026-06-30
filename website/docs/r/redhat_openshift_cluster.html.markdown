@@ -3,7 +3,7 @@ subcategory: "Red Hat OpenShift"
 layout: "azurerm"
 page_title: "Azure Resource Manager: azurerm_redhat_openshift_cluster"
 description: |-
-  Manages fully managed Azure Red Hat OpenShift Cluster (also known as ARO)
+  Manages a fully managed Azure Red Hat OpenShift Cluster (also known as ARO).
 ---
 
 # azurerm_redhat_openshift_cluster
@@ -28,7 +28,7 @@ resource "azuread_service_principal" "example" {
 }
 
 resource "azuread_service_principal_password" "example" {
-  service_principal_id = azuread_service_principal.example.object_id
+  service_principal_id = azuread_service_principal.example.id
 }
 
 data "azuread_service_principal" "redhatopenshift" {
@@ -117,8 +117,8 @@ resource "azurerm_redhat_openshift_cluster" "example" {
   }
 
   depends_on = [
-    "azurerm_role_assignment.role_network1",
-    "azurerm_role_assignment.role_network2",
+    azurerm_role_assignment.role_network1,
+    azurerm_role_assignment.role_network2,
   ]
 }
 
@@ -137,31 +137,59 @@ The following arguments are supported:
 
 * `resource_group_name` - (Required) Specifies the Resource Group where the Azure Red Hat OpenShift Cluster should exist. Changing this forces a new resource to be created.
 
-* `service_principal` - (Required) A `service_principal` block as defined below.
-
-* `main_profile` - (Required) A `main_profile` block as defined below. Changing this forces a new resource to be created.
-
-* `worker_profile` - (Required) A `worker_profile` block as defined below. Changing this forces a new resource to be created.
+* `api_server_profile` - (Required) An `api_server_profile` block as defined below. Changing this forces a new resource to be created.
 
 * `cluster_profile` - (Required) A `cluster_profile` block as defined below. Changing this forces a new resource to be created.
 
-* `api_server_profile` - (Required) An `api_server_profile` block as defined below. Changing this forces a new resource to be created.
-
 * `ingress_profile` - (Required) An `ingress_profile` block as defined below. Changing this forces a new resource to be created.
 
+* `main_profile` - (Required) A `main_profile` block as defined below. Changing this forces a new resource to be created.
+
 * `network_profile` - (Required) A `network_profile` block as defined below. Changing this forces a new resource to be created.
+
+* `service_principal` - (Required) A `service_principal` block as defined below.
+
+* `worker_profile` - (Required) A `worker_profile` block as defined below. Changing this forces a new resource to be created.
+
+* `identity` - (Optional) An `identity` block as defined below.
 
 * `tags` - (Optional) A mapping of tags to assign to the resource.
 
 ---
 
-A `service_principal` block supports the following:
+A `api_server_profile` block supports the following:
 
-* `client_id` - (Required) The Client ID for the Service Principal.
+* `visibility` - (Required) Cluster API server visibility. Possible values are `Public` and `Private`. Changing this forces a new resource to be created.
 
-* `client_secret` - (Required) The Client Secret for the Service Principal.
+---
 
-~> **Note:** Currently a service principal cannot be associated with more than one ARO clusters on the Azure subscription.
+A `cluster_profile` block supports the following:
+
+* `domain` - (Required) The custom domain for the cluster. For more info, see [Prepare a custom domain for your cluster](https://docs.microsoft.com/azure/openshift/tutorial-create-cluster#prepare-a-custom-domain-for-your-cluster-optional). Changing this forces a new resource to be created.
+
+* `version` - (Required) The version of the OpenShift cluster. Available versions can be found with the Azure CLI command `az aro get-versions --location <region>`. Changing this forces a new resource to be created.
+
+* `fips_enabled` - (Optional) Whether `fips` is enabled. Defaults to `false`. Changing this forces a new resource to be created.
+
+* `managed_resource_group_name` - (Optional) The name of a Resource Group which will be created to host VMs of the Azure Red Hat OpenShift Cluster. Changing this forces a new resource to be created.
+~> **Note:** The value cannot contain uppercase characters.
+
+* `pull_secret` - (Optional) The Red Hat pull secret for the cluster. For more info, see [Get a Red Hat pull secret](https://learn.microsoft.com/azure/openshift/tutorial-create-cluster#get-a-red-hat-pull-secret-optional). Changing this forces a new resource to be created.
+
+---
+
+An `identity` block supports the following:
+
+* `type` - (Required) The only possible value is `UserAssigned`.
+
+* `identity_ids` - (Required) A list containing the resource ID of the user-assigned managed identity to use.
+~> **Note:** Azure Red Hat OpenShift only supports exactly one user-assigned managed identity.
+
+---
+
+A `ingress_profile` block supports the following:
+
+* `visibility` - (Required) Cluster ingress visibility. Possible values are `Public` and `Private`. Changing this forces a new resource to be created.
 
 ---
 
@@ -171,43 +199,11 @@ A `main_profile` block supports the following:
 
 * `vm_size` - (Required) The size of the Virtual Machines for the main nodes. Changing this forces a new resource to be created.
 
-* `encryption_at_host_enabled` - (Optional) Whether main virtual machines are encrypted at host. Defaults to `false`. Changing this forces a new resource to be created.
-
-~> **Note:** `encryption_at_host_enabled` is only available for certain VM sizes and the `EncryptionAtHost` feature must be enabled for your subscription. Please see the [Azure documentation](https://learn.microsoft.com/azure/virtual-machines/disks-enable-host-based-encryption-portal?tabs=azure-powershell) for more information.
-
 * `disk_encryption_set_id` - (Optional) The resource ID of an associated disk encryption set. Changing this forces a new resource to be created.
 
----
-
-A `worker_profile` block supports the following:
-
-* `subnet_id` - (Required) The ID of the subnet where worker nodes will be hosted. Changing this forces a new resource to be created.
-
-* `vm_size` - (Required) The size of the Virtual Machines for the worker nodes. Changing this forces a new resource to be created.
-
-* `disk_size_gb` - (Required) The internal OS disk size of the worker Virtual Machines in GB. Changing this forces a new resource to be created.
-
-* `node_count` - (Required) The initial number of worker nodes which should exist in the cluster. Changing this forces a new resource to be created.
-
-* `encryption_at_host_enabled` - (Optional) Whether worker virtual machines are encrypted at host. Defaults to `false`. Changing this forces a new resource to be created.
+* `encryption_at_host_enabled` - (Optional) Whether `encryption_at_host` is enabled. Defaults to `false`. Changing this forces a new resource to be created.
 
 ~> **Note:** `encryption_at_host_enabled` is only available for certain VM sizes and the `EncryptionAtHost` feature must be enabled for your subscription. Please see the [Azure documentation](https://learn.microsoft.com/azure/virtual-machines/disks-enable-host-based-encryption-portal?tabs=azure-powershell) for more information.
-
-* `disk_encryption_set_id` - (Optional) The resource ID of an associated disk encryption set. Changing this forces a new resource to be created.
-
----
-
-A `cluster_profile` block supports the following:
-
-* `version` - (Required) The version of the OpenShift cluster. Available versions can be found with the Azure CLI command `az aro get-versions --location <region>`. Changing this forces a new resource to be created.
-
-* `domain` - (Required) The custom domain for the cluster. For more info, see [Prepare a custom domain for your cluster](https://docs.microsoft.com/azure/openshift/tutorial-create-cluster#prepare-a-custom-domain-for-your-cluster-optional). Changing this forces a new resource to be created.
-
-* `pull_secret` - (Optional) The Red Hat pull secret for the cluster. For more info, see [Get a Red Hat pull secret](https://learn.microsoft.com/azure/openshift/tutorial-create-cluster#get-a-red-hat-pull-secret-optional). Changing this forces a new resource to be created.
-
-* `fips_enabled` - (Optional) Whether Federal Information Processing Standard (FIPS) validated cryptographic modules are used. Defaults to `false`. Changing this forces a new resource to be created.
-
-* `managed_resource_group_name` - (Optional) The name of a Resource Group which will be created to host VMs of Azure Red Hat OpenShift Cluster. The value cannot contain uppercase characters. Changing this forces a new resource to be created.
 
 ---
 
@@ -217,41 +213,59 @@ A `network_profile` block supports the following:
 
 * `service_cidr` - (Required) The network range used by the OpenShift service. Changing this forces a new resource to be created.
 
+* `managed_outbound_ip_count` - (Optional) The desired number of managed outbound IPs for the cluster public load balancer. Possible values range between `1` and `20`. Changing this forces a new resource to be created.
+
 * `outbound_type` - (Optional) The outbound (egress) routing method. Possible values are `Loadbalancer` and `UserDefinedRouting`. Defaults to `Loadbalancer`. Changing this forces a new resource to be created.
 
-* `preconfigured_network_security_group_enabled` - (Optional) Whether a preconfigured network security group is being used on the subnets. Defaults to `false`. Changing this forces a new resource to be created.
+* `preconfigured_network_security_group_enabled` - (Optional) Whether `preconfigured_network_security_group` is enabled. Defaults to `false`. Changing this forces a new resource to be created.
 
 ---
 
-A `api_server_profile` block supports the following:
+A `service_principal` block supports the following:
 
-* `visibility` - (Required) Cluster API server visibility. Supported values are `Public` and `Private`. Changing this forces a new resource to be created.
+* `client_id` - (Required) The Client ID for the Service Principal.
+
+* `client_secret` - (Required) The Client Secret for the Service Principal.
+
+~> **Note:** Currently a service principal cannot be associated with more than one ARO cluster on the Azure subscription.
 
 ---
 
-A `ingress_profile` block supports the following:
+A `worker_profile` block supports the following:
 
-* `visibility` - (Required) Cluster Ingress visibility. Supported values are `Public` and `Private`. Changing this forces a new resource to be created.
+* `disk_size_gb` - (Required) The internal OS disk size of the worker Virtual Machines in GB. Changing this forces a new resource to be created.
+
+* `node_count` - (Required) The initial number of worker nodes which should exist in the cluster. Changing this forces a new resource to be created.
+
+* `subnet_id` - (Required) The ID of the subnet where worker nodes will be hosted. Changing this forces a new resource to be created.
+
+* `vm_size` - (Required) The size of the Virtual Machines for the worker nodes. Changing this forces a new resource to be created.
+
+* `disk_encryption_set_id` - (Optional) The resource ID of an associated disk encryption set. Changing this forces a new resource to be created.
+
+* `encryption_at_host_enabled` - (Optional) Whether `encryption_at_host` is enabled. Defaults to `false`. Changing this forces a new resource to be created.
+
+~> **Note:** `encryption_at_host_enabled` is only available for certain VM sizes and the `EncryptionAtHost` feature must be enabled for your subscription. Please see the [Azure documentation](https://learn.microsoft.com/azure/virtual-machines/disks-enable-host-based-encryption-portal?tabs=azure-powershell) for more information.
 
 ---
 
 ## Attributes Reference
 
-The following attributes are exported:
+In addition to the Arguments listed above - the following Attributes are exported:
 
-* `console_url` - The Red Hat OpenShift cluster console URL.
-
-* `cluster_profile` - A `cluster_profile` block as defined below.
+* `id` - The ID of the Azure Red Hat OpenShift Cluster.
 
 * `api_server_profile` - An `api_server_profile` block as defined below.
 
+* `cluster_profile` - A `cluster_profile` block as defined below.
+
+* `console_url` - The Azure Red Hat OpenShift Cluster console URL.
+
 * `ingress_profile` - An `ingress_profile` block as defined below.
 
----
+* `network_profile` - A `network_profile` block as defined below.
 
-A `cluster_profile` block exports the following:
-
-* `resource_group_id` - The resource group that the cluster profile is attached to.
+* `workload_identities` - A `workload_identities` block as defined below.
 
 ---
 
@@ -263,27 +277,53 @@ A `api_server_profile` block exports the following:
 
 ---
 
+A `cluster_profile` block exports the following:
+
+* `resource_group_id` - The resource group that the cluster profile is attached to.
+
+---
+
 A `ingress_profile` block exports the following:
 
 * `name` - The name of the Ingress Profile.
 
 * `ip_address` - The IP Address the Ingress Profile is associated with.
 
+---
+
+A `network_profile` block exports the following:
+
+* `effective_outbound_ip_ids` - A list of the effective outbound public IP address resource IDs.
+
+* `managed_outbound_ip_count` - The number of managed outbound IPs for the cluster public load balancer.
+
+---
+
+A `workload_identities` block exports the following:
+
+* `client_id` - The client ID of the workload identity.
+
+* `object_id` - The object ID of the workload identity.
+
+* `operator_name` - The operator name associated with the workload identity.
+
+* `resource_id` - The resource ID of the workload identity.
+
 ## Timeouts
 
 The `timeouts` block allows you to specify [timeouts](https://developer.hashicorp.com/terraform/language/resources/configure#define-operation-timeouts) for certain actions:
 
-* `create` - (Defaults to 90 minutes) Used when creating the Red Hat OpenShift cluster.
-* `read` - (Defaults to 5 minutes) Used when retrieving the Red Hat OpenShift cluster.
-* `update` - (Defaults to 90 minutes) Used when updating the Red Hat OpenShift cluster.
-* `delete` - (Defaults to 90 minutes) Used when deleting the Red Hat OpenShift cluster.
+* `create` - (Defaults to 90 minutes) Used when creating the Azure Red Hat OpenShift Cluster.
+* `read` - (Defaults to 5 minutes) Used when retrieving the Azure Red Hat OpenShift Cluster.
+* `update` - (Defaults to 90 minutes) Used when updating the Azure Red Hat OpenShift Cluster.
+* `delete` - (Defaults to 90 minutes) Used when deleting the Azure Red Hat OpenShift Cluster.
 
 ## Import
 
-Red Hat OpenShift Clusters can be imported using the `resource id`, e.g.
+An Azure Red Hat OpenShift Cluster can be imported using the `resource id`, e.g.
 
 ```shell
-terraform import azurerm_redhat_openshift_cluster.cluster1 /subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/group1/providers/Microsoft.RedHatOpenShift/openShiftClusters/cluster1
+terraform import azurerm_redhat_openshift_cluster.example /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/resourceGroup1/providers/Microsoft.RedHatOpenShift/openShiftClusters/openShiftCluster1
 ```
 
 ## API Providers
