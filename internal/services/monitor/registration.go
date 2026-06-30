@@ -34,11 +34,12 @@ func (r Registration) Resources() []sdk.Resource {
 	return []sdk.Resource{
 		AlertProcessingRuleActionGroupResource{},
 		AlertProcessingRuleSuppressionResource{},
+		AlertPrometheusRuleGroupResource{},
 		DataCollectionEndpointResource{},
 		DataCollectionRuleAssociationResource{},
 		DataCollectionRuleResource{},
+		MonitorPipelineGroupResource{},
 		ScheduledQueryRulesAlertV2Resource{},
-		AlertPrometheusRuleGroupResource{},
 		WorkspaceResource{},
 	}
 }
