@@ -411,6 +411,21 @@ func TestAccWebApplicationFirewallPolicy_BotManager(t *testing.T) {
 	})
 }
 
+func TestAccWebApplicationFirewallPolicy_HTTPDDoSRuleSet(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_web_application_firewall_policy", "test")
+	r := WebApplicationFirewallPolicyResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.httpDDoSRuleSet(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
 func TestAccWebApplicationFirewallPolicy_fileUploadEnforcement(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_web_application_firewall_policy", "test")
 	r := WebApplicationFirewallPolicyResource{}
@@ -2205,6 +2220,48 @@ resource "azurerm_web_application_firewall_policy" "test" {
           excluded_rules = [
             "200200",
           ]
+        }
+      }
+    }
+  }
+
+  policy_settings {
+    enabled = true
+    mode    = "Prevention"
+  }
+}
+`, data.RandomInteger, data.Locations.Primary, data.RandomInteger)
+}
+
+func (WebApplicationFirewallPolicyResource) httpDDoSRuleSet(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_resource_group" "test" {
+  name     = "acctestRG-%d"
+  location = "%s"
+}
+
+resource "azurerm_web_application_firewall_policy" "test" {
+  name                = "acctestwafpolicy-%d"
+  resource_group_name = azurerm_resource_group.test.name
+  location            = azurerm_resource_group.test.location
+
+  managed_rules {
+    managed_rule_set {
+      type    = "Microsoft_HTTPDDoSRuleSet"
+      version = "1.0"
+
+      rule_group_override {
+        rule_group_name = "ExcessiveRequests"
+
+        rule {
+          id          = "500100"
+          enabled     = true
+          action      = "Block"
+          sensitivity = "High"
         }
       }
     }
