@@ -297,6 +297,8 @@ func resourceOrchestratedVirtualMachineScaleSet() *pluginsdk.Resource {
 
 			"source_image_reference": sourceImageReferenceSchemaOrchestratedVMSS(),
 
+			"automatic_zone_rebalancing_policy": OrchestratedVirtualMachineScaleSetAutomaticZoneRebalancingPolicySchema(),
+
 			"zone_balance": {
 				Type:     pluginsdk.TypeBool,
 				Optional: true,
@@ -866,6 +868,17 @@ func resourceOrchestratedVirtualMachineScaleSetCreate(d *pluginsdk.ResourceData,
 			props.Properties.AutomaticRepairsPolicy = ExpandVirtualMachineScaleSetAutomaticRepairsPolicy(v.([]interface{}))
 		}
 
+		if v, ok := d.GetOk("automatic_zone_rebalancing_policy"); ok {
+			automaticZoneRebalancingPolicy := ExpandOrchestratedVirtualMachineScaleSetAutomaticZoneRebalancingPolicy(v.([]interface{}))
+			if pointer.From(automaticZoneRebalancingPolicy.Enabled) && (props.Zones == nil || len(*props.Zones) == 0) {
+				return fmt.Errorf("`automatic_zone_rebalancing_policy` can only be specified when availability zones are specified")
+			}
+
+			props.Properties.ResiliencyPolicy = &virtualmachinescalesets.ResiliencyPolicy{
+				AutomaticZoneRebalancingPolicy: automaticZoneRebalancingPolicy,
+			}
+		}
+
 		if v, ok := d.GetOk("zone_balance"); ok && v.(bool) {
 			if props.Zones == nil || len(*props.Zones) == 0 {
 				return fmt.Errorf("`zone_balance` can only be set to `true` when availability zones are specified")
@@ -1253,6 +1266,21 @@ func resourceOrchestratedVirtualMachineScaleSetUpdate(d *pluginsdk.ResourceData,
 			updateProps.AutomaticRepairsPolicy = automaticRepairsPolicy
 		}
 
+		if d.HasChange("automatic_zone_rebalancing_policy") {
+			automaticZoneRebalancingPolicyRaw := d.Get("automatic_zone_rebalancing_policy").([]interface{})
+			automaticZoneRebalancingPolicy := ExpandOrchestratedVirtualMachineScaleSetAutomaticZoneRebalancingPolicy(automaticZoneRebalancingPolicyRaw)
+			if pointer.From(automaticZoneRebalancingPolicy.Enabled) {
+				zoneValues := zones.ExpandUntyped(d.Get("zones").(*schema.Set).List())
+				if len(zoneValues) == 0 {
+					return fmt.Errorf("`automatic_zone_rebalancing_policy` can only be specified when availability zones are specified")
+				}
+			}
+
+			updateProps.ResiliencyPolicy = &virtualmachinescalesets.ResiliencyPolicy{
+				AutomaticZoneRebalancingPolicy: automaticZoneRebalancingPolicy,
+			}
+		}
+
 		if d.HasChange("identity") {
 			identityExpanded, err := identity.ExpandSystemAndUserAssignedMap(d.Get("identity").([]interface{}))
 			if err != nil {
@@ -1448,6 +1476,14 @@ func resourceOrchestratedVirtualMachineScaleSetRead(d *pluginsdk.ResourceData, m
 
 			if err := d.Set("automatic_instance_repair", FlattenVirtualMachineScaleSetAutomaticRepairsPolicy(props.AutomaticRepairsPolicy)); err != nil {
 				return fmt.Errorf("setting `automatic_instance_repair`: %w", err)
+			}
+
+			automaticZoneRebalancingPolicy := (*virtualmachinescalesets.AutomaticZoneRebalancingPolicy)(nil)
+			if props.ResiliencyPolicy != nil {
+				automaticZoneRebalancingPolicy = props.ResiliencyPolicy.AutomaticZoneRebalancingPolicy
+			}
+			if err := d.Set("automatic_zone_rebalancing_policy", FlattenOrchestratedVirtualMachineScaleSetAutomaticZoneRebalancingPolicy(automaticZoneRebalancingPolicy)); err != nil {
+				return fmt.Errorf("setting `automatic_zone_rebalancing_policy`: %+v", err)
 			}
 
 			d.Set("platform_fault_domain_count", props.PlatformFaultDomainCount)

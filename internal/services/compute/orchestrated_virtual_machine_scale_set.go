@@ -269,6 +269,76 @@ func OrchestratedVirtualMachineScaleSetExtensionsSchema() *pluginsdk.Schema {
 	}
 }
 
+func OrchestratedVirtualMachineScaleSetAutomaticZoneRebalancingPolicySchema() *pluginsdk.Schema {
+	return &pluginsdk.Schema{
+		Type:     pluginsdk.TypeList,
+		Optional: true,
+		MaxItems: 1,
+		Elem: &pluginsdk.Resource{
+			Schema: map[string]*pluginsdk.Schema{
+				"enabled": {
+					Type:     pluginsdk.TypeBool,
+					Required: true,
+				},
+				"rebalance_behavior": {
+					Type:         pluginsdk.TypeString,
+					Optional:     true,
+					Computed:     true,
+					ValidateFunc: validation.StringInSlice(virtualmachinescalesets.PossibleValuesForRebalanceBehavior(), false),
+				},
+				"rebalance_strategy": {
+					Type:         pluginsdk.TypeString,
+					Optional:     true,
+					Computed:     true,
+					ValidateFunc: validation.StringInSlice(virtualmachinescalesets.PossibleValuesForRebalanceStrategy(), false),
+				},
+			},
+		},
+	}
+}
+
+func ExpandOrchestratedVirtualMachineScaleSetAutomaticZoneRebalancingPolicy(input []interface{}) *virtualmachinescalesets.AutomaticZoneRebalancingPolicy {
+	result := &virtualmachinescalesets.AutomaticZoneRebalancingPolicy{
+		Enabled: pointer.To(false),
+	}
+
+	if len(input) == 0 || input[0] == nil {
+		return result
+	}
+
+	v := input[0].(map[string]interface{})
+
+	enabled := v["enabled"].(bool)
+	result.Enabled = pointer.To(enabled)
+
+	if enabled {
+		if rebalanceBehavior := v["rebalance_behavior"].(string); rebalanceBehavior != "" {
+			result.RebalanceBehavior = pointer.To(virtualmachinescalesets.RebalanceBehavior(rebalanceBehavior))
+		}
+
+		if rebalanceStrategy := v["rebalance_strategy"].(string); rebalanceStrategy != "" {
+			result.RebalanceStrategy = pointer.To(virtualmachinescalesets.RebalanceStrategy(rebalanceStrategy))
+		}
+	}
+
+	return result
+}
+
+func FlattenOrchestratedVirtualMachineScaleSetAutomaticZoneRebalancingPolicy(input *virtualmachinescalesets.AutomaticZoneRebalancingPolicy) []interface{} {
+	results := make([]interface{}, 0)
+	if input == nil || !pointer.From(input.Enabled) {
+		return results
+	}
+
+	result := map[string]interface{}{
+		"enabled":            pointer.From(input.Enabled),
+		"rebalance_behavior": string(pointer.From(input.RebalanceBehavior)),
+		"rebalance_strategy": string(pointer.From(input.RebalanceStrategy)),
+	}
+
+	return append(results, result)
+}
+
 func OrchestratedVirtualMachineScaleSetNetworkInterfaceSchema() *pluginsdk.Schema {
 	return &pluginsdk.Schema{
 		Type:     pluginsdk.TypeList,
