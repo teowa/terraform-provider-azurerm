@@ -45,7 +45,7 @@ The following arguments are supported:
 
 * `export` - (Optional) Specifies the directory being exported from the server. Changing this forces a new resource to be created.
 
-* `nfs_version` - (Optional) Specifies the NFS protocol version. Possible values are `NFSauto`, `NFSv3` and `NFSv4`. Defaults to `NFSauto`. Changing this forces a new resource to be created.
+* `nfs_version` - (Optional) Specifies the NFS protocol version. Possible values are `NFSauto`, `NFSv3`, and `NFSv4`. Defaults to `NFSauto`. Changing this forces a new resource to be created.
 
 * `description` - (Optional) Specifies a description for the Storage Mover Source Endpoint.
 
@@ -54,6 +54,8 @@ The following arguments are supported:
 In addition to the Arguments listed above - the following Attributes are exported:
 
 * `id` - The ID of the Storage Mover Source Endpoint.
+
+* `endpoint_type` - The endpoint type.
 
 ## Timeouts
 
@@ -66,7 +68,7 @@ The `timeouts` block allows you to specify [timeouts](https://developer.hashicor
 
 ## Import
 
-Storage Mover Source Endpoint can be imported using the `resource id`, e.g.
+A Storage Mover Source Endpoint can be imported using the `resource id`, e.g.
 
 ```shell
 terraform import azurerm_storage_mover_source_endpoint.example /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/resourceGroup1/providers/Microsoft.StorageMover/storageMovers/storageMover1/endpoints/endpoint1

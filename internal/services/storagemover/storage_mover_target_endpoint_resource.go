@@ -21,11 +21,12 @@ import (
 )
 
 type StorageMoverTargetEndpointModel struct {
-	Name                 string `tfschema:"name"`
-	StorageMoverId       string `tfschema:"storage_mover_id"`
-	StorageAccountId     string `tfschema:"storage_account_id"`
-	StorageContainerName string `tfschema:"storage_container_name"`
-	Description          string `tfschema:"description"`
+	Name                 string                 `tfschema:"name"`
+	StorageMoverId       string                 `tfschema:"storage_mover_id"`
+	StorageAccountId     string                 `tfschema:"storage_account_id"`
+	StorageContainerName string                 `tfschema:"storage_container_name"`
+	EndpointType         endpoints.EndpointType `tfschema:"endpoint_type"`
+	Description          string                 `tfschema:"description"`
 }
 
 type StorageMoverTargetEndpointResource struct{}
@@ -86,7 +87,12 @@ func (r StorageMoverTargetEndpointResource) Arguments() map[string]*pluginsdk.Sc
 }
 
 func (r StorageMoverTargetEndpointResource) Attributes() map[string]*pluginsdk.Schema {
-	return map[string]*pluginsdk.Schema{}
+	return map[string]*pluginsdk.Schema{
+		"endpoint_type": {
+			Type:     pluginsdk.TypeString,
+			Computed: true,
+		},
+	}
 }
 
 func (r StorageMoverTargetEndpointResource) Create() sdk.ResourceFunc {
@@ -210,6 +216,7 @@ func (r StorageMoverTargetEndpointResource) Read() sdk.ResourceFunc {
 
 			if model := resp.Model; model != nil {
 				if v, ok := model.Properties.(endpoints.AzureStorageBlobContainerEndpointProperties); ok {
+					state.EndpointType = v.EndpointType
 					state.StorageContainerName = v.BlobContainerName
 					state.StorageAccountId = v.StorageAccountResourceId
 

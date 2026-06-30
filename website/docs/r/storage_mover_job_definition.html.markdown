@@ -91,13 +91,15 @@ The following arguments are supported:
 
 * `copy_mode` - (Required) Specifies the strategy to use for copy. Possible values are `Additive` and `Mirror`.
 
-* `source_sub_path` - (Optional) Specifies the sub path to use when reading from the Storage Mover Source Endpoint. Changing this forces a new resource to be created.
-
-* `target_sub_path` - (Optional) Specifies the sub path to use when writing to the Storage Mover Target Endpoint. Changing this forces a new resource to be created.
-
 * `agent_name` - (Optional) Specifies the name of the Storage Mover Agent to assign for new Job Runs of this Storage Mover Job Definition.
 
 * `description` - (Optional) Specifies a description for this Storage Mover Job Definition.
+
+* `job_type` - (Optional) Specifies the type of the Job. Possible values are `CloudToCloud` and `OnPremToCloud`. Defaults to `OnPremToCloud`. Changing this forces a new resource to be created.
+
+* `source_sub_path` - (Optional) Specifies the sub path to use when reading from the Storage Mover Source Endpoint. Changing this forces a new resource to be created.
+
+* `target_sub_path` - (Optional) Specifies the sub path to use when writing to the Storage Mover Target Endpoint. Changing this forces a new resource to be created.
 
 ## Attributes Reference
 
@@ -116,7 +118,7 @@ The `timeouts` block allows you to specify [timeouts](https://developer.hashicor
 
 ## Import
 
-Storage Mover Job Definition can be imported using the `resource id`, e.g.
+A Storage Mover Job Definition can be imported using the `resource id`, e.g.
 
 ```shell
 terraform import azurerm_storage_mover_job_definition.example /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/resourceGroup1/providers/Microsoft.StorageMover/storageMovers/storageMover1/projects/project1/jobDefinitions/jobDefinition1

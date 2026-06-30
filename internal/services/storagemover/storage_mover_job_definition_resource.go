@@ -27,6 +27,7 @@ type StorageMoverJobDefinitionResourceModel struct {
 	SourceName            string                  `tfschema:"source_name"`
 	TargetName            string                  `tfschema:"target_name"`
 	CopyMode              jobdefinitions.CopyMode `tfschema:"copy_mode"`
+	JobType               jobdefinitions.JobType  `tfschema:"job_type"`
 	SourceSubpath         string                  `tfschema:"source_sub_path"`
 	TargetSubpath         string                  `tfschema:"target_sub_path"`
 	AgentName             string                  `tfschema:"agent_name"`
@@ -98,6 +99,14 @@ func (r StorageMoverJobDefinitionResource) Arguments() map[string]*pluginsdk.Sch
 			}, false),
 		},
 
+		"job_type": {
+			Type:         pluginsdk.TypeString,
+			Optional:     true,
+			ForceNew:     true,
+			Default:      string(jobdefinitions.JobTypeOnPremToCloud),
+			ValidateFunc: validation.StringInSlice(jobdefinitions.PossibleValuesForJobType(), false),
+		},
+
 		"source_sub_path": {
 			Type:         pluginsdk.TypeString,
 			Optional:     true,
@@ -161,6 +170,7 @@ func (r StorageMoverJobDefinitionResource) Create() sdk.ResourceFunc {
 			properties := jobdefinitions.JobDefinition{
 				Properties: jobdefinitions.JobDefinitionProperties{
 					CopyMode:   model.CopyMode,
+					JobType:    pointer.To(model.JobType),
 					SourceName: model.SourceName,
 					TargetName: model.TargetName,
 				},
@@ -285,6 +295,10 @@ func (r StorageMoverJobDefinitionResource) flatten(metadata sdk.ResourceMetaData
 		state.AgentName = pointer.From(model.Properties.AgentName)
 		state.CopyMode = model.Properties.CopyMode
 		state.Description = pointer.From(model.Properties.Description)
+		state.JobType = jobdefinitions.JobTypeOnPremToCloud
+		if model.Properties.JobType != nil {
+			state.JobType = *model.Properties.JobType
+		}
 		state.SourceName = model.Properties.SourceName
 		state.SourceSubpath = pointer.From(model.Properties.SourceSubpath)
 		state.TargetName = model.Properties.TargetName

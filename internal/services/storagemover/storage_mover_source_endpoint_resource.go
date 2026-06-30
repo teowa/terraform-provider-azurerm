@@ -22,12 +22,13 @@ import (
 //go:generate go run ../../tools/generator-tests resourceidentity -resource-name storage_mover_source_endpoint -service-package-name storagemover -properties "name" -compare-values "subscription_id:storage_mover_id,resource_group_name:storage_mover_id,storage_mover_name:storage_mover_id"
 
 type StorageMoverSourceEndpointModel struct {
-	Name           string               `tfschema:"name"`
-	StorageMoverId string               `tfschema:"storage_mover_id"`
-	Export         string               `tfschema:"export"`
-	Host           string               `tfschema:"host"`
-	NfsVersion     endpoints.NfsVersion `tfschema:"nfs_version"`
-	Description    string               `tfschema:"description"`
+	Name           string                 `tfschema:"name"`
+	StorageMoverId string                 `tfschema:"storage_mover_id"`
+	Export         string                 `tfschema:"export"`
+	Host           string                 `tfschema:"host"`
+	NfsVersion     endpoints.NfsVersion   `tfschema:"nfs_version"`
+	EndpointType   endpoints.EndpointType `tfschema:"endpoint_type"`
+	Description    string                 `tfschema:"description"`
 }
 
 type StorageMoverSourceEndpointResource struct{}
@@ -107,7 +108,12 @@ func (r StorageMoverSourceEndpointResource) Arguments() map[string]*pluginsdk.Sc
 }
 
 func (r StorageMoverSourceEndpointResource) Attributes() map[string]*pluginsdk.Schema {
-	return map[string]*pluginsdk.Schema{}
+	return map[string]*pluginsdk.Schema{
+		"endpoint_type": {
+			Type:     pluginsdk.TypeString,
+			Computed: true,
+		},
+	}
 }
 
 func (r StorageMoverSourceEndpointResource) Create() sdk.ResourceFunc {
@@ -242,6 +248,7 @@ func (r StorageMoverSourceEndpointResource) flatten(metadata sdk.ResourceMetaDat
 	if model != nil {
 		if v, ok := model.Properties.(endpoints.NfsMountEndpointProperties); ok {
 			state.Export = v.Export
+			state.EndpointType = v.EndpointType
 			state.Host = v.Host
 
 			if v := v.NfsVersion; v != nil {
