@@ -24,12 +24,15 @@ import (
 type StorageDefenderResource struct{}
 
 type StorageDefenderModel struct {
-	StorageAccountId                 string `tfschema:"storage_account_id"`
-	OverrideSubscriptionSettings     bool   `tfschema:"override_subscription_settings_enabled"`
-	MalwareScanningOnUploadEnabled   bool   `tfschema:"malware_scanning_on_upload_enabled"`
-	MalwareScanningOnUploadCapPerMon int64  `tfschema:"malware_scanning_on_upload_cap_gb_per_month"`
-	SensitiveDataDiscoveryEnabled    bool   `tfschema:"sensitive_data_discovery_enabled"`
-	ScanResultsEventGridTopicId      string `tfschema:"scan_results_event_grid_topic_id"`
+	StorageAccountId                              string   `tfschema:"storage_account_id"`
+	OverrideSubscriptionSettings                  bool     `tfschema:"override_subscription_settings_enabled"`
+	MalwareScanningOnUploadEnabled                bool     `tfschema:"malware_scanning_on_upload_enabled"`
+	MalwareScanningOnUploadCapPerMon              int64    `tfschema:"malware_scanning_on_upload_cap_gb_per_month"`
+	MalwareScanningOnUploadExcludeBlobsLargerThan int64    `tfschema:"malware_scanning_on_upload_exclude_blobs_larger_than"`
+	MalwareScanningOnUploadExcludeBlobsWithPrefix []string `tfschema:"malware_scanning_on_upload_exclude_blobs_with_prefix"`
+	MalwareScanningOnUploadExcludeBlobsWithSuffix []string `tfschema:"malware_scanning_on_upload_exclude_blobs_with_suffix"`
+	SensitiveDataDiscoveryEnabled                 bool     `tfschema:"sensitive_data_discovery_enabled"`
+	ScanResultsEventGridTopicId                   string   `tfschema:"scan_results_event_grid_topic_id"`
 }
 
 var _ sdk.ResourceWithUpdate = StorageDefenderResource{}
@@ -75,6 +78,30 @@ func (s StorageDefenderResource) Arguments() map[string]*schema.Schema {
 				validation.IntAtLeast(1),
 				validation.IntInSlice([]int{-1}),
 			),
+		},
+
+		"malware_scanning_on_upload_exclude_blobs_larger_than": {
+			Type:         pluginsdk.TypeInt,
+			Optional:     true,
+			ValidateFunc: validation.IntAtLeast(1),
+		},
+
+		"malware_scanning_on_upload_exclude_blobs_with_prefix": {
+			Type:     pluginsdk.TypeList,
+			Optional: true,
+			Elem: &pluginsdk.Schema{
+				Type:         pluginsdk.TypeString,
+				ValidateFunc: validation.StringIsNotEmpty,
+			},
+		},
+
+		"malware_scanning_on_upload_exclude_blobs_with_suffix": {
+			Type:     pluginsdk.TypeList,
+			Optional: true,
+			Elem: &pluginsdk.Schema{
+				Type:         pluginsdk.TypeString,
+				ValidateFunc: validation.StringIsNotEmpty,
+			},
 		},
 
 		"sensitive_data_discovery_enabled": {
@@ -126,6 +153,7 @@ func (s StorageDefenderResource) Create() sdk.ResourceFunc {
 						OnUpload: &defenderforstorage.OnUploadProperties{
 							IsEnabled:     pointer.To(plan.MalwareScanningOnUploadEnabled),
 							CapGBPerMonth: pointer.To(plan.MalwareScanningOnUploadCapPerMon),
+							Filters:       expandStorageDefenderOnUploadFilters(plan),
 						},
 					},
 					SensitiveDataDiscovery: &defenderforstorage.SensitiveDataDiscoveryProperties{
@@ -203,6 +231,21 @@ func (s StorageDefenderResource) Update() sdk.ResourceFunc {
 				prop.MalwareScanning.OnUpload.CapGBPerMonth = pointer.To(plan.MalwareScanningOnUploadCapPerMon)
 			}
 
+			if metadata.ResourceData.HasChange("malware_scanning_on_upload_exclude_blobs_larger_than") {
+				prop.MalwareScanning.OnUpload.Filters = ensureStorageDefenderOnUploadFilters(prop.MalwareScanning.OnUpload.Filters)
+				prop.MalwareScanning.OnUpload.Filters.ExcludeBlobsLargerThan = expandStorageDefenderOnUploadFiltersExcludeBlobsLargerThan(plan.MalwareScanningOnUploadExcludeBlobsLargerThan, true)
+			}
+
+			if metadata.ResourceData.HasChange("malware_scanning_on_upload_exclude_blobs_with_prefix") {
+				prop.MalwareScanning.OnUpload.Filters = ensureStorageDefenderOnUploadFilters(prop.MalwareScanning.OnUpload.Filters)
+				prop.MalwareScanning.OnUpload.Filters.ExcludeBlobsWithPrefix = expandStorageDefenderOnUploadFiltersStringList(plan.MalwareScanningOnUploadExcludeBlobsWithPrefix, true)
+			}
+
+			if metadata.ResourceData.HasChange("malware_scanning_on_upload_exclude_blobs_with_suffix") {
+				prop.MalwareScanning.OnUpload.Filters = ensureStorageDefenderOnUploadFilters(prop.MalwareScanning.OnUpload.Filters)
+				prop.MalwareScanning.OnUpload.Filters.ExcludeBlobsWithSuffix = expandStorageDefenderOnUploadFiltersStringList(plan.MalwareScanningOnUploadExcludeBlobsWithSuffix, true)
+			}
+
 			if metadata.ResourceData.HasChange("scan_results_event_grid_topic_id") {
 				prop.MalwareScanning.ScanResultsEventGridTopicResourceId = pointer.To(plan.ScanResultsEventGridTopicId)
 			}
@@ -267,6 +310,16 @@ func (s StorageDefenderResource) Read() sdk.ResourceFunc {
 						if onUpload := ms.OnUpload; onUpload != nil {
 							state.MalwareScanningOnUploadEnabled = pointer.From(onUpload.IsEnabled)
 							state.MalwareScanningOnUploadCapPerMon = pointer.From(onUpload.CapGBPerMonth)
+							if filters := onUpload.Filters; filters != nil {
+								state.MalwareScanningOnUploadExcludeBlobsWithPrefix = pointer.From(filters.ExcludeBlobsWithPrefix)
+								state.MalwareScanningOnUploadExcludeBlobsWithSuffix = pointer.From(filters.ExcludeBlobsWithSuffix)
+
+								excludeBlobsLargerThan, err := flattenStorageDefenderOnUploadFiltersExcludeBlobsLargerThan(filters.ExcludeBlobsLargerThan)
+								if err != nil {
+									return fmt.Errorf("reading %s: %+v", id, err)
+								}
+								state.MalwareScanningOnUploadExcludeBlobsLargerThan = excludeBlobsLargerThan
+							}
 						}
 						if ms.ScanResultsEventGridTopicResourceId != nil {
 							topicId, err := topics.ParseTopicID(*ms.ScanResultsEventGridTopicResourceId)
@@ -285,6 +338,76 @@ func (s StorageDefenderResource) Read() sdk.ResourceFunc {
 
 			return metadata.Encode(&state)
 		},
+	}
+}
+
+func ensureStorageDefenderOnUploadFilters(input *defenderforstorage.OnUploadFilters) *defenderforstorage.OnUploadFilters {
+	if input != nil {
+		return input
+	}
+
+	return &defenderforstorage.OnUploadFilters{}
+}
+
+func expandStorageDefenderOnUploadFilters(model StorageDefenderModel) *defenderforstorage.OnUploadFilters {
+	filters := &defenderforstorage.OnUploadFilters{
+		ExcludeBlobsLargerThan: expandStorageDefenderOnUploadFiltersExcludeBlobsLargerThan(model.MalwareScanningOnUploadExcludeBlobsLargerThan, false),
+		ExcludeBlobsWithPrefix: expandStorageDefenderOnUploadFiltersStringList(model.MalwareScanningOnUploadExcludeBlobsWithPrefix, false),
+		ExcludeBlobsWithSuffix: expandStorageDefenderOnUploadFiltersStringList(model.MalwareScanningOnUploadExcludeBlobsWithSuffix, false),
+	}
+
+	if filters.ExcludeBlobsLargerThan == nil && filters.ExcludeBlobsWithPrefix == nil && filters.ExcludeBlobsWithSuffix == nil {
+		return nil
+	}
+
+	return filters
+}
+
+func expandStorageDefenderOnUploadFiltersExcludeBlobsLargerThan(input int64, includeEmpty bool) *interface{} {
+	if input == 0 {
+		if !includeEmpty {
+			return nil
+		}
+
+		value := interface{}(nil)
+		return &value
+	}
+
+	value := interface{}(input)
+	return &value
+}
+
+func expandStorageDefenderOnUploadFiltersStringList(input []string, includeEmpty bool) *[]string {
+	if len(input) == 0 {
+		if !includeEmpty {
+			return nil
+		}
+
+		empty := make([]string, 0)
+		return &empty
+	}
+
+	return pointer.To(input)
+}
+
+func flattenStorageDefenderOnUploadFiltersExcludeBlobsLargerThan(input *interface{}) (int64, error) {
+	if input == nil || *input == nil {
+		return 0, nil
+	}
+
+	switch v := (*input).(type) {
+	case int:
+		return int64(v), nil
+	case int32:
+		return int64(v), nil
+	case int64:
+		return v, nil
+	case float32:
+		return int64(v), nil
+	case float64:
+		return int64(v), nil
+	default:
+		return 0, fmt.Errorf("unexpected type for `malware_scanning_on_upload_exclude_blobs_larger_than`: %T", v)
 	}
 }
 

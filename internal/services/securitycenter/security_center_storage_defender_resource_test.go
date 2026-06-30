@@ -195,6 +195,15 @@ resource "azurerm_security_center_storage_defender" "test" {
   override_subscription_settings_enabled      = true
   malware_scanning_on_upload_enabled          = true
   malware_scanning_on_upload_cap_gb_per_month = 4
+  malware_scanning_on_upload_exclude_blobs_larger_than = 1024
+  malware_scanning_on_upload_exclude_blobs_with_prefix = [
+    "sample-container/logs",
+    "single-excluded-container/",
+  ]
+  malware_scanning_on_upload_exclude_blobs_with_suffix = [
+    ".jpg",
+    ".log",
+  ]
   sensitive_data_discovery_enabled            = true
 }
 `, r.template(data))

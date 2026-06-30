@@ -14,12 +14,12 @@ Manages the Defender for Storage.
 
 ```hcl
 resource "azurerm_resource_group" "example" {
-  name     = "example-rg"
+  name     = "example-resource-group"
   location = "westus2"
 }
 
 resource "azurerm_storage_account" "example" {
-  name                = "exampleacc"
+  name                = "examplestorageaccount"
   resource_group_name = azurerm_resource_group.example.name
 
   location                 = azurerm_resource_group.example.location
@@ -36,15 +36,25 @@ resource "azurerm_security_center_storage_defender" "example" {
 
 The following arguments are supported:
 
-* `storage_account_id` - (Required) The ID of the storage account the defender applied to. Changing this forces a new resource to be created.
+* `storage_account_id` - (Required) The ID of the Storage Account where Defender for Storage is applied. Changing this forces a new resource to be created.
 
-* `override_subscription_settings_enabled` - (Optional) Whether the settings defined for this storage account should override the settings defined for the subscription. Defaults to `false`.
+* `malware_scanning_on_upload_cap_gb_per_month` - (Optional) The max GB to be scanned per month. Defaults to `-1`. Possible values are `-1` and any positive integer.
 
-* `malware_scanning_on_upload_enabled` - (Optional) Whether On Upload malware scanning should be enabled. Defaults to `false`.
+* `malware_scanning_on_upload_enabled` - (Optional) Whether `malware scanning on upload` is enabled. Defaults to `false`.
 
-* `malware_scanning_on_upload_cap_gb_per_month` - (Optional) The max GB to be scanned per Month. Must be `-1` or above `0`. Omit this property or set to `-1` if no capping is needed. Defaults to `-1`.
+* `malware_scanning_on_upload_exclude_blobs_larger_than` - (Optional) The maximum blob size in bytes to scan. Possible values are any positive integer.
 
-* `scan_results_event_grid_topic_id` - (Optional) The Event Grid Topic where every scan result will be sent to. When you set an Event Grid custom topic, you must set `override_subscription_settings_enabled` to `true` to override the subscription-level settings.
+* `malware_scanning_on_upload_exclude_blobs_with_prefix` - (Optional) A list of blob prefixes to exclude from on-upload malware scanning.
+
+-> **Note:** Prefixes use the format `container-name/blob-name`. Use a container name without a trailing `/` to exclude matching container prefixes, or add a trailing `/` to target a single container only.
+
+* `malware_scanning_on_upload_exclude_blobs_with_suffix` - (Optional) A list of blob suffixes to exclude from on-upload malware scanning.
+
+* `override_subscription_settings_enabled` - (Optional) Whether the settings defined for this Storage Account should override the settings defined for the subscription. Defaults to `false`.
+
+* `scan_results_event_grid_topic_id` - (Optional) The ID of the Event Grid Topic where scan results are sent.
+
+~> **Note:** Setting `scan_results_event_grid_topic_id` requires `override_subscription_settings_enabled` to be `true` so the Storage Account can override the subscription-level Defender for Storage settings.
 
 * `sensitive_data_discovery_enabled` - (Optional) Whether Sensitive Data Discovery should be enabled. Defaults to `false`.
  
@@ -52,7 +62,7 @@ The following arguments are supported:
 
 In addition to the Arguments listed above - the following Attributes are exported:
 
-* `id` - The Defender for Storage id.
+* `id` - The ID of the Defender for Storage.
 
 ## Timeouts
 
@@ -65,7 +75,7 @@ The `timeouts` block allows you to specify [timeouts](https://developer.hashicor
 
 ## Import
 
-The setting can be imported using the `resource id`, e.g.
+A Defender for Storage can be imported using the `resource id`, e.g.
 
 ```shell
 terraform import azurerm_security_center_storage_defender.example /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/group1/providers/Microsoft.Storage/storageAccounts/storageacc
