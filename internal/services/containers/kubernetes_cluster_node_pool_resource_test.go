@@ -888,6 +888,23 @@ func TestAccKubernetesClusterNodePool_hostEncryption(t *testing.T) {
 	})
 }
 
+func TestAccKubernetesClusterNodePool_trustedLaunch(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_kubernetes_cluster_node_pool", "test")
+	r := KubernetesClusterNodePoolResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.trustedLaunch(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("secure_boot_enabled").HasValue("true"),
+				check.That(data.ResourceName).Key("vtpm_enabled").HasValue("true"),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
 func TestAccKubernetesClusterNodePool_maxSize(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_kubernetes_cluster_node_pool", "test")
 	r := KubernetesClusterNodePoolResource{}
@@ -3111,6 +3128,29 @@ resource "azurerm_kubernetes_cluster_node_pool" "test" {
   vm_size                 = "Standard_DS2_v2"
   host_encryption_enabled = true
   node_count              = 1
+  upgrade_settings {
+    max_surge = "10%%"
+  }
+}
+`, r.templateConfig(data))
+}
+
+func (r KubernetesClusterNodePoolResource) trustedLaunch(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+provider "azurerm" {
+  features {}
+}
+
+%s
+
+resource "azurerm_kubernetes_cluster_node_pool" "test" {
+  name                  = "internal"
+  kubernetes_cluster_id = azurerm_kubernetes_cluster.test.id
+  node_count            = 1
+  os_sku                = "AzureLinux"
+  secure_boot_enabled   = true
+  vm_size               = "Standard_DS2_v2"
+  vtpm_enabled          = true
   upgrade_settings {
     max_surge = "10%%"
   }

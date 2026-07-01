@@ -420,6 +420,11 @@ func resourceKubernetesClusterNodePoolSchema() map[string]*pluginsdk.Schema {
 			}, false),
 		},
 
+		"secure_boot_enabled": {
+			Type:     pluginsdk.TypeBool,
+			Optional: true,
+		},
+
 		"temporary_name_for_rotation": {
 			Type:         pluginsdk.TypeString,
 			Optional:     true,
@@ -439,6 +444,11 @@ func resourceKubernetesClusterNodePoolSchema() map[string]*pluginsdk.Schema {
 		},
 
 		"upgrade_settings": upgradeSettingsSchemaNodePoolResource(),
+
+		"vtpm_enabled": {
+			Type:     pluginsdk.TypeBool,
+			Optional: true,
+		},
 
 		"windows_profile": {
 			Type:     pluginsdk.TypeList,
@@ -566,6 +576,8 @@ func resourceKubernetesClusterNodePoolCreate(d *pluginsdk.ResourceData, meta int
 	enableAutoScaling := d.Get("auto_scaling_enabled").(bool)
 	hostEncryption := d.Get("host_encryption_enabled").(bool)
 	nodeIp := d.Get("node_public_ip_enabled").(bool)
+	secureBootEnabled := d.Get("secure_boot_enabled").(bool)
+	vtpmEnabled := d.Get("vtpm_enabled").(bool)
 
 	evictionPolicy := d.Get("eviction_policy").(string)
 	mode := agentpools.AgentPoolMode(d.Get("mode").(string))
@@ -606,6 +618,12 @@ func resourceKubernetesClusterNodePoolCreate(d *pluginsdk.ResourceData, meta int
 
 	if osSku := d.Get("os_sku").(string); osSku != "" {
 		profile.OsSKU = pointer.To(agentpools.OSSKU(osSku))
+	}
+	if secureBootEnabled || vtpmEnabled {
+		profile.SecurityProfile = &agentpools.AgentPoolSecurityProfile{
+			EnableSecureBoot: pointer.To(secureBootEnabled),
+			EnableVTPM:       pointer.To(vtpmEnabled),
+		}
 	}
 
 	if scaleDownMode := d.Get("scale_down_mode").(string); scaleDownMode != "" {
@@ -922,6 +940,13 @@ func resourceKubernetesClusterNodePoolUpdate(d *pluginsdk.ResourceData, meta int
 		props.PodSubnetID = pointer.To(d.Get("pod_subnet_id").(string))
 	}
 
+	if d.HasChange("secure_boot_enabled") || d.HasChange("vtpm_enabled") {
+		props.SecurityProfile = &agentpools.AgentPoolSecurityProfile{
+			EnableSecureBoot: pointer.To(d.Get("secure_boot_enabled").(bool)),
+			EnableVTPM:       pointer.To(d.Get("vtpm_enabled").(bool)),
+		}
+	}
+
 	if d.HasChange("ultra_ssd_enabled") {
 		props.EnableUltraSSD = pointer.To(d.Get("ultra_ssd_enabled").(bool))
 	}
@@ -1017,10 +1042,12 @@ func resourceKubernetesClusterNodePoolUpdate(d *pluginsdk.ResourceData, meta int
 		"os_disk_size_gb",
 		"os_disk_type",
 		"pod_subnet_id",
+		"secure_boot_enabled",
 		"snapshot_id",
 		"ultra_ssd_enabled",
 		"vm_size",
 		"vnet_subnet_id",
+		"vtpm_enabled",
 		"zones",
 	}
 
@@ -1251,6 +1278,13 @@ func resourceKubernetesClusterNodePoolRead(d *pluginsdk.ResourceData, meta inter
 		if v := props.OsSKU; v != nil {
 			d.Set("os_sku", string(*v))
 		}
+		secureBootEnabled := false
+		vtpmEnabled := false
+		if props.SecurityProfile != nil {
+			secureBootEnabled = pointer.From(props.SecurityProfile.EnableSecureBoot)
+			vtpmEnabled = pointer.From(props.SecurityProfile.EnableVTPM)
+		}
+		d.Set("secure_boot_enabled", secureBootEnabled)
 		d.Set("pod_subnet_id", props.PodSubnetID)
 
 		// not returned from the API if not Spot
@@ -1268,6 +1302,7 @@ func resourceKubernetesClusterNodePoolRead(d *pluginsdk.ResourceData, meta inter
 		}
 		d.Set("spot_max_price", spotMaxPrice)
 
+		d.Set("vtpm_enabled", vtpmEnabled)
 		d.Set("vnet_subnet_id", props.VnetSubnetID)
 		d.Set("vm_size", props.VMSize)
 		d.Set("host_group_id", props.HostGroupID)

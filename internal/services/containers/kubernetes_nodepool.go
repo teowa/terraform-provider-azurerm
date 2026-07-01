@@ -240,6 +240,11 @@ func SchemaDefaultNodePool() *pluginsdk.Schema {
 						}, false),
 					},
 
+					"secure_boot_enabled": {
+						Type:     pluginsdk.TypeBool,
+						Optional: true,
+					},
+
 					"snapshot_id": {
 						Type:         pluginsdk.TypeString,
 						Optional:     true,
@@ -254,6 +259,11 @@ func SchemaDefaultNodePool() *pluginsdk.Schema {
 					},
 
 					"upgrade_settings": upgradeSettingsSchemaClusterDefaultNodePool(),
+
+					"vtpm_enabled": {
+						Type:     pluginsdk.TypeBool,
+						Optional: true,
+					},
 
 					"workload_runtime": {
 						Type:     pluginsdk.TypeString,
@@ -814,6 +824,12 @@ func ConvertDefaultNodePoolToAgentPool(input *[]managedclusters.ManagedClusterAg
 	if modeNodePool := defaultCluster.Mode; modeNodePool != nil {
 		agentpool.Properties.Mode = pointer.To(agentpools.AgentPoolMode(string(*modeNodePool)))
 	}
+	if securityProfileNodePool := defaultCluster.SecurityProfile; securityProfileNodePool != nil {
+		agentpool.Properties.SecurityProfile = &agentpools.AgentPoolSecurityProfile{
+			EnableSecureBoot: securityProfileNodePool.EnableSecureBoot,
+			EnableVTPM:       securityProfileNodePool.EnableVTPM,
+		}
+	}
 	if scaleDownModeNodePool := defaultCluster.ScaleDownMode; scaleDownModeNodePool != nil {
 		agentpool.Properties.ScaleDownMode = pointer.To(agentpools.ScaleDownMode(string(*scaleDownModeNodePool)))
 	}
@@ -933,6 +949,15 @@ func ExpandDefaultNodePool(d *pluginsdk.ResourceData) (*[]managedclusters.Manage
 	profile.ScaleDownMode = &scaleDownModeDelete
 	if scaleDownMode := raw["scale_down_mode"].(string); scaleDownMode != "" {
 		profile.ScaleDownMode = pointer.To(managedclusters.ScaleDownMode(scaleDownMode))
+	}
+
+	secureBootEnabled := raw["secure_boot_enabled"].(bool)
+	vtpmEnabled := raw["vtpm_enabled"].(bool)
+	if secureBootEnabled || vtpmEnabled {
+		profile.SecurityProfile = &managedclusters.AgentPoolSecurityProfile{
+			EnableSecureBoot: pointer.To(secureBootEnabled),
+			EnableVTPM:       pointer.To(vtpmEnabled),
+		}
 	}
 
 	if snapshotId := raw["snapshot_id"].(string); snapshotId != "" {
@@ -1361,6 +1386,13 @@ func FlattenDefaultNodePool(input *[]managedclusters.ManagedClusterAgentPoolProf
 		scaleDownMode = *agentPool.ScaleDownMode
 	}
 
+	secureBootEnabled := false
+	vtpmEnabled := false
+	if agentPool.SecurityProfile != nil {
+		secureBootEnabled = pointer.From(agentPool.SecurityProfile.EnableSecureBoot)
+		vtpmEnabled = pointer.From(agentPool.SecurityProfile.EnableVTPM)
+	}
+
 	snapshotId := ""
 	if agentPool.CreationData != nil && agentPool.CreationData.SourceResourceId != nil {
 		id, err := snapshots.ParseSnapshotIDInsensitively(*agentPool.CreationData.SourceResourceId)
@@ -1439,12 +1471,14 @@ func FlattenDefaultNodePool(input *[]managedclusters.ManagedClusterAgentPoolProf
 		"orchestrator_version":          orchestratorVersion,
 		"proximity_placement_group_id":  proximityPlacementGroupId,
 		"upgrade_settings":              upgradeSettings,
+		"secure_boot_enabled":           secureBootEnabled,
 		"vnet_subnet_id":                vnetSubnetId,
 		"only_critical_addons_enabled":  criticalAddonsEnabled,
 		"kubelet_config":                flattenClusterNodePoolKubeletConfig(agentPool.KubeletConfig),
 		"linux_os_config":               linuxOSConfig,
 		"zones":                         zones.FlattenUntyped(agentPool.AvailabilityZones),
 		"capacity_reservation_group_id": capacityReservationGroupId,
+		"vtpm_enabled":                  vtpmEnabled,
 	}
 
 	return &[]interface{}{
