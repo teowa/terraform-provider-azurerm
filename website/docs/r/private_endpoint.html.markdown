@@ -200,17 +200,33 @@ The following arguments are supported:
 
 * `location` - (Required) The supported Azure location where the resource exists. Changing this forces a new resource to be created.
 
+* `private_service_connection` - (Required) A `private_service_connection` block as defined below.
+
 * `subnet_id` - (Required) The ID of the Subnet from which Private IP Addresses will be allocated for this Private Endpoint. Changing this forces a new resource to be created.
+
+* `billing_sku` - (Optional) The billing SKU for this Private Endpoint. Possible values are `Fixed` and `PayAsYouGo`.
 
 * `custom_network_interface_name` - (Optional) The custom name of the network interface attached to the private endpoint. Changing this forces a new resource to be created.
 
-* `private_dns_zone_group` - (Optional) A `private_dns_zone_group` block as defined below.
-
-* `private_service_connection` - (Required) A `private_service_connection` block as defined below.
-
 * `ip_configuration` - (Optional) One or more `ip_configuration` blocks as defined below. This allows a static IP address to be set for this Private Endpoint, otherwise an address is dynamically allocated from the Subnet.
 
+* `private_dns_zone_group` - (Optional) A `private_dns_zone_group` block as defined below.
+
 * `tags` - (Optional) A mapping of tags to assign to the resource.
+
+---
+
+An `ip_configuration` block supports the following:
+
+* `name` - (Required) Specifies the Name of the IP Configuration. Changing this forces a new resource to be created.
+
+* `private_ip_address` - (Required) Specifies the static IP address within the private endpoint's subnet to be used. Changing this forces a new resource to be created.
+
+* `member_name` - (Optional) Specifies the member name this IP address applies to. If it is not specified, it will use the value of `subresource_name`. Changing this forces a new resource to be created.
+
+-> **Note:** `member_name` will be required and will not take the value of `subresource_name` in the next major version.
+
+* `subresource_name` - (Optional) Specifies the subresource this IP address applies to. `subresource_names` corresponds to `group_id`. Changing this forces a new resource to be created.
 
 ---
 
@@ -244,51 +260,27 @@ A `private_service_connection` block supports the following:
 
 -> **Note:** When connected to an SQL resource the `request_message` maximum length is `128`.
 
----
-
-An `ip_configuration` block supports the following:
-
-* `name` - (Required) Specifies the Name of the IP Configuration. Changing this forces a new resource to be created.
-
-* `private_ip_address` - (Required) Specifies the static IP address within the private endpoint's subnet to be used. Changing this forces a new resource to be created.
-
-* `subresource_name` - (Optional) Specifies the subresource this IP address applies to. `subresource_names` corresponds to `group_id`. Changing this forces a new resource to be created.
-
-* `member_name` - (Optional) Specifies the member name this IP address applies to. If it is not specified, it will use the value of `subresource_name`. Changing this forces a new resource to be created.
-
--> **Note:** `member_name` will be required and will not take the value of `subresource_name` in the next major version.
-
 ## Attributes Reference
 
 In addition to the Arguments listed above - the following Attributes are exported:
 
 * `id` - The ID of the Private Endpoint.
 
-* `network_interface` - A `network_interface` block as defined below.
-
 * `custom_dns_configs` - A `custom_dns_configs` block as defined below.
+
+* `ip_configuration` - An `ip_configuration` block as defined below.
+
+* `network_interface` - A `network_interface` block as defined below.
 
 * `private_dns_zone_configs` - A `private_dns_zone_configs` block as defined below.
 
-* `ip_configuration` - A `ip_configuration` block as defined below.
+* `private_dns_zone_group` - A `private_dns_zone_group` block as defined below.
+
+* `private_service_connection` - A `private_service_connection` block as defined below.
 
 ---
 
-A `network_interface` block exports:
-
-* `id` - The ID of the network interface associated with the `private_endpoint`.
-
-* `name` - The name of the network interface associated with the `private_endpoint`.
-
----
-
-A `private_dns_zone_group` block exports:
-
-* `id` - The ID of the Private DNS Zone Group.
-
----
-
-A `custom_dns_configs` block exports:
+A `custom_dns_configs` block exports the following:
 
 * `fqdn` - The fully qualified domain name to the `private_endpoint`.
 
@@ -298,11 +290,31 @@ A `custom_dns_configs` block exports:
 
 ---
 
-A `private_dns_zone_configs` block exports:
+An `ip_configuration` block exports the following:
 
-* `name` - The name of the Private DNS Zone that the config belongs to.
+* `member_name` - The member name for this IP configuration.
+
+* `name` - The name of this IP configuration.
+
+* `private_ip_address` - The private IP address for this IP configuration.
+
+* `subresource_name` - The subresource name for this IP configuration.
+
+---
+
+A `network_interface` block exports the following:
+
+* `id` - The ID of the network interface associated with the `private_endpoint`.
+
+* `name` - The name of the network interface associated with the `private_endpoint`.
+
+---
+
+A `private_dns_zone_configs` block exports the following:
 
 * `id` - The ID of the Private DNS Zone Config.
+
+* `name` - The name of the Private DNS Zone that the config belongs to.
 
 * `private_dns_zone_id` - The ID of the Private DNS Zone that the config belongs to.
 
@@ -310,24 +322,30 @@ A `private_dns_zone_configs` block exports:
 
 ---
 
-A `private_service_connection` block exports:
+A `private_dns_zone_group` block exports the following:
+
+* `id` - The ID of the Private DNS Zone Group.
+
+---
+
+A `private_service_connection` block exports the following:
 
 * `private_ip_address` - The private IP address associated with the private endpoint, note that you will have a private IP address assigned to the private endpoint even if the connection request was `Rejected`.
 
 
 ---
 
-A `record_sets` block exports:
-
-* `name` - The name of the Private DNS Zone that the config belongs to.
-
-* `type` - The type of DNS record.
+A `record_sets` block exports the following:
 
 * `fqdn` - The fully qualified domain name to the `private_dns_zone`.
 
+* `ip_addresses` - A list of all IP Addresses that map to the `private_dns_zone` fqdn.
+
+* `name` - The name of the Private DNS Zone that the config belongs to.
+
 * `ttl` - The time to live for each connection to the `private_dns_zone`.
 
-* `ip_addresses` - A list of all IP Addresses that map to the `private_dns_zone` fqdn.
+* `type` - The type of DNS record.
 
 -> **Note:** If a Private DNS Zone Group has not been configured correctly the `record_sets` attributes will be empty.
 
@@ -365,4 +383,4 @@ terraform import azurerm_private_endpoint.example /subscriptions/00000000-0000-0
 <!-- This section is generated, changes will be overwritten -->
 This resource uses the following Azure API Providers:
 
-* `Microsoft.Network` - 2025-01-01
+* `Microsoft.Network` - 2025-07-01

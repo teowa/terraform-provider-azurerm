@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/go-azure-sdk/resource-manager/mysql/2017-12-01/servers"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/privatednszonegroups"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/privateendpoints"
+	privateendpoints20250701 "github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/privateendpoints"
 	postgresqlServers "github.com/hashicorp/go-azure-sdk/resource-manager/postgresql/2017-12-01/servers"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/privatedns/2024-06-01/privatezones"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/redis/2024-03-01/redis"
@@ -103,6 +104,13 @@ func resourcePrivateEndpoint() *pluginsdk.Resource {
 				Type:     pluginsdk.TypeString,
 				Optional: true,
 				ForceNew: true,
+			},
+
+			"billing_sku": {
+				Type:         pluginsdk.TypeString,
+				Optional:     true,
+				Computed:     true,
+				ValidateFunc: validation.StringInSlice(privateendpoints20250701.PossibleValuesForPrivateEndpointBillingSku(), false),
 			},
 
 			"private_dns_zone_group": {
@@ -318,6 +326,7 @@ func resourcePrivateEndpoint() *pluginsdk.Resource {
 
 func resourcePrivateEndpointCreate(d *pluginsdk.ResourceData, meta interface{}) error {
 	client := meta.(*clients.Client).Network.PrivateEndpoints
+	client20250701 := meta.(*clients.Client).Network.PrivateEndpoints20250701
 	dnsClient := meta.(*clients.Client).Network.PrivateDnsZoneGroups
 	subscriptionId := meta.(*clients.Client).Account.SubscriptionId
 	ctx, cancel := timeouts.ForCreate(meta.(*clients.Client).StopContext, d)
@@ -361,6 +370,11 @@ func resourcePrivateEndpointCreate(d *pluginsdk.ResourceData, meta interface{}) 
 		return err
 	}
 
+	parameters20250701, err := expandPrivateEndpointCreateOrUpdateModel20250701(parameters, d.Get("billing_sku").(string))
+	if err != nil {
+		return err
+	}
+
 	cosmosDbResIds := getCosmosDbResIdInPrivateServiceConnections(parameters.Properties)
 	for _, cosmosDbResId := range cosmosDbResIds {
 		log.Printf("[DEBUG] Add Lock For Private Endpoint %q, lock name: %q", id.PrivateEndpointName, cosmosDbResId)
@@ -371,8 +385,9 @@ func resourcePrivateEndpointCreate(d *pluginsdk.ResourceData, meta interface{}) 
 
 	// TODO: refactor to remove Retry func
 	// TODO: implement callback
-	err := pluginsdk.Retry(d.Timeout(pluginsdk.TimeoutCreate), func() *pluginsdk.RetryError {
-		result, err := client.CreateOrUpdate(ctx, id, parameters)
+	err = pluginsdk.Retry(d.Timeout(pluginsdk.TimeoutCreate), func() *pluginsdk.RetryError {
+		var result privateEndpointCreateOrUpdateOperationResponse20250701
+		result, err = createOrUpdatePrivateEndpoint20250701(ctx, client20250701, id.ID(), parameters20250701)
 		if err != nil {
 			return &pluginsdk.RetryError{
 				Err:       fmt.Errorf("creating %s: %+v", id, err),
@@ -488,6 +503,7 @@ func getCosmosDbResIdInPrivateServiceConnections(p *privateendpoints.PrivateEndp
 
 func resourcePrivateEndpointUpdate(d *pluginsdk.ResourceData, meta interface{}) error {
 	client := meta.(*clients.Client).Network.PrivateEndpoints
+	client20250701 := meta.(*clients.Client).Network.PrivateEndpoints20250701
 	dnsClient := meta.(*clients.Client).Network.PrivateDnsZoneGroups
 	ctx, cancel := timeouts.ForUpdate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
@@ -542,8 +558,17 @@ func resourcePrivateEndpointUpdate(d *pluginsdk.ResourceData, meta interface{}) 
 		return err
 	}
 
+	parameters20250701, err := expandPrivateEndpointCreateOrUpdateModel20250701(parameters, d.Get("billing_sku").(string))
+	if err != nil {
+		return err
+	}
+
 	err = pluginsdk.Retry(d.Timeout(pluginsdk.TimeoutCreate), func() *pluginsdk.RetryError {
-		if err = client.CreateOrUpdateThenPoll(ctx, *id, parameters); err != nil {
+		var result privateEndpointCreateOrUpdateOperationResponse20250701
+		if result, err = createOrUpdatePrivateEndpoint20250701(ctx, client20250701, id.ID(), parameters20250701); err == nil {
+			err = result.Poller.PollUntilDone(ctx)
+		}
+		if err != nil {
 			switch {
 			case strings.EqualFold(err.Error(), "is missing required parameter 'group Id'"):
 				{
@@ -628,6 +653,7 @@ func resourcePrivateEndpointUpdate(d *pluginsdk.ResourceData, meta interface{}) 
 
 func resourcePrivateEndpointRead(d *pluginsdk.ResourceData, meta interface{}) error {
 	client := meta.(*clients.Client).Network.PrivateEndpoints
+	client20250701 := meta.(*clients.Client).Network.PrivateEndpoints20250701
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
@@ -646,7 +672,25 @@ func resourcePrivateEndpointRead(d *pluginsdk.ResourceData, meta interface{}) er
 		return fmt.Errorf("reading %s: %+v", id, err)
 	}
 
-	return resourcePrivateEndpointFlatten(ctx, meta.(*clients.Client), d, id, resp.Model, true)
+	resp20250701, err := client20250701.Get(ctx, privateendpoints20250701.NewPrivateEndpointID(id.SubscriptionId, id.ResourceGroupName, id.PrivateEndpointName), privateendpoints20250701.DefaultGetOperationOptions())
+	if err != nil {
+		return fmt.Errorf("reading %s with API version `2025-07-01`: %+v", id, err)
+	}
+
+	billingSku := ""
+	if resp20250701.Model != nil && resp20250701.Model.Properties != nil && resp20250701.Model.Properties.BillingSku != nil {
+		billingSku = string(*resp20250701.Model.Properties.BillingSku)
+	}
+
+	if err := resourcePrivateEndpointFlatten(ctx, meta.(*clients.Client), d, id, resp.Model, true); err != nil {
+		return err
+	}
+
+	if err := d.Set("billing_sku", billingSku); err != nil {
+		return fmt.Errorf("setting `billing_sku`: %+v", err)
+	}
+
+	return nil
 }
 
 func resourcePrivateEndpointFlatten(ctx context.Context, metaClient *clients.Client, d *pluginsdk.ResourceData, id *privateendpoints.PrivateEndpointId, model *privateendpoints.PrivateEndpoint, fetchCompleteData bool) error {
