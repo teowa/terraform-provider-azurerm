@@ -6,7 +6,6 @@ package cognitive
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
@@ -177,48 +176,18 @@ func (r CognitiveAccountConnectionAccountKeyResource) Read() sdk.ResourceFunc {
 				return fmt.Errorf("retrieving %s: %+v", *id, err)
 			}
 
+			if model := resp.Model; model != nil && model.Properties != nil {
+				if authType := model.Properties.ConnectionPropertiesV2().AuthType; authType != accountconnectionresource.ConnectionAuthTypeAccountKey {
+					return fmt.Errorf("connection %s has auth type `%s` and cannot be managed by `%s`", *id, authType, r.ResourceType())
+				}
+			}
+
 			var currentState CognitiveAccountConnectionAccountKeyModel
 			if err := metadata.Decode(&currentState); err != nil {
 				return fmt.Errorf("decoding: %+v", err)
 			}
 
-			state := CognitiveAccountConnectionAccountKeyModel{
-				CognitiveAccountId: accountconnectionresource.NewAccountID(id.SubscriptionId, id.ResourceGroupName, id.AccountName).ID(),
-				Name:               id.ConnectionName,
-				AccountKey:         currentState.AccountKey,
-			}
-
-			if err := pluginsdk.SetResourceIdentityData(metadata.ResourceData, id); err != nil {
-				return err
-			}
-
-			if model := resp.Model; model != nil && model.Properties != nil {
-				base := model.Properties.ConnectionPropertiesV2()
-				state.Category = pointer.FromEnum(base.Category)
-				state.Target = pointer.From(base.Target)
-
-				// Only include metadata fields that were in the original config.
-				// The API returns additional metadata fields beyond what was configured (e.g., `ApiVersion`,
-				// `DeploymentApiVersion`), which would cause unwanted diffs.
-				if len(currentState.Metadata) > 0 {
-					state.Metadata = map[string]string{}
-					apiMetadata := pointer.From(base.Metadata)
-
-					for configKey := range currentState.Metadata {
-						for apiKey, apiValue := range apiMetadata {
-							if strings.EqualFold(configKey, apiKey) {
-								state.Metadata[configKey] = apiValue
-								break
-							}
-						}
-					}
-				} else {
-					// if metadata is empty in config (e.g., terraform import), read all metadata fields from API
-					state.Metadata = pointer.From(base.Metadata)
-				}
-			}
-
-			return metadata.Encode(&state)
+			return r.flatten(metadata, id, resp.Model, currentState.Metadata, currentState.AccountKey)
 		},
 	}
 }
@@ -298,4 +267,25 @@ func (r CognitiveAccountConnectionAccountKeyResource) Delete() sdk.ResourceFunc 
 			return nil
 		},
 	}
+}
+
+func (r CognitiveAccountConnectionAccountKeyResource) flatten(metadata sdk.ResourceMetaData, id *accountconnectionresource.ConnectionId, model *accountconnectionresource.ConnectionPropertiesV2BasicResource, priorMetadata map[string]string, priorAccountKey string) error {
+	state := CognitiveAccountConnectionAccountKeyModel{
+		CognitiveAccountId: accountconnectionresource.NewAccountID(id.SubscriptionId, id.ResourceGroupName, id.AccountName).ID(),
+		Name:               id.ConnectionName,
+		AccountKey:         priorAccountKey,
+	}
+
+	if err := pluginsdk.SetResourceIdentityData(metadata.ResourceData, id); err != nil {
+		return err
+	}
+
+	if model != nil && model.Properties != nil {
+		base := model.Properties.ConnectionPropertiesV2()
+		state.Category = pointer.FromEnum(base.Category)
+		state.Target = pointer.From(base.Target)
+		state.Metadata = flattenAccountConnectionMetadata(priorMetadata, base.Metadata)
+	}
+
+	return metadata.Encode(&state)
 }
