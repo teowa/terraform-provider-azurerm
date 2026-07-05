@@ -12,13 +12,38 @@ import (
 	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/identity"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/agentpools"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/managedclusters"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2026-04-01/agentpools"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2026-04-01/managedclusters"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/containers/client"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 )
 
+func validateNodePoolTrustedLaunchSettings(osSKU string, secureBootEnabled, vtpmEnabled bool) error {
+	if !secureBootEnabled && !vtpmEnabled {
+		return nil
+	}
+
+	if osSKU != string(agentpools.OSSKUAzureContainerLinux) {
+		return fmt.Errorf("enabling `secure_boot_enabled` or `vtpm_enabled` requires `os_sku` to be set to `AzureContainerLinux`")
+	}
+
+	return nil
+}
+
 func validateKubernetesCluster(d *pluginsdk.ResourceData, cluster *managedclusters.ManagedCluster, resourceGroup, name string) error {
+	defaultNodePools := d.Get("default_node_pool").([]interface{})
+	if len(defaultNodePools) > 0 && defaultNodePools[0] != nil {
+		defaultNodePool := defaultNodePools[0].(map[string]interface{})
+
+		if err := validateNodePoolTrustedLaunchSettings(
+			defaultNodePool["os_sku"].(string),
+			defaultNodePool["secure_boot_enabled"].(bool),
+			defaultNodePool["vtpm_enabled"].(bool),
+		); err != nil {
+			return err
+		}
+	}
+
 	if v, exists := d.GetOk("network_profile"); exists {
 		rawProfiles := v.([]interface{})
 

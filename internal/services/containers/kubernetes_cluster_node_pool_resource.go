@@ -20,9 +20,9 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/zones"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/compute/2022-03-01/capacityreservationgroups"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/compute/2022-03-01/proximityplacementgroups"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/agentpools"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/managedclusters"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/snapshots"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2026-04-01/agentpools"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2026-04-01/managedclusters"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2026-04-01/snapshots"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
@@ -82,6 +82,13 @@ func resourceKubernetesClusterNodePool() *pluginsdk.Resource {
 
 				return false
 			}),
+			func(ctx context.Context, d *pluginsdk.ResourceDiff, meta interface{}) error {
+				return validateNodePoolTrustedLaunchSettings(
+					d.Get("os_sku").(string),
+					d.Get("secure_boot_enabled").(bool),
+					d.Get("vtpm_enabled").(bool),
+				)
+			},
 			// The behaviour of the API requires this, but this could be removed when https://github.com/Azure/azure-rest-api-specs/issues/27373 has been addressed
 			pluginsdk.ForceNewIfChange("upgrade_settings.0.drain_timeout_in_minutes", func(ctx context.Context, old, new, meta interface{}) bool {
 				return old != 0 && new == 0
@@ -351,6 +358,7 @@ func resourceKubernetesClusterNodePoolSchema() map[string]*pluginsdk.Schema {
 			Optional: true,
 			Computed: true, // defaults to Ubuntu if using Linux
 			ValidateFunc: validation.StringInSlice([]string{
+				string(agentpools.OSSKUAzureContainerLinux),
 				string(agentpools.OSSKUAzureLinux),
 				string(agentpools.OSSKUAzureLinuxThree),
 				string(agentpools.OSSKUUbuntu),
@@ -483,6 +491,16 @@ func resourceKubernetesClusterNodePoolSchema() map[string]*pluginsdk.Schema {
 			Type:     pluginsdk.TypeBool,
 			Optional: true,
 		},
+
+		"secure_boot_enabled": {
+			Type:     pluginsdk.TypeBool,
+			Optional: true,
+		},
+
+		"vtpm_enabled": {
+			Type:     pluginsdk.TypeBool,
+			Optional: true,
+		},
 	}
 
 	return s
@@ -574,6 +592,14 @@ func resourceKubernetesClusterNodePoolCreate(d *pluginsdk.ResourceData, meta int
 	spotMaxPrice := d.Get("spot_max_price").(float64)
 	t := d.Get("tags").(map[string]interface{})
 
+	if err := validateNodePoolTrustedLaunchSettings(
+		d.Get("os_sku").(string),
+		d.Get("secure_boot_enabled").(bool),
+		d.Get("vtpm_enabled").(bool),
+	); err != nil {
+		return err
+	}
+
 	profile := agentpools.ManagedClusterAgentPoolProfileProperties{
 		OsType:                 pointer.To(agentpools.OSType(osType)),
 		EnableAutoScaling:      pointer.To(enableAutoScaling),
@@ -588,7 +614,11 @@ func resourceKubernetesClusterNodePoolCreate(d *pluginsdk.ResourceData, meta int
 		Type:                   pointer.To(agentpools.AgentPoolTypeVirtualMachineScaleSets),
 		VMSize:                 pointer.To(d.Get("vm_size").(string)),
 		UpgradeSettings:        expandAgentPoolUpgradeSettings(d.Get("upgrade_settings").([]interface{})),
-		WindowsProfile:         expandAgentPoolWindowsProfile(d.Get("windows_profile").([]interface{})),
+		SecurityProfile: &agentpools.AgentPoolSecurityProfile{
+			EnableSecureBoot: pointer.To(d.Get("secure_boot_enabled").(bool)),
+			EnableVTPM:       pointer.To(d.Get("vtpm_enabled").(bool)),
+		},
+		WindowsProfile: expandAgentPoolWindowsProfile(d.Get("windows_profile").([]interface{})),
 
 		// this must always be sent during creation, but is optional for auto-scaled clusters during update
 		Count: pointer.To(int64(count)),
@@ -816,6 +846,14 @@ func resourceKubernetesClusterNodePoolUpdate(d *pluginsdk.ResourceData, meta int
 		enableAutoScaling = *props.EnableAutoScaling
 	}
 
+	if err := validateNodePoolTrustedLaunchSettings(
+		d.Get("os_sku").(string),
+		d.Get("secure_boot_enabled").(bool),
+		d.Get("vtpm_enabled").(bool),
+	); err != nil {
+		return err
+	}
+
 	log.Printf("[DEBUG] Determining delta for existing %s..", *id)
 
 	// delta patching
@@ -830,6 +868,15 @@ func resourceKubernetesClusterNodePoolUpdate(d *pluginsdk.ResourceData, meta int
 
 	if d.HasChange("host_encryption_enabled") {
 		props.EnableEncryptionAtHost = pointer.To(d.Get("host_encryption_enabled").(bool))
+	}
+
+	if d.HasChange("secure_boot_enabled") || d.HasChange("vtpm_enabled") {
+		if props.SecurityProfile == nil {
+			props.SecurityProfile = &agentpools.AgentPoolSecurityProfile{}
+		}
+
+		props.SecurityProfile.EnableSecureBoot = pointer.To(d.Get("secure_boot_enabled").(bool))
+		props.SecurityProfile.EnableVTPM = pointer.To(d.Get("vtpm_enabled").(bool))
 	}
 
 	if d.HasChange("kubelet_config") {
@@ -1017,8 +1064,10 @@ func resourceKubernetesClusterNodePoolUpdate(d *pluginsdk.ResourceData, meta int
 		"os_disk_size_gb",
 		"os_disk_type",
 		"pod_subnet_id",
+		"secure_boot_enabled",
 		"snapshot_id",
 		"ultra_ssd_enabled",
+		"vtpm_enabled",
 		"vm_size",
 		"vnet_subnet_id",
 		"zones",
@@ -1139,6 +1188,15 @@ func resourceKubernetesClusterNodePoolRead(d *pluginsdk.ResourceData, meta inter
 		d.Set("host_encryption_enabled", props.EnableEncryptionAtHost)
 		d.Set("fips_enabled", props.EnableFIPS)
 		d.Set("ultra_ssd_enabled", props.EnableUltraSSD)
+
+		secureBootEnabled := false
+		vtpmEnabled := false
+		if props.SecurityProfile != nil {
+			secureBootEnabled = pointer.From(props.SecurityProfile.EnableSecureBoot)
+			vtpmEnabled = pointer.From(props.SecurityProfile.EnableVTPM)
+		}
+		d.Set("secure_boot_enabled", secureBootEnabled)
+		d.Set("vtpm_enabled", vtpmEnabled)
 
 		if v := props.KubeletDiskType; v != nil {
 			d.Set("kubelet_disk_type", string(*v))

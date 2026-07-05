@@ -16,9 +16,9 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/zones"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/compute/2022-03-01/capacityreservationgroups"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/compute/2022-03-01/proximityplacementgroups"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/agentpools"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/managedclusters"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/snapshots"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2026-04-01/agentpools"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2026-04-01/managedclusters"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2026-04-01/snapshots"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2023-09-01/applicationsecuritygroups"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2023-11-01/publicipprefixes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -187,6 +187,7 @@ func SchemaDefaultNodePool() *pluginsdk.Schema {
 						Optional: true,
 						Computed: true, // defaults to Ubuntu if using Linux
 						ValidateFunc: validation.StringInSlice([]string{
+							string(agentpools.OSSKUAzureContainerLinux),
 							string(agentpools.OSSKUAzureLinux),
 							string(agentpools.OSSKUAzureLinuxThree),
 							string(agentpools.OSSKUUbuntu),
@@ -278,6 +279,16 @@ func SchemaDefaultNodePool() *pluginsdk.Schema {
 					},
 
 					"host_encryption_enabled": {
+						Type:     pluginsdk.TypeBool,
+						Optional: true,
+					},
+
+					"secure_boot_enabled": {
+						Type:     pluginsdk.TypeBool,
+						Optional: true,
+					},
+
+					"vtpm_enabled": {
 						Type:     pluginsdk.TypeBool,
 						Optional: true,
 					},
@@ -891,6 +902,10 @@ func ExpandDefaultNodePool(d *pluginsdk.ResourceData) (*[]managedclusters.Manage
 		// Code="MustDefineAtLeastOneSystemPool" Message="Must define at least one system pool."
 		// since this is the "default" node pool we can assume this is a system node pool
 		Mode: pointer.To(managedclusters.AgentPoolModeSystem),
+		SecurityProfile: &managedclusters.AgentPoolSecurityProfile{
+			EnableSecureBoot: pointer.To(raw["secure_boot_enabled"].(bool)),
+			EnableVTPM:       pointer.To(raw["vtpm_enabled"].(bool)),
+		},
 
 		UpgradeSettings: expandClusterNodePoolUpgradeSettings(raw["upgrade_settings"].([]interface{})),
 
@@ -1266,6 +1281,13 @@ func FlattenDefaultNodePool(input *[]managedclusters.ManagedClusterAgentPoolProf
 		enableHostEncryption = *agentPool.EnableEncryptionAtHost
 	}
 
+	enableSecureBoot := false
+	enableVTPM := false
+	if agentPool.SecurityProfile != nil {
+		enableSecureBoot = pointer.From(agentPool.SecurityProfile.EnableSecureBoot)
+		enableVTPM = pointer.From(agentPool.SecurityProfile.EnableVTPM)
+	}
+
 	gpuInstanceProfile := ""
 	if agentPool.GpuInstanceProfile != nil {
 		gpuInstanceProfile = string(*agentPool.GpuInstanceProfile)
@@ -1428,11 +1450,13 @@ func FlattenDefaultNodePool(input *[]managedclusters.ManagedClusterAgentPoolProf
 		"os_disk_type":                  string(osDiskType),
 		"os_sku":                        osSKU,
 		"scale_down_mode":               string(scaleDownMode),
+		"secure_boot_enabled":           enableSecureBoot,
 		"snapshot_id":                   snapshotId,
 		"tags":                          tags.Flatten(agentPool.Tags),
 		"temporary_name_for_rotation":   temporaryName,
 		"type":                          agentPoolType,
 		"ultra_ssd_enabled":             enableUltraSSD,
+		"vtpm_enabled":                  enableVTPM,
 		"vm_size":                       vmSize,
 		"workload_runtime":              workloadRunTime,
 		"pod_subnet_id":                 podSubnetId,

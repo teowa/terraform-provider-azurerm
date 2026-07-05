@@ -14,8 +14,8 @@ import (
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/agentpools"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/snapshots"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2026-04-01/agentpools"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2026-04-01/snapshots"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
@@ -884,6 +884,36 @@ func TestAccKubernetesClusterNodePool_hostEncryption(t *testing.T) {
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("host_encryption_enabled").HasValue("true"),
 			),
+		},
+	})
+}
+
+func TestAccKubernetesClusterNodePool_trustedLaunch(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_kubernetes_cluster_node_pool", "test")
+	r := KubernetesClusterNodePoolResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.trustedLaunch(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("os_sku").HasValue("AzureContainerLinux"),
+				check.That(data.ResourceName).Key("secure_boot_enabled").HasValue("true"),
+				check.That(data.ResourceName).Key("vtpm_enabled").HasValue("true"),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
+func TestAccKubernetesClusterNodePool_trustedLaunchRequiresAzureContainerLinux(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_kubernetes_cluster_node_pool", "test")
+	r := KubernetesClusterNodePoolResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config:      r.trustedLaunchRequiresAzureContainerLinux(data),
+			ExpectError: regexp.MustCompile("enabling `secure_boot_enabled` or `vtpm_enabled` requires `os_sku` to be set to `AzureContainerLinux`"),
 		},
 	})
 }
@@ -3103,7 +3133,7 @@ provider "azurerm" {
   features {}
 }
 
-	%s
+%s
 
 resource "azurerm_kubernetes_cluster_node_pool" "test" {
   name                    = "internal"
@@ -3111,6 +3141,51 @@ resource "azurerm_kubernetes_cluster_node_pool" "test" {
   vm_size                 = "Standard_DS2_v2"
   host_encryption_enabled = true
   node_count              = 1
+  upgrade_settings {
+    max_surge = "10%%"
+  }
+}
+`, r.templateConfig(data))
+}
+
+func (r KubernetesClusterNodePoolResource) trustedLaunch(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+provider "azurerm" {
+  features {}
+}
+
+%s
+
+resource "azurerm_kubernetes_cluster_node_pool" "test" {
+  name                  = "internal"
+  kubernetes_cluster_id = azurerm_kubernetes_cluster.test.id
+  node_count            = 1
+  os_sku                = "AzureContainerLinux"
+  secure_boot_enabled   = true
+  vtpm_enabled          = true
+  vm_size               = "Standard_D2s_v5"
+  upgrade_settings {
+    max_surge = "10%%"
+  }
+}
+`, r.templateConfig(data))
+}
+
+func (r KubernetesClusterNodePoolResource) trustedLaunchRequiresAzureContainerLinux(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+provider "azurerm" {
+  features {}
+}
+
+%s
+
+resource "azurerm_kubernetes_cluster_node_pool" "test" {
+  name                  = "internal"
+  kubernetes_cluster_id = azurerm_kubernetes_cluster.test.id
+  node_count            = 1
+  os_sku                = "Ubuntu"
+  secure_boot_enabled   = true
+  vm_size               = "Standard_D2s_v5"
   upgrade_settings {
     max_surge = "10%%"
   }
