@@ -12,14 +12,15 @@ import (
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cognitive/2026-03-01/deployments"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cognitive/2026-03-01/raiblocklists"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cognitive/2026-03-01/raipolicies"
+
 	"github.com/hashicorp/terraform-provider-azurerm/internal/common"
 )
 
 type Client struct {
+	ProjectsClient                  *cognitiveservicesprojects.CognitiveServicesProjectsClient
 	AccountConnectionResourceClient *accountconnectionresource.AccountConnectionResourceClient
 	AccountsClient                  *cognitiveservicesaccounts.CognitiveServicesAccountsClient
 	DeploymentsClient               *deployments.DeploymentsClient
-	ProjectsClient                  *cognitiveservicesprojects.CognitiveServicesProjectsClient
 	RaiBlocklistsClient             *raiblocklists.RaiBlocklistsClient
 	RaiPoliciesClient               *raipolicies.RaiPoliciesClient
 }
@@ -62,10 +63,10 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 	o.Configure(raiBlobklistsClient.Client, o.Authorizers.ResourceManager)
 
 	return &Client{
+		ProjectsClient:                  projectsClient,
 		AccountConnectionResourceClient: accountConnectionResourceClient,
 		AccountsClient:                  accountsClient,
 		DeploymentsClient:               deploymentsClient,
-		ProjectsClient:                  projectsClient,
 		RaiBlocklistsClient:             raiBlobklistsClient,
 		RaiPoliciesClient:               raiPoliciesClient,
 	}, nil

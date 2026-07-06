@@ -247,6 +247,32 @@ func TestAccCognitiveAccountConnectionEntraID_sharepointCategory(t *testing.T) {
 	})
 }
 
+func TestAccCognitiveAccountConnectionEntraID_importMismatchedAuthTypeFails(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_cognitive_account_connection_entra_id", "test")
+	r := CognitiveAccountConnectionEntraIdResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.importMismatchedAuthType(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		{
+			ResourceName: data.ResourceName,
+			ImportState:  true,
+			ImportStateIdFunc: func(s *terraform.State) (string, error) {
+				rs, ok := s.RootModule().Resources["azurerm_cognitive_account_connection_api_key.wrong"]
+				if !ok {
+					return "", fmt.Errorf("resource `%s` not found in state", "azurerm_cognitive_account_connection_api_key.wrong")
+				}
+				return rs.Primary.ID, nil
+			},
+			ExpectError: regexp.MustCompile("cannot be managed by"),
+		},
+	})
+}
+
 func (r CognitiveAccountConnectionEntraIdResource) Exists(ctx context.Context, clients *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
 	id, err := accountconnectionresource.ParseConnectionID(state.ID)
 	if err != nil {
@@ -633,32 +659,6 @@ resource "azurerm_cognitive_account_connection_entra_id" "test" {
   target               = "https://contoso.sharepoint.com/"
 }
 `, r.template(data), data.RandomInteger)
-}
-
-func TestAccCognitiveAccountConnectionEntraID_importMismatchedAuthTypeFails(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_cognitive_account_connection_entra_id", "test")
-	r := CognitiveAccountConnectionEntraIdResource{}
-
-	data.ResourceTest(t, r, []acceptance.TestStep{
-		{
-			Config: r.importMismatchedAuthType(data),
-			Check: acceptance.ComposeTestCheckFunc(
-				check.That(data.ResourceName).ExistsInAzure(r),
-			),
-		},
-		{
-			ResourceName: data.ResourceName,
-			ImportState:  true,
-			ImportStateIdFunc: func(s *terraform.State) (string, error) {
-				rs, ok := s.RootModule().Resources["azurerm_cognitive_account_connection_api_key.wrong"]
-				if !ok {
-					return "", fmt.Errorf("resource `%s` not found in state", "azurerm_cognitive_account_connection_api_key.wrong")
-				}
-				return rs.Primary.ID, nil
-			},
-			ExpectError: regexp.MustCompile("cannot be managed by"),
-		},
-	})
 }
 
 func (r CognitiveAccountConnectionEntraIdResource) importMismatchedAuthType(data acceptance.TestData) string {

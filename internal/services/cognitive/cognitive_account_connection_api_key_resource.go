@@ -22,12 +22,16 @@ import (
 //go:generate go run ../../tools/generator-tests resourceidentity -resource-name cognitive_account_connection_api_key -properties "name" -compare-values "subscription_id:cognitive_account_id,resource_group_name:cognitive_account_id,account_name:cognitive_account_id" -test-name "basic" -test-expect-non-empty
 
 var (
-	_ sdk.ResourceWithUpdate        = CognitiveAccountConnectionApiKeyResource{}
-	_ sdk.ResourceWithIdentity      = CognitiveAccountConnectionApiKeyResource{}
-	_ sdk.ResourceWithCustomizeDiff = CognitiveAccountConnectionApiKeyResource{}
+	_ sdk.ResourceWithUpdate         = CognitiveAccountConnectionApiKeyResource{}
+	_ sdk.ResourceWithIdentity       = CognitiveAccountConnectionApiKeyResource{}
+	_ sdk.ResourceWithCustomImporter = CognitiveAccountConnectionApiKeyResource{}
 )
 
 type CognitiveAccountConnectionApiKeyResource struct{}
+
+func (r CognitiveAccountConnectionApiKeyResource) CustomImporter() sdk.ResourceRunFunc {
+	return cognitiveAccountConnectionImporter(accountconnectionresource.ConnectionAuthTypeApiKey, r.ResourceType())
+}
 
 func (r CognitiveAccountConnectionApiKeyResource) Identity() resourceids.ResourceId {
 	return new(accountconnectionresource.ConnectionId)
@@ -216,12 +220,6 @@ func (r CognitiveAccountConnectionApiKeyResource) Read() sdk.ResourceFunc {
 				return fmt.Errorf("retrieving %s: %+v", *id, err)
 			}
 
-			if model := resp.Model; model != nil && model.Properties != nil {
-				if authType := model.Properties.ConnectionPropertiesV2().AuthType; authType != accountconnectionresource.ConnectionAuthTypeApiKey {
-					return fmt.Errorf("connection %s has auth type `%s` and cannot be managed by `%s`", *id, authType, r.ResourceType())
-				}
-			}
-
 			var currentState CognitiveAccountConnectionApiKeyModel
 			if err := metadata.Decode(&currentState); err != nil {
 				return fmt.Errorf("decoding: %+v", err)
@@ -313,7 +311,7 @@ func (r CognitiveAccountConnectionApiKeyResource) Delete() sdk.ResourceFunc {
 	}
 }
 
-func (r CognitiveAccountConnectionApiKeyResource) flatten(metadata sdk.ResourceMetaData, id *accountconnectionresource.ConnectionId, model *accountconnectionresource.ConnectionPropertiesV2BasicResource, priorMetadata map[string]string, priorApiKey string) error {
+func (CognitiveAccountConnectionApiKeyResource) flatten(metadata sdk.ResourceMetaData, id *accountconnectionresource.ConnectionId, model *accountconnectionresource.ConnectionPropertiesV2BasicResource, priorMetadata map[string]string, priorApiKey string) error {
 	state := CognitiveAccountConnectionApiKeyModel{
 		CognitiveAccountId: accountconnectionresource.NewAccountID(id.SubscriptionId, id.ResourceGroupName, id.AccountName).ID(),
 		Name:               id.ConnectionName,

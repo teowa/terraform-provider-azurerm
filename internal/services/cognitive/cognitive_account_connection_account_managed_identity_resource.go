@@ -22,11 +22,16 @@ import (
 //go:generate go run ../../tools/generator-tests resourceidentity -resource-name cognitive_account_connection_account_managed_identity -properties "name" -compare-values "subscription_id:cognitive_account_id,resource_group_name:cognitive_account_id,account_name:cognitive_account_id" -test-name "basic" -test-expect-non-empty
 
 var (
-	_ sdk.ResourceWithUpdate   = CognitiveAccountConnectionAccountManagedIdentityResource{}
-	_ sdk.ResourceWithIdentity = CognitiveAccountConnectionAccountManagedIdentityResource{}
+	_ sdk.ResourceWithUpdate         = CognitiveAccountConnectionAccountManagedIdentityResource{}
+	_ sdk.ResourceWithIdentity       = CognitiveAccountConnectionAccountManagedIdentityResource{}
+	_ sdk.ResourceWithCustomImporter = CognitiveAccountConnectionAccountManagedIdentityResource{}
 )
 
 type CognitiveAccountConnectionAccountManagedIdentityResource struct{}
+
+func (r CognitiveAccountConnectionAccountManagedIdentityResource) CustomImporter() sdk.ResourceRunFunc {
+	return cognitiveAccountConnectionImporter(accountconnectionresource.ConnectionAuthTypeAccountManagedIdentity, r.ResourceType())
+}
 
 func (r CognitiveAccountConnectionAccountManagedIdentityResource) Identity() resourceids.ResourceId {
 	return new(accountconnectionresource.ConnectionId)
@@ -170,12 +175,6 @@ func (r CognitiveAccountConnectionAccountManagedIdentityResource) Read() sdk.Res
 				return fmt.Errorf("retrieving %s: %+v", *id, err)
 			}
 
-			if model := resp.Model; model != nil && model.Properties != nil {
-				if authType := model.Properties.ConnectionPropertiesV2().AuthType; authType != accountconnectionresource.ConnectionAuthTypeAccountManagedIdentity {
-					return fmt.Errorf("connection %s has auth type `%s` and cannot be managed by `%s`", *id, authType, r.ResourceType())
-				}
-			}
-
 			var currentState CognitiveAccountConnectionAccountManagedIdentityModel
 			if err := metadata.Decode(&currentState); err != nil {
 				return fmt.Errorf("decoding: %+v", err)
@@ -254,7 +253,7 @@ func (r CognitiveAccountConnectionAccountManagedIdentityResource) Delete() sdk.R
 	}
 }
 
-func (r CognitiveAccountConnectionAccountManagedIdentityResource) flatten(metadata sdk.ResourceMetaData, id *accountconnectionresource.ConnectionId, model *accountconnectionresource.ConnectionPropertiesV2BasicResource, priorMetadata map[string]string) error {
+func (CognitiveAccountConnectionAccountManagedIdentityResource) flatten(metadata sdk.ResourceMetaData, id *accountconnectionresource.ConnectionId, model *accountconnectionresource.ConnectionPropertiesV2BasicResource, priorMetadata map[string]string) error {
 	state := CognitiveAccountConnectionAccountManagedIdentityModel{
 		CognitiveAccountId: accountconnectionresource.NewAccountID(id.SubscriptionId, id.ResourceGroupName, id.AccountName).ID(),
 		Name:               id.ConnectionName,
