@@ -42,75 +42,56 @@ func (CognitiveAccountConnectionApiKeyListResource) List(ctx context.Context, re
 		return
 	}
 
-	deadline, ok := ctx.Deadline()
-	if !ok {
-		sdk.SetResponseErrorDiagnostic(stream, "internal-error", "context had no deadline")
+	accountId, err := cognitiveservicesaccounts.ParseAccountID(data.CognitiveAccountId.ValueString())
+	if err != nil {
+		sdk.SetResponseErrorDiagnostic(stream, "parsing Cognitive Account ID", err)
 		return
 	}
 
-	accounts, err := cognitiveAccountConnectionListAccounts(ctx, metadata, data)
+	connectionsResp, err := client.AccountConnectionsListComplete(ctx, accountconnectionresource.NewAccountID(accountId.SubscriptionId, accountId.ResourceGroupName, accountId.AccountName), accountconnectionresource.DefaultAccountConnectionsListOperationOptions())
 	if err != nil {
 		sdk.SetResponseErrorDiagnostic(stream, fmt.Sprintf("listing `%s`", CognitiveAccountConnectionApiKeyResource{}.ResourceType()), err)
 		return
 	}
 
 	stream.Results = func(push func(list.ListResult) bool) {
-		listCtx, cancel := context.WithDeadline(context.Background(), deadline)
-		defer cancel()
+		for _, connection := range connectionsResp.Items {
+			if connection.Properties == nil {
+				continue
+			}
 
-		for _, account := range accounts {
-			accountId, err := cognitiveservicesaccounts.ParseAccountID(pointer.From(account.Id))
+			base := connection.Properties.ConnectionPropertiesV2()
+			if string(base.AuthType) != string(accountconnectionresource.ConnectionAuthTypeApiKey) {
+				continue
+			}
+
+			connectionId, err := accountconnectionresource.ParseConnectionID(pointer.From(connection.Id))
 			if err != nil {
-				result := request.NewListResult(listCtx)
-				sdk.SetErrorDiagnosticAndPushListResult(result, push, "parsing Cognitive Account ID", err)
+				result := request.NewListResult(ctx)
+				sdk.SetErrorDiagnosticAndPushListResult(result, push, "parsing Cognitive Account Connection ID", err)
 				return
 			}
 
-			connectionsResp, err := client.AccountConnectionsListComplete(listCtx, accountconnectionresource.NewAccountID(accountId.SubscriptionId, accountId.ResourceGroupName, accountId.AccountName), accountconnectionresource.DefaultAccountConnectionsListOperationOptions())
-			if err != nil {
-				result := request.NewListResult(listCtx)
-				sdk.SetErrorDiagnosticAndPushListResult(result, push, fmt.Sprintf("listing connections for `%s`", accountId.AccountName), err)
+			result := request.NewListResult(ctx)
+			result.DisplayName = pointer.From(connection.Name)
+
+			r := CognitiveAccountConnectionApiKeyResource{}
+			meta := sdk.NewResourceMetaData(metadata.Client, r)
+			meta.SetID(connectionId)
+
+			if err := r.flatten(meta, connectionId, &connection, nil, ""); err != nil {
+				sdk.SetErrorDiagnosticAndPushListResult(result, push, fmt.Sprintf("encoding `%s` resource data", r.ResourceType()), err)
 				return
 			}
 
-			for _, connection := range connectionsResp.Items {
-				if connection.Properties == nil {
-					continue
-				}
+			sdk.EncodeListResult(ctx, meta.ResourceData, &result)
+			if result.Diagnostics.HasError() {
+				push(result)
+				return
+			}
 
-				base := connection.Properties.ConnectionPropertiesV2()
-				if string(base.AuthType) != string(accountconnectionresource.ConnectionAuthTypeApiKey) {
-					continue
-				}
-
-				connectionId, err := accountconnectionresource.ParseConnectionID(pointer.From(connection.Id))
-				if err != nil {
-					result := request.NewListResult(listCtx)
-					sdk.SetErrorDiagnosticAndPushListResult(result, push, "parsing Cognitive Account Connection ID", err)
-					return
-				}
-
-				result := request.NewListResult(listCtx)
-				result.DisplayName = pointer.From(connection.Name)
-
-				r := CognitiveAccountConnectionApiKeyResource{}
-				meta := sdk.NewResourceMetaData(metadata.Client, r)
-				meta.SetID(connectionId)
-
-				if err := r.flatten(meta, connectionId, &connection, nil, ""); err != nil {
-					sdk.SetErrorDiagnosticAndPushListResult(result, push, fmt.Sprintf("encoding `%s` resource data", r.ResourceType()), err)
-					return
-				}
-
-				sdk.EncodeListResult(listCtx, meta.ResourceData, &result)
-				if result.Diagnostics.HasError() {
-					push(result)
-					return
-				}
-
-				if !push(result) {
-					return
-				}
+			if !push(result) {
+				return
 			}
 		}
 	}

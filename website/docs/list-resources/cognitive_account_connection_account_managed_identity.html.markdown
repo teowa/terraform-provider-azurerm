@@ -12,23 +12,13 @@ Lists Cognitive Services Account Connection with Account Managed Identity authen
 
 ## Example Usage
 
-### List all Cognitive Services Account Connection with Account Managed Identity authentication resources in the subscription
-
-```hcl
-list "azurerm_cognitive_account_connection_account_managed_identity" "example" {
-  provider = azurerm
-  config {}
-}
-```
-
-### List all Cognitive Services Account Connection with Account Managed Identity authentication resources in a specific Cognitive Account
+### List all Cognitive Services Account Connection with Account Managed Identity authentication resources in a Cognitive Services Account
 
 ```hcl
 list "azurerm_cognitive_account_connection_account_managed_identity" "example" {
   provider = azurerm
   config {
-    cognitive_account_name = "example-cognitive-account"
-    resource_group_name    = "example-resources"
+    cognitive_account_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/example-resources/providers/Microsoft.CognitiveServices/accounts/example-cognitive-account"
   }
 }
 ```
@@ -37,8 +27,4 @@ list "azurerm_cognitive_account_connection_account_managed_identity" "example" {
 
 This list resource supports the following arguments:
 
-* `cognitive_account_name` - (Optional) The name of the Cognitive Account to query. When specified, `resource_group_name` must also be specified.
-
-* `resource_group_name` - (Optional) The name of the Resource Group to query.
-
-* `subscription_id` - (Optional) The Subscription ID to query. Defaults to the value specified in the Provider Configuration.
+* `cognitive_account_id` - (Required) The full ID of an existing Cognitive Services Account.
