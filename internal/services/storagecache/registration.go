@@ -60,6 +60,7 @@ func (r Registration) DataSources() []sdk.DataSource {
 // Resources returns a list of Resources supported by this Service
 func (r Registration) Resources() []sdk.Resource {
 	return []sdk.Resource{
+		ManagedLustreFileSystemAutoImportJobResource{},
 		ManagedLustreFileSystemResource{},
 	}
 }
@@ -81,5 +82,7 @@ func (r Registration) EphemeralResources() []func() ephemeral.EphemeralResource 
 }
 
 func (r Registration) ListResources() []sdk.FrameworkListWrappedResource {
-	return []sdk.FrameworkListWrappedResource{}
+	return []sdk.FrameworkListWrappedResource{
+		ManagedLustreFileSystemAutoImportJobListResource{},
+	}
 }
