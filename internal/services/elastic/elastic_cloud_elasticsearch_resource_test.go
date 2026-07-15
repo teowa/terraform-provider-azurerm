@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2023-06-01/monitorsresource"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2025-06-01/elasticmonitorresources"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
@@ -31,8 +31,11 @@ func TestAccElasticsearch_basic(t *testing.T) {
 				check.That(data.ResourceName).Key("elastic_cloud_sso_default_url").Exists(),
 				check.That(data.ResourceName).Key("elastic_cloud_user_id").Exists(),
 				check.That(data.ResourceName).Key("elasticsearch_service_url").Exists(),
+				check.That(data.ResourceName).Key("hosting_type").Exists(),
 				check.That(data.ResourceName).Key("kibana_service_url").Exists(),
 				check.That(data.ResourceName).Key("kibana_sso_uri").Exists(),
+				check.That(data.ResourceName).Key("project_configuration_type").Exists(),
+				check.That(data.ResourceName).Key("project_type").Exists(),
 			),
 		},
 		data.ImportStep(),
@@ -142,7 +145,7 @@ func TestAccElasticsearch_logsUpdate(t *testing.T) {
 }
 
 func (r ElasticsearchResource) Exists(ctx context.Context, client *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
-	id, err := monitorsresource.ParseMonitorID(state.ID)
+	id, err := elasticmonitorresources.ParseMonitorID(state.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +241,10 @@ resource "azurerm_elastic_cloud_elasticsearch" "test" {
   location                    = azurerm_resource_group.test.location
   sku_name                    = "ess-consumption-2024_Monthly"
   elastic_cloud_email_address = "terraform-acctest@hashicorp.com"
+  hosting_type                = "Hosted"
   monitoring_enabled          = false
+  project_configuration_type  = "NotApplicable"
+  project_type                = "NotApplicable"
 
   tags = {
     ENV = "Test"

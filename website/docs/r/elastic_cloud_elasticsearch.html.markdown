@@ -49,7 +49,13 @@ You may find your eligible plans [here](https://portal.azure.com/#view/Microsoft
 
 * `logs` - (Optional) A `logs` block as defined below.
 
+* `hosting_type` - (Optional) Specifies the hosting type of the Elasticsearch resource. Possible values are `Hosted` and `Serverless`. Changing this forces a new Elasticsearch to be created.
+
 * `monitoring_enabled` - (Optional) Specifies if the Elasticsearch should have monitoring configured? Defaults to `true`. Changing this forces a new Elasticsearch to be created.
+
+* `project_configuration_type` - (Optional) Specifies the project configuration type for this Elasticsearch resource. Possible values are `GeneralPurpose`, `NotApplicable`, `TimeSeries`, and `Vector`. Changing this forces a new Elasticsearch to be created.
+
+* `project_type` - (Optional) Specifies the project type for this Elasticsearch resource. Possible values are `Elasticsearch`, `NotApplicable`, `Observability`, and `Security`. Changing this forces a new Elasticsearch to be created.
 
 * `tags` - (Optional) A mapping of tags which should be assigned to the Elasticsearch resource.
 
@@ -114,4 +120,4 @@ terraform import azurerm_elastic_cloud_elasticsearch.example /subscriptions/0000
 <!-- This section is generated, changes will be overwritten -->
 This resource uses the following Azure API Providers:
 
-* `Microsoft.Elastic` - 2023-06-01
+* `Microsoft.Elastic` - 2025-06-01

@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2023-06-01/monitorsresource"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2023-06-01/rules"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2025-06-01/elasticmonitorresources"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2025-06-01/tagrules"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
@@ -39,7 +39,7 @@ func resourceElasticsearch() *pluginsdk.Resource {
 		},
 
 		Importer: pluginsdk.ImporterValidatingResourceId(func(id string) error {
-			_, err := monitorsresource.ParseMonitorID(id)
+			_, err := elasticmonitorresources.ParseMonitorID(id)
 			return err
 		}),
 
@@ -75,6 +75,30 @@ func resourceElasticsearch() *pluginsdk.Resource {
 				ForceNew: true,
 			},
 
+			"hosting_type": {
+				Type:         pluginsdk.TypeString,
+				Optional:     true,
+				Computed:     true,
+				ForceNew:     true,
+				ValidateFunc: validation.StringInSlice(elasticmonitorresources.PossibleValuesForHostingType(), false),
+			},
+
+			"project_type": {
+				Type:         pluginsdk.TypeString,
+				Optional:     true,
+				Computed:     true,
+				ForceNew:     true,
+				ValidateFunc: validation.StringInSlice(elasticmonitorresources.PossibleValuesForProjectType(), false),
+			},
+
+			"project_configuration_type": {
+				Type:         pluginsdk.TypeString,
+				Optional:     true,
+				Computed:     true,
+				ForceNew:     true,
+				ValidateFunc: validation.StringInSlice(elasticmonitorresources.PossibleValuesForConfigurationType(), false),
+			},
+
 			"logs": {
 				Type:     pluginsdk.TypeList,
 				Optional: true,
@@ -100,8 +124,8 @@ func resourceElasticsearch() *pluginsdk.Resource {
 										Type:     pluginsdk.TypeString,
 										Required: true,
 										ValidateFunc: validation.StringInSlice([]string{
-											string(rules.TagActionExclude),
-											string(rules.TagActionInclude),
+											string(tagrules.TagActionExclude),
+											string(tagrules.TagActionInclude),
 										}, false),
 									},
 								},
@@ -165,7 +189,7 @@ func resourceElasticsearchCreate(d *pluginsdk.ResourceData, meta interface{}) er
 	ctx, cancel := timeouts.ForCreate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
-	id := monitorsresource.NewMonitorID(subscriptionId, d.Get("resource_group_name").(string), d.Get("name").(string))
+	id := elasticmonitorresources.NewMonitorID(subscriptionId, d.Get("resource_group_name").(string), d.Get("name").(string))
 
 	if !meta.(*clients.Client).Features.SkipImportCheckOnCreateAndAllowOverwritingExistingResources {
 		existing, err := client.MonitorsGet(ctx, id)
@@ -179,23 +203,39 @@ func resourceElasticsearchCreate(d *pluginsdk.ResourceData, meta interface{}) er
 		}
 	}
 
-	monitoringStatus := monitorsresource.MonitoringStatusDisabled
+	monitoringStatus := elasticmonitorresources.MonitoringStatusDisabled
 	if d.Get("monitoring_enabled").(bool) {
-		monitoringStatus = monitorsresource.MonitoringStatusEnabled
+		monitoringStatus = elasticmonitorresources.MonitoringStatusEnabled
 	}
 
-	body := monitorsresource.ElasticMonitorResource{
+	body := elasticmonitorresources.ElasticMonitorResource{
 		Location: location.Normalize(d.Get("location").(string)),
-		Properties: &monitorsresource.MonitorProperties{
+		Properties: &elasticmonitorresources.MonitorProperties{
 			MonitoringStatus: &monitoringStatus,
-			UserInfo: &monitorsresource.UserInfo{
+			UserInfo: &elasticmonitorresources.UserInfo{
 				EmailAddress: pointer.To(d.Get("elastic_cloud_email_address").(string)),
 			},
 		},
-		Sku: &monitorsresource.ResourceSku{
+		Sku: &elasticmonitorresources.ResourceSku{
 			Name: d.Get("sku_name").(string),
 		},
 		Tags: tags.Expand(d.Get("tags").(map[string]interface{})),
+	}
+
+	if hostingType := d.Get("hosting_type").(string); hostingType != "" {
+		body.Properties.HostingType = pointer.To(elasticmonitorresources.HostingType(hostingType))
+	}
+
+	projectType := d.Get("project_type").(string)
+	projectConfigurationType := d.Get("project_configuration_type").(string)
+	if projectType != "" || projectConfigurationType != "" {
+		body.Properties.ProjectDetails = &elasticmonitorresources.ProjectDetails{}
+		if projectType != "" {
+			body.Properties.ProjectDetails.ProjectType = pointer.To(elasticmonitorresources.ProjectType(projectType))
+		}
+		if projectConfigurationType != "" {
+			body.Properties.ProjectDetails.ConfigurationType = pointer.To(elasticmonitorresources.ConfigurationType(projectConfigurationType))
+		}
 	}
 
 	if err := client.MonitorsCreateCallbackThenPoll(ctx, id, body, sdk.SetIDCallback(meta, &id, d)); err != nil {
@@ -206,13 +246,13 @@ func resourceElasticsearchCreate(d *pluginsdk.ResourceData, meta interface{}) er
 
 	if v, ok := d.GetOk("logs"); ok {
 		tagRulesClient := meta.(*clients.Client).Elastic.TagRuleClient
-		tagRuleId := rules.NewTagRuleID(id.SubscriptionId, id.ResourceGroupName, id.MonitorName, "default")
-		tagRule := rules.MonitoringTagRules{
-			Properties: &rules.MonitoringTagRulesProperties{
+		tagRuleId := tagrules.NewTagRuleID(id.SubscriptionId, id.ResourceGroupName, id.MonitorName, "default")
+		tagRule := tagrules.MonitoringTagRules{
+			Properties: &tagrules.MonitoringTagRulesProperties{
 				LogRules: expandTagRule(v.([]interface{})),
 			},
 		}
-		if _, err := tagRulesClient.TagRulesCreateOrUpdate(ctx, tagRuleId, tagRule); err != nil {
+		if _, err := tagRulesClient.CreateOrUpdate(ctx, tagRuleId, tagRule); err != nil {
 			return fmt.Errorf("updating the logs for %s: %+v", id, err)
 		}
 	}
@@ -226,7 +266,7 @@ func resourceElasticsearchRead(d *pluginsdk.ResourceData, meta interface{}) erro
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
-	id, err := monitorsresource.ParseMonitorID(d.Id())
+	id, err := elasticmonitorresources.ParseMonitorID(d.Id())
 	if err != nil {
 		return err
 	}
@@ -242,8 +282,8 @@ func resourceElasticsearchRead(d *pluginsdk.ResourceData, meta interface{}) erro
 		return fmt.Errorf("retrieving %s: %+v", *id, err)
 	}
 
-	tagRuleId := rules.NewTagRuleID(id.SubscriptionId, id.ResourceGroupName, id.MonitorName, "default")
-	rulesResp, err := logsClient.TagRulesGet(ctx, tagRuleId)
+	tagRuleId := tagrules.NewTagRuleID(id.SubscriptionId, id.ResourceGroupName, id.MonitorName, "default")
+	rulesResp, err := logsClient.Get(ctx, tagRuleId)
 	if err != nil {
 		if !response.WasNotFound(rulesResp.HttpResponse) {
 			return fmt.Errorf("retrieving logs for %s: %+v", *id, err)
@@ -259,9 +299,17 @@ func resourceElasticsearchRead(d *pluginsdk.ResourceData, meta interface{}) erro
 		if props := model.Properties; props != nil {
 			monitoringEnabled := false
 			if props.MonitoringStatus != nil {
-				monitoringEnabled = *props.MonitoringStatus == monitorsresource.MonitoringStatusEnabled
+				monitoringEnabled = *props.MonitoringStatus == elasticmonitorresources.MonitoringStatusEnabled
 			}
 			d.Set("monitoring_enabled", monitoringEnabled)
+			d.Set("hosting_type", pointer.From(props.HostingType))
+			if projectDetails := props.ProjectDetails; projectDetails != nil {
+				d.Set("project_type", pointer.From(projectDetails.ProjectType))
+				d.Set("project_configuration_type", pointer.From(projectDetails.ConfigurationType))
+			} else {
+				d.Set("project_type", "")
+				d.Set("project_configuration_type", "")
+			}
 
 			if elastic := props.ElasticProperties; elastic != nil {
 				if elastic.ElasticCloudDeployment != nil {
@@ -302,28 +350,28 @@ func resourceElasticsearchUpdate(d *pluginsdk.ResourceData, meta interface{}) er
 	ctx, cancel := timeouts.ForUpdate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
-	id, err := monitorsresource.ParseMonitorID(d.Id())
+	id, err := elasticmonitorresources.ParseMonitorID(d.Id())
 	if err != nil {
 		return err
 	}
 
 	if d.HasChange("logs") {
 		client := meta.(*clients.Client).Elastic.TagRuleClient
-		tagRuleId := rules.NewTagRuleID(id.SubscriptionId, id.ResourceGroupName, id.MonitorName, "default")
+		tagRuleId := tagrules.NewTagRuleID(id.SubscriptionId, id.ResourceGroupName, id.MonitorName, "default")
 		tagRule := expandTagRule(d.Get("logs").([]interface{}))
-		body := rules.MonitoringTagRules{
-			Properties: &rules.MonitoringTagRulesProperties{
+		body := tagrules.MonitoringTagRules{
+			Properties: &tagrules.MonitoringTagRulesProperties{
 				LogRules: tagRule,
 			},
 		}
-		if _, err := client.TagRulesCreateOrUpdate(ctx, tagRuleId, body); err != nil {
+		if _, err := client.CreateOrUpdate(ctx, tagRuleId, body); err != nil {
 			return fmt.Errorf("updating `logs` from %s: %+v", *id, err)
 		}
 	}
 
 	if d.HasChange("tags") {
 		client := meta.(*clients.Client).Elastic.MonitorClient
-		body := monitorsresource.ElasticMonitorResourceUpdateParameters{
+		body := elasticmonitorresources.ElasticMonitorResourceUpdateParameters{
 			Tags: tags.Expand(d.Get("tags").(map[string]interface{})),
 		}
 		if _, err := client.MonitorsUpdate(ctx, *id, body); err != nil {
@@ -339,7 +387,7 @@ func resourceElasticsearchDelete(d *pluginsdk.ResourceData, meta interface{}) er
 	ctx, cancel := timeouts.ForDelete(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
-	id, err := monitorsresource.ParseMonitorID(d.Id())
+	id, err := elasticmonitorresources.ParseMonitorID(d.Id())
 	if err != nil {
 		return err
 	}
@@ -351,18 +399,18 @@ func resourceElasticsearchDelete(d *pluginsdk.ResourceData, meta interface{}) er
 	return nil
 }
 
-func expandTagRule(input []interface{}) *rules.LogRules {
+func expandTagRule(input []interface{}) *tagrules.LogRules {
 	if len(input) == 0 {
 		return nil
 	}
 
 	raw := input[0].(map[string]interface{})
-	filteringTags := make([]rules.FilteringTag, 0)
+	filteringTags := make([]tagrules.FilteringTag, 0)
 	for _, v := range raw["filtering_tag"].([]interface{}) {
 		item := v.(map[string]interface{})
 
-		action := rules.TagAction(item["action"].(string))
-		filteringTags = append(filteringTags, rules.FilteringTag{
+		action := tagrules.TagAction(item["action"].(string))
+		filteringTags = append(filteringTags, tagrules.FilteringTag{
 			Action: &action,
 			Name:   pointer.To(item["name"].(string)),
 			Value:  pointer.To(item["value"].(string)),
@@ -373,7 +421,7 @@ func expandTagRule(input []interface{}) *rules.LogRules {
 	sendActivityLogs := raw["send_activity_logs"].(bool)
 	sendSubscriptionLogs := raw["send_subscription_logs"].(bool)
 
-	return &rules.LogRules{
+	return &tagrules.LogRules{
 		FilteringTags:        &filteringTags,
 		SendAadLogs:          pointer.To(sendAzureAdLogs),
 		SendActivityLogs:     pointer.To(sendActivityLogs),
@@ -381,7 +429,7 @@ func expandTagRule(input []interface{}) *rules.LogRules {
 	}
 }
 
-func flattenTagRule(input *rules.MonitoringTagRules) []interface{} {
+func flattenTagRule(input *tagrules.MonitoringTagRules) []interface{} {
 	if input == nil || input.Properties == nil || input.Properties.LogRules == nil {
 		return []interface{}{}
 	}

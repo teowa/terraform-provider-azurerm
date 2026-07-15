@@ -29,8 +29,11 @@ func TestAccElasticsearchDataSource_basic(t *testing.T) {
 				check.That(data.ResourceName).Key("elastic_cloud_sso_default_url").Exists(),
 				check.That(data.ResourceName).Key("elastic_cloud_user_id").Exists(),
 				check.That(data.ResourceName).Key("elasticsearch_service_url").Exists(),
+				check.That(data.ResourceName).Key("hosting_type").Exists(),
 				check.That(data.ResourceName).Key("kibana_service_url").Exists(),
 				check.That(data.ResourceName).Key("kibana_sso_uri").Exists(),
+				check.That(data.ResourceName).Key("project_configuration_type").Exists(),
+				check.That(data.ResourceName).Key("project_type").Exists(),
 			),
 		},
 	})

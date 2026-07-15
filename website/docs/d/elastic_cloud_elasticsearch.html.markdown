@@ -52,6 +52,8 @@ The following attributes are exported:
 
 * `elasticsearch_service_url` - The URL to the Elasticsearch Service associated with this Elasticsearch.
 
+* `hosting_type` - The hosting type of this Elasticsearch resource.
+
 * `kibana_service_url` - The URL to the Kibana Dashboard associated with this Elasticsearch.
 
 * `kibana_sso_uri` - The URI used for SSO to the Kibana Dashboard associated with this Elasticsearch.
@@ -61,6 +63,10 @@ The following attributes are exported:
 * `logs` - A `logs` block as defined below.
 
 * `monitoring_enabled` - Specifies if monitoring is enabled on this Elasticsearch or not.
+
+* `project_configuration_type` - The project configuration type of this Elasticsearch resource.
+
+* `project_type` - The project type of this Elasticsearch resource.
 
 * `sku_name` - The name of the SKU used for this Elasticsearch.
 
@@ -98,4 +104,4 @@ The `timeouts` block allows you to specify [timeouts](https://developer.hashicor
 <!-- This section is generated, changes will be overwritten -->
 This data source uses the following Azure API Providers:
 
-* `Microsoft.Elastic` - 2023-06-01
+* `Microsoft.Elastic` - 2025-06-01

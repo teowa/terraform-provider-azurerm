@@ -7,12 +7,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2023-06-01/monitorsresource"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2023-06-01/rules"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2025-06-01/elasticmonitorresources"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2025-06-01/tagrules"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/elastic/validate"
@@ -53,6 +54,21 @@ func dataSourceElasticsearch() *pluginsdk.Resource {
 
 			"monitoring_enabled": {
 				Type:     pluginsdk.TypeBool,
+				Computed: true,
+			},
+
+			"hosting_type": {
+				Type:     pluginsdk.TypeString,
+				Computed: true,
+			},
+
+			"project_type": {
+				Type:     pluginsdk.TypeString,
+				Computed: true,
+			},
+
+			"project_configuration_type": {
+				Type:     pluginsdk.TypeString,
 				Computed: true,
 			},
 
@@ -138,7 +154,7 @@ func dataSourceElasticsearchRead(d *schema.ResourceData, meta interface{}) error
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
-	id := monitorsresource.NewMonitorID(subscriptionId, d.Get("resource_group_name").(string), d.Get("name").(string))
+	id := elasticmonitorresources.NewMonitorID(subscriptionId, d.Get("resource_group_name").(string), d.Get("name").(string))
 	resp, err := client.MonitorsGet(ctx, id)
 	if err != nil {
 		if response.WasNotFound(resp.HttpResponse) {
@@ -148,8 +164,8 @@ func dataSourceElasticsearchRead(d *schema.ResourceData, meta interface{}) error
 		return fmt.Errorf("retrieving %s: %+v", id, err)
 	}
 
-	tagRuleId := rules.NewTagRuleID(id.SubscriptionId, id.ResourceGroupName, id.MonitorName, "default")
-	rulesResp, err := logsClient.TagRulesGet(ctx, tagRuleId)
+	tagRuleId := tagrules.NewTagRuleID(id.SubscriptionId, id.ResourceGroupName, id.MonitorName, "default")
+	rulesResp, err := logsClient.Get(ctx, tagRuleId)
 	if err != nil {
 		if !response.WasNotFound(rulesResp.HttpResponse) {
 			return fmt.Errorf("retrieving logs for %s: %+v", id, err)
@@ -165,9 +181,17 @@ func dataSourceElasticsearchRead(d *schema.ResourceData, meta interface{}) error
 		if props := model.Properties; props != nil {
 			monitoringEnabled := false
 			if props.MonitoringStatus != nil {
-				monitoringEnabled = *props.MonitoringStatus == monitorsresource.MonitoringStatusEnabled
+				monitoringEnabled = *props.MonitoringStatus == elasticmonitorresources.MonitoringStatusEnabled
 			}
 			d.Set("monitoring_enabled", monitoringEnabled)
+			d.Set("hosting_type", pointer.From(props.HostingType))
+			if projectDetails := props.ProjectDetails; projectDetails != nil {
+				d.Set("project_type", pointer.From(projectDetails.ProjectType))
+				d.Set("project_configuration_type", pointer.From(projectDetails.ConfigurationType))
+			} else {
+				d.Set("project_type", "")
+				d.Set("project_configuration_type", "")
+			}
 
 			if elastic := props.ElasticProperties; elastic != nil {
 				if elastic.ElasticCloudDeployment != nil {
