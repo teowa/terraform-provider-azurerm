@@ -14,8 +14,8 @@ import (
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/agentpools"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/snapshots"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2026-04-01/agentpools"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
@@ -1281,7 +1281,7 @@ func (t KubernetesClusterNodePoolResource) Exists(ctx context.Context, clients *
 		return nil, err
 	}
 
-	resp, err := clients.Containers.AgentPoolsClient.Get(ctx, *id)
+	resp, err := clients.Containers.AgentPoolsClient_v2026_04_01.Get(ctx, *id)
 	if err != nil {
 		return nil, fmt.Errorf("reading Kubernetes Cluster Node Pool (%s): %+v", id.String(), err)
 	}
@@ -1308,7 +1308,7 @@ func (KubernetesClusterNodePoolResource) scaleNodePool(nodeCount int) acceptance
 		clusterName := parsedK8sId.ManagedClusterName
 		resourceGroup := parsedK8sId.ResourceGroupName
 
-		nodePool, err := clients.Containers.AgentPoolsClient.Get(ctx, parsedAgentPoolId)
+		nodePool, err := clients.Containers.AgentPoolsClient_v2026_04_01.Get(ctx, parsedAgentPoolId)
 		if err != nil {
 			return fmt.Errorf("Bad: Get on agentPoolsClient: %+v", err)
 		}
@@ -1323,7 +1323,7 @@ func (KubernetesClusterNodePoolResource) scaleNodePool(nodeCount int) acceptance
 
 		nodePool.Model.Properties.Count = pointer.To(int64(nodeCount))
 
-		err = clients.Containers.AgentPoolsClient.CreateOrUpdateThenPoll(ctx, parsedAgentPoolId, *nodePool.Model, agentpools.DefaultCreateOrUpdateOperationOptions())
+		err = clients.Containers.AgentPoolsClient_v2026_04_01.CreateOrUpdateThenPoll(ctx, parsedAgentPoolId, *nodePool.Model, agentpools.DefaultCreateOrUpdateOperationOptions())
 		if err != nil {
 			return fmt.Errorf("Bad: updating node pool %q: %+v", nodePoolName, err)
 		}
@@ -1381,7 +1381,7 @@ func TestAccKubernetesClusterNodePool_updateVmSizeAfterFailureWithTempAndOrigina
 						defer cancel()
 					}
 
-					client := clients.Containers.AgentPoolsClient
+					client := clients.Containers.AgentPoolsClient_v2026_04_01
 
 					originalNodePoolId, err := agentpools.ParseAgentPoolID(state.Attributes["id"])
 					if err != nil {
@@ -1437,7 +1437,7 @@ func TestAccKubernetesClusterNodePool_updateVmSizeAfterFailureWithTempWithoutOri
 						defer cancel()
 					}
 
-					client := clients.Containers.AgentPoolsClient
+					client := clients.Containers.AgentPoolsClient_v2026_04_01
 
 					originalNodePoolId, err := agentpools.ParseAgentPoolID(state.Attributes["id"])
 					if err != nil {
