@@ -888,6 +888,41 @@ func TestAccKubernetesClusterNodePool_hostEncryption(t *testing.T) {
 	})
 }
 
+func TestAccKubernetesClusterNodePool_secureBootAndVtpm(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_kubernetes_cluster_node_pool", "test")
+	r := KubernetesClusterNodePoolResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.secureBootAndVtpm(data, false, false),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("secure_boot_enabled").HasValue("false"),
+				check.That(data.ResourceName).Key("vtpm_enabled").HasValue("false"),
+			),
+		},
+		data.ImportStep("temporary_name_for_rotation"),
+		{
+			Config: r.secureBootAndVtpm(data, true, true),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("secure_boot_enabled").HasValue("true"),
+				check.That(data.ResourceName).Key("vtpm_enabled").HasValue("true"),
+			),
+		},
+		data.ImportStep("temporary_name_for_rotation"),
+		{
+			Config: r.secureBootAndVtpm(data, false, false),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("secure_boot_enabled").HasValue("false"),
+				check.That(data.ResourceName).Key("vtpm_enabled").HasValue("false"),
+			),
+		},
+		data.ImportStep("temporary_name_for_rotation"),
+	})
+}
+
 func TestAccKubernetesClusterNodePool_maxSize(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_kubernetes_cluster_node_pool", "test")
 	r := KubernetesClusterNodePoolResource{}
@@ -3116,6 +3151,29 @@ resource "azurerm_kubernetes_cluster_node_pool" "test" {
   }
 }
 `, r.templateConfig(data))
+}
+
+func (r KubernetesClusterNodePoolResource) secureBootAndVtpm(data acceptance.TestData, secureBootEnabled, vtpmEnabled bool) string {
+	return fmt.Sprintf(`
+provider "azurerm" {
+  features {}
+}
+
+%s
+
+resource "azurerm_kubernetes_cluster_node_pool" "test" {
+  name                        = "internal"
+  kubernetes_cluster_id       = azurerm_kubernetes_cluster.test.id
+  vm_size                     = "Standard_D2s_v5"
+  node_count                  = 1
+  temporary_name_for_rotation = "temporal"
+  secure_boot_enabled         = %t
+  vtpm_enabled                = %t
+  upgrade_settings {
+    max_surge = "10%%"
+  }
+}
+`, r.templateConfig(data), secureBootEnabled, vtpmEnabled)
 }
 
 func (r KubernetesClusterNodePoolResource) maxSizeConfig(data acceptance.TestData) string {

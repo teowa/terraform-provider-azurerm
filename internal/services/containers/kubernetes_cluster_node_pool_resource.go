@@ -483,6 +483,16 @@ func resourceKubernetesClusterNodePoolSchema() map[string]*pluginsdk.Schema {
 			Type:     pluginsdk.TypeBool,
 			Optional: true,
 		},
+
+		"secure_boot_enabled": {
+			Type:     pluginsdk.TypeBool,
+			Optional: true,
+		},
+
+		"vtpm_enabled": {
+			Type:     pluginsdk.TypeBool,
+			Optional: true,
+		},
 	}
 
 	return s
@@ -566,6 +576,7 @@ func resourceKubernetesClusterNodePoolCreate(d *pluginsdk.ResourceData, meta int
 	enableAutoScaling := d.Get("auto_scaling_enabled").(bool)
 	hostEncryption := d.Get("host_encryption_enabled").(bool)
 	nodeIp := d.Get("node_public_ip_enabled").(bool)
+	securityProfile := expandAgentPoolSecurityProfile(d.Get("secure_boot_enabled").(bool), d.Get("vtpm_enabled").(bool), nil, false)
 
 	evictionPolicy := d.Get("eviction_policy").(string)
 	mode := agentpools.AgentPoolMode(d.Get("mode").(string))
@@ -602,6 +613,10 @@ func resourceKubernetesClusterNodePoolCreate(d *pluginsdk.ResourceData, meta int
 		profile.GpuProfile = &agentpools.GPUProfile{
 			Driver: pointer.To(agentpools.GPUDriver(gpuDriver)),
 		}
+	}
+
+	if securityProfile != nil {
+		profile.SecurityProfile = securityProfile
 	}
 
 	if osSku := d.Get("os_sku").(string); osSku != "" {
@@ -832,6 +847,10 @@ func resourceKubernetesClusterNodePoolUpdate(d *pluginsdk.ResourceData, meta int
 		props.EnableEncryptionAtHost = pointer.To(d.Get("host_encryption_enabled").(bool))
 	}
 
+	if d.HasChange("secure_boot_enabled") || d.HasChange("vtpm_enabled") {
+		props.SecurityProfile = expandAgentPoolSecurityProfile(d.Get("secure_boot_enabled").(bool), d.Get("vtpm_enabled").(bool), props.SecurityProfile, true)
+	}
+
 	if d.HasChange("kubelet_config") {
 		kubeletConfigRaw := d.Get("kubelet_config").([]interface{})
 		props.KubeletConfig = expandAgentPoolKubeletConfig(kubeletConfigRaw)
@@ -1017,10 +1036,12 @@ func resourceKubernetesClusterNodePoolUpdate(d *pluginsdk.ResourceData, meta int
 		"os_disk_size_gb",
 		"os_disk_type",
 		"pod_subnet_id",
+		"secure_boot_enabled",
 		"snapshot_id",
 		"ultra_ssd_enabled",
 		"vm_size",
 		"vnet_subnet_id",
+		"vtpm_enabled",
 		"zones",
 	}
 
@@ -1139,6 +1160,9 @@ func resourceKubernetesClusterNodePoolRead(d *pluginsdk.ResourceData, meta inter
 		d.Set("host_encryption_enabled", props.EnableEncryptionAtHost)
 		d.Set("fips_enabled", props.EnableFIPS)
 		d.Set("ultra_ssd_enabled", props.EnableUltraSSD)
+		secureBootEnabled, vtpmEnabled := flattenAgentPoolSecurityProfile(props.SecurityProfile)
+		d.Set("secure_boot_enabled", secureBootEnabled)
+		d.Set("vtpm_enabled", vtpmEnabled)
 
 		if v := props.KubeletDiskType; v != nil {
 			d.Set("kubelet_disk_type", string(*v))
@@ -1482,6 +1506,31 @@ func flattenAgentPoolUpgradeSettings(input *agentpools.AgentPoolUpgradeSettings)
 	}
 
 	return []interface{}{values}
+}
+
+func expandAgentPoolSecurityProfile(secureBootEnabled, vtpmEnabled bool, existing *agentpools.AgentPoolSecurityProfile, includeDisabled bool) *agentpools.AgentPoolSecurityProfile {
+	if !includeDisabled && !secureBootEnabled && !vtpmEnabled {
+		return nil
+	}
+
+	securityProfile := &agentpools.AgentPoolSecurityProfile{
+		EnableSecureBoot: pointer.To(secureBootEnabled),
+		EnableVTPM:       pointer.To(vtpmEnabled),
+	}
+
+	if existing != nil {
+		securityProfile.SshAccess = existing.SshAccess
+	}
+
+	return securityProfile
+}
+
+func flattenAgentPoolSecurityProfile(input *agentpools.AgentPoolSecurityProfile) (bool, bool) {
+	if input == nil {
+		return false, false
+	}
+
+	return pointer.From(input.EnableSecureBoot), pointer.From(input.EnableVTPM)
 }
 
 func expandNodeLabels(input map[string]interface{}) *map[string]string {
