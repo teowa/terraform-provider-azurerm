@@ -44,6 +44,7 @@ func (r Registration) SupportedDataSources() map[string]*pluginsdk.Resource {
 func (r Registration) SupportedResources() map[string]*pluginsdk.Resource {
 	return map[string]*pluginsdk.Resource{
 		"azurerm_elastic_cloud_elasticsearch": resourceElasticsearch(),
+		elasticCloudHostedSearchResourceName:  resourceElasticCloudHostedSearch(),
 	}
 }
 
@@ -64,5 +65,7 @@ func (r Registration) EphemeralResources() []func() ephemeral.EphemeralResource 
 }
 
 func (r Registration) ListResources() []sdk.FrameworkListWrappedResource {
-	return []sdk.FrameworkListWrappedResource{}
+	return []sdk.FrameworkListWrappedResource{
+		ElasticCloudHostedSearchListResource{},
+	}
 }
