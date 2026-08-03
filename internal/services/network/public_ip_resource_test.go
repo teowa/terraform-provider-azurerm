@@ -6,6 +6,7 @@ package network_test
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -200,6 +201,41 @@ func TestAccPublicIp_standardVTwo(t *testing.T) {
 			),
 		},
 		data.ImportStep(),
+	})
+}
+
+func TestAccPublicIp_standardVTwoUpgrade(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_public_ip", "test")
+	r := PublicIpResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.basic(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("sku").HasValue(string(publicipaddresses.PublicIPAddressSkuNameStandard)),
+			),
+		},
+		{
+			Config: r.standardVTwo(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("sku").HasValue(string(publicipaddresses.PublicIPAddressSkuNameStandardVTwo)),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
+func TestAccPublicIp_standardDynamicAllocationMethodNotAllowed(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_public_ip", "test")
+	r := PublicIpResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config:      r.standardDynamicAllocationMethod(data),
+			ExpectError: regexp.MustCompile("`allocation_method` must be set to `Static` when `sku` is set to `Standard` or `StandardV2`"),
+		},
 	})
 }
 
@@ -553,6 +589,27 @@ resource "azurerm_public_ip" "test" {
   resource_group_name = azurerm_resource_group.test.name
   allocation_method   = "Static"
   sku                 = "StandardV2"
+}
+`, data.RandomInteger, data.Locations.Primary, data.RandomInteger)
+}
+
+func (PublicIpResource) standardDynamicAllocationMethod(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_resource_group" "test" {
+  name     = "acctestRG-%d"
+  location = "%s"
+}
+
+resource "azurerm_public_ip" "test" {
+  name                = "acctestpublicip-%d"
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
+  allocation_method   = "Dynamic"
+  sku                 = "Standard"
 }
 `, data.RandomInteger, data.Locations.Primary, data.RandomInteger)
 }

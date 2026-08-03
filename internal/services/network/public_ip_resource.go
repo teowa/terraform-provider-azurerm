@@ -108,7 +108,6 @@ func resourcePublicIp() *pluginsdk.Resource {
 			"sku": {
 				Type:     pluginsdk.TypeString,
 				Optional: true,
-				ForceNew: true,
 				Default:  string(publicipaddresses.PublicIPAddressSkuNameStandard),
 				// https://azure.microsoft.com/en-us/updates/upgrade-to-standard-sku-public-ip-addresses-in-azure-by-30-september-2025-basic-sku-will-be-retired/
 				ValidateFunc: validation.StringInSlice(publicipaddresses.PossibleValuesForPublicIPAddressSkuName(), false),
@@ -197,6 +196,12 @@ func resourcePublicIp() *pluginsdk.Resource {
 				}
 				return nil
 			}),
+			pluginsdk.CustomizeDiffShim(func(_ context.Context, d *pluginsdk.ResourceDiff, _ interface{}) error {
+				return validatePublicIPSkuAndAllocationMethod(d.Get("sku").(string), d.Get("allocation_method").(string))
+			}),
+			pluginsdk.ForceNewIfChange("sku", func(ctx context.Context, old, new, meta interface{}) bool {
+				return !publicIPSupportsInPlaceSkuUpgrade(old.(string), new.(string))
+			}),
 			pluginsdk.ForceNewIfChange("domain_name_label_scope", func(ctx context.Context, old, new, meta interface{}) bool {
 				return old.(string) != "" || new.(string) == ""
 			}),
@@ -205,6 +210,27 @@ func resourcePublicIp() *pluginsdk.Resource {
 }
 
 const publicIPBasicSkuCreateDeprecationMessage = "creation of new `Basic` SKU public IP addresses is no longer permitted following its deprecation on March 31, 2025. This also affects `allocation_method` set to `Dynamic`, as it is only available with the `Basic` SKU. For more information, see https://azure.microsoft.com/updates/upgrade-to-standard-sku-public-ip-addresses-in-azure-by-30-september-2025-basic-sku-will-be-retired/"
+
+func publicIPSupportsInPlaceSkuUpgrade(oldSku, newSku string) bool {
+	switch {
+	case strings.EqualFold(oldSku, string(publicipaddresses.PublicIPAddressSkuNameBasic)) && strings.EqualFold(newSku, string(publicipaddresses.PublicIPAddressSkuNameStandard)):
+		return true
+	case strings.EqualFold(oldSku, string(publicipaddresses.PublicIPAddressSkuNameStandard)) && strings.EqualFold(newSku, string(publicipaddresses.PublicIPAddressSkuNameStandardVTwo)):
+		return true
+	default:
+		return false
+	}
+}
+
+func validatePublicIPSkuAndAllocationMethod(sku, allocationMethod string) error {
+	if strings.EqualFold(sku, string(publicipaddresses.PublicIPAddressSkuNameStandard)) || strings.EqualFold(sku, string(publicipaddresses.PublicIPAddressSkuNameStandardVTwo)) {
+		if !strings.EqualFold(allocationMethod, string(publicipaddresses.IPAllocationMethodStatic)) {
+			return errors.New("`allocation_method` must be set to `Static` when `sku` is set to `Standard` or `StandardV2`")
+		}
+	}
+
+	return nil
+}
 
 func resourcePublicIpCreate(d *pluginsdk.ResourceData, meta interface{}) error {
 	client := meta.(*clients.Client).Network.PublicIPAddresses
@@ -230,10 +256,8 @@ func resourcePublicIpCreate(d *pluginsdk.ResourceData, meta interface{}) error {
 	sku := d.Get("sku").(string)
 	ipAllocationMethod := d.Get("allocation_method").(string)
 
-	if strings.EqualFold(sku, string(publicipaddresses.PublicIPAddressSkuNameStandard)) || strings.EqualFold(sku, string(publicipaddresses.PublicIPAddressSkuNameStandardVTwo)) {
-		if !strings.EqualFold(ipAllocationMethod, string(publicipaddresses.IPAllocationMethodStatic)) {
-			return fmt.Errorf("`allocation_method` must be set to `Static` when `sku` is set to `Standard` or `StandardV2`")
-		}
+	if err := validatePublicIPSkuAndAllocationMethod(sku, ipAllocationMethod); err != nil {
+		return err
 	}
 
 	ddosProtectionMode := d.Get("ddos_protection_mode").(string)
@@ -353,8 +377,22 @@ func resourcePublicIpUpdate(d *pluginsdk.ResourceData, meta interface{}) error {
 
 	payload := existing.Model
 
+	if err := validatePublicIPSkuAndAllocationMethod(d.Get("sku").(string), d.Get("allocation_method").(string)); err != nil {
+		return err
+	}
+
 	if d.HasChange("allocation_method") {
 		payload.Properties.PublicIPAllocationMethod = pointer.To(publicipaddresses.IPAllocationMethod(d.Get("allocation_method").(string)))
+	}
+
+	if d.HasChange("sku") {
+		if payload.Sku == nil {
+			payload.Sku = &publicipaddresses.PublicIPAddressSku{}
+		}
+		payload.Sku.Name = pointer.To(publicipaddresses.PublicIPAddressSkuName(d.Get("sku").(string)))
+		if payload.Sku.Tier == nil {
+			payload.Sku.Tier = pointer.To(publicipaddresses.PublicIPAddressSkuTier(d.Get("sku_tier").(string)))
+		}
 	}
 
 	if d.HasChange("ddos_protection_mode") {
