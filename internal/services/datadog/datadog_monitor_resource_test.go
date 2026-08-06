@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/datadog/2021-03-01/monitorsresource"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/datadog/2025-06-11/datadogmonitorresources"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
@@ -169,11 +169,11 @@ func TestAccDatadogMonitor_update(t *testing.T) {
 }
 
 func (r DatadogMonitorResource) Exists(ctx context.Context, client *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
-	id, err := monitorsresource.ParseMonitorID(state.ID)
+	id, err := datadogmonitorresources.ParseMonitorID(state.ID)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.Datadog.MonitorsResource.MonitorsGet(ctx, *id)
+	resp, err := client.Datadog.DatadogMonitorResources.MonitorsGet(ctx, *id)
 	if err != nil {
 		if response.WasNotFound(resp.HttpResponse) {
 			return pointer.To(false), nil
@@ -235,6 +235,8 @@ resource "azurerm_datadog_monitor" "test" {
   datadog_organization {
     api_key         = %q
     application_key = %q
+    cspm            = true
+    resource_collection = true
   }
   user {
     name  = "Test Datadog"
@@ -285,10 +287,13 @@ resource "azurerm_datadog_monitor" "test" {
   datadog_organization {
     api_key           = %q
     application_key   = %q
+    cspm              = true
     enterprise_app_id = ""
     linking_auth_code = ""
     linking_client_id = ""
+    name              = "TestDatadogOrganization"
     redirect_uri      = ""
+    resource_collection = true
   }
   identity {
     type = "SystemAssigned"
