@@ -20,9 +20,9 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/zones"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/compute/2022-03-01/capacityreservationgroups"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/compute/2022-03-01/proximityplacementgroups"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/agentpools"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/managedclusters"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/snapshots"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2026-04-01/agentpools"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
@@ -429,6 +429,11 @@ func resourceKubernetesClusterNodePoolSchema() map[string]*pluginsdk.Schema {
 			Optional: true,
 		},
 
+		"artifact_streaming_enabled": {
+			Type:     pluginsdk.TypeBool,
+			Optional: true,
+		},
+
 		"node_public_ip_enabled": {
 			Type:     pluginsdk.TypeBool,
 			Optional: true,
@@ -530,6 +535,9 @@ func resourceKubernetesClusterNodePoolCreate(d *pluginsdk.ResourceData, meta int
 	t := d.Get("tags").(map[string]interface{})
 
 	profile := agentpools.ManagedClusterAgentPoolProfileProperties{
+		ArtifactStreamingProfile: &agentpools.AgentPoolArtifactStreamingProfile{
+			Enabled: pointer.To(d.Get("artifact_streaming_enabled").(bool)),
+		},
 		OsType:                 pointer.To(agentpools.OSType(osType)),
 		EnableAutoScaling:      pointer.To(enableAutoScaling),
 		EnableFIPS:             pointer.To(d.Get("fips_enabled").(bool)),
@@ -775,6 +783,12 @@ func resourceKubernetesClusterNodePoolUpdate(d *pluginsdk.ResourceData, meta int
 	if d.HasChange("auto_scaling_enabled") {
 		enableAutoScaling = d.Get("auto_scaling_enabled").(bool)
 		props.EnableAutoScaling = pointer.To(enableAutoScaling)
+	}
+
+	if d.HasChange("artifact_streaming_enabled") {
+		props.ArtifactStreamingProfile = &agentpools.AgentPoolArtifactStreamingProfile{
+			Enabled: pointer.To(d.Get("artifact_streaming_enabled").(bool)),
+		}
 	}
 
 	if d.HasChange("fips_enabled") {
@@ -1086,6 +1100,11 @@ func resourceKubernetesClusterNodePoolRead(d *pluginsdk.ResourceData, meta inter
 		d.Set("zones", zones.FlattenUntyped(props.AvailabilityZones))
 
 		d.Set("auto_scaling_enabled", props.EnableAutoScaling)
+		artifactStreamingEnabled := false
+		if v := props.ArtifactStreamingProfile; v != nil && v.Enabled != nil {
+			artifactStreamingEnabled = *v.Enabled
+		}
+		d.Set("artifact_streaming_enabled", artifactStreamingEnabled)
 		d.Set("node_public_ip_enabled", props.EnableNodePublicIP)
 		d.Set("host_encryption_enabled", props.EnableEncryptionAtHost)
 		d.Set("fips_enabled", props.EnableFIPS)

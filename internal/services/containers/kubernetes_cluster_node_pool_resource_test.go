@@ -14,8 +14,8 @@ import (
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/agentpools"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/snapshots"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2026-04-01/agentpools"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
@@ -84,6 +84,30 @@ func TestAccKubernetesClusterNodePool_autoScaleUpdate(t *testing.T) {
 			Config: r.autoScaleNodeCountConfig(data, 0, 3),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
+func TestAccKubernetesClusterNodePool_artifactStreaming(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_kubernetes_cluster_node_pool", "test")
+	r := KubernetesClusterNodePoolResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.artifactStreaming(data, true),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("artifact_streaming_enabled").HasValue("true"),
+			),
+		},
+		data.ImportStep(),
+		{
+			Config: r.artifactStreaming(data, false),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("artifact_streaming_enabled").HasValue("false"),
 			),
 		},
 		data.ImportStep(),
@@ -3042,6 +3066,27 @@ resource "azurerm_kubernetes_cluster_node_pool" "test" {
   }
 }
 `, r.templateConfig(data))
+}
+
+func (r KubernetesClusterNodePoolResource) artifactStreaming(data acceptance.TestData, enabled bool) string {
+	return fmt.Sprintf(`
+provider "azurerm" {
+  features {}
+}
+
+%s
+
+resource "azurerm_kubernetes_cluster_node_pool" "test" {
+  name                       = "internal"
+  kubernetes_cluster_id      = azurerm_kubernetes_cluster.test.id
+  vm_size                    = "Standard_DS2_v2"
+  artifact_streaming_enabled = %t
+  node_count                 = 1
+  upgrade_settings {
+    max_surge = "10%%"
+  }
+}
+`, r.templateConfig(data), enabled)
 }
 
 func (KubernetesClusterNodePoolResource) ultraSSD(data acceptance.TestData, ultraSSDEnabled bool) string {

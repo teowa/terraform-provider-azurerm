@@ -76,6 +76,8 @@ The following arguments are supported:
 
 * `auto_scaling_enabled` - (Optional) Whether to enable [auto-scaler](https://docs.microsoft.com/azure/aks/cluster-autoscaler).
 
+* `artifact_streaming_enabled` - (Optional) Whether `artifact streaming` is enabled. Defaults to `false`.
+
 * `host_encryption_enabled` - (Optional) Should the nodes in this Node Pool have host encryption enabled? Changing this property requires specifying `temporary_name_for_rotation`.
 
 ~> **Note:** Additional fields must be configured depending on the value of this field - see below.
@@ -359,4 +361,4 @@ terraform import azurerm_kubernetes_cluster_node_pool.pool1 /subscriptions/00000
 <!-- This section is generated, changes will be overwritten -->
 This resource uses the following Azure API Providers:
 
-* `Microsoft.ContainerService` - 2025-10-01
+* `Microsoft.ContainerService` - 2026-04-01
