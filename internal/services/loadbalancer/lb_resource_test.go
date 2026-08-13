@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/loadbalancers"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/loadbalancers"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
@@ -108,6 +108,22 @@ func TestAccAzureRMLoadBalancer_frontEndConfig(t *testing.T) {
 				check.That(data.ResourceName).Key("frontend_ip_configuration.#").HasValue("1"),
 			),
 		},
+	})
+}
+
+func TestAccAzureRMLoadBalancer_frontEndConfigDdosCustomPolicy(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_lb", "test")
+	r := LoadBalancer{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.frontEndConfigDdosCustomPolicy(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("frontend_ip_configuration.0.ddos_custom_policy_id").Exists(),
+			),
+		},
+		data.ImportStep(),
 	})
 }
 
@@ -267,7 +283,7 @@ func TestAccAzureRMLoadBalancer_edgeZone(t *testing.T) {
 
 func (r LoadBalancer) Exists(ctx context.Context, client *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
 	plbId := loadbalancers.ProviderLoadBalancerId{SubscriptionId: client.Account.SubscriptionId, ResourceGroupName: state.Attributes["resource_group_name"], LoadBalancerName: state.Attributes["name"]}
-	resp, err := client.LoadBalancers.LoadBalancersClient.Get(ctx, plbId, loadbalancers.GetOperationOptions{})
+	resp, err := client.LoadBalancers.LoadBalancersClientV20250701.Get(ctx, plbId, loadbalancers.GetOperationOptions{})
 	if err != nil {
 		if response.WasNotFound(resp.HttpResponse) {
 			return nil, fmt.Errorf("%s was not found", plbId)
@@ -446,6 +462,54 @@ resource "azurerm_lb" "test" {
   frontend_ip_configuration {
     name                 = "acctest-fe1-%d"
     public_ip_address_id = azurerm_public_ip.test.id
+  }
+}
+`, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger, data.RandomInteger, data.RandomInteger)
+}
+
+func (r LoadBalancer) frontEndConfigDdosCustomPolicy(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_resource_group" "test" {
+  name     = "acctestRG-lb-%d"
+  location = "%s"
+}
+
+resource "azurerm_network_ddos_custom_policy" "test" {
+  name                = "acctestddoscp-%d"
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
+
+  detection_rule {
+    name           = "detectionRuleTcp"
+    detection_mode = "TrafficThreshold"
+
+    traffic_detection_rule {
+      packets_per_second = 1000000
+      traffic_type       = "Tcp"
+    }
+  }
+}
+
+resource "azurerm_public_ip" "test" {
+  name                = "acctest-ip-%d"
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
+  allocation_method   = "Static"
+}
+
+resource "azurerm_lb" "test" {
+  name                = "acctest-loadbalancer-%d"
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
+
+  frontend_ip_configuration {
+    name                  = "acctest-fe1-%d"
+    public_ip_address_id  = azurerm_public_ip.test.id
+    ddos_custom_policy_id = azurerm_network_ddos_custom_policy.test.id
   }
 }
 `, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger, data.RandomInteger, data.RandomInteger)

@@ -19,7 +19,8 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/zones"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2023-09-01/ddosprotectionplans"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2023-11-01/publicipprefixes"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/publicipaddresses"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/ddoscustompolicies"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/publicipaddresses"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
@@ -89,6 +90,12 @@ func resourcePublicIp() *pluginsdk.Resource {
 				Type:         pluginsdk.TypeString,
 				Optional:     true,
 				ValidateFunc: ddosprotectionplans.ValidateDdosProtectionPlanID,
+			},
+
+			"ddos_custom_policy_id": {
+				Type:         pluginsdk.TypeString,
+				Optional:     true,
+				ValidateFunc: ddoscustompolicies.ValidateDdosCustomPolicyID,
 			},
 
 			"edge_zone": commonschema.EdgeZoneOptionalForceNew(),
@@ -218,7 +225,7 @@ func resourcePublicIp() *pluginsdk.Resource {
 const publicIPBasicSkuCreateDeprecationMessage = "creation of new `Basic` SKU public IP addresses is no longer permitted following its deprecation on March 31, 2025. This also affects `allocation_method` set to `Dynamic`, as it is only available with the `Basic` SKU. For more information, see https://azure.microsoft.com/updates/upgrade-to-standard-sku-public-ip-addresses-in-azure-by-30-september-2025-basic-sku-will-be-retired/"
 
 func resourcePublicIpCreate(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.PublicIPAddresses
+	client := meta.(*clients.Client).Network.PublicIPAddressesClient
 	subscriptionId := meta.(*clients.Client).Account.SubscriptionId
 	ctx, cancel := timeouts.ForCreate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
@@ -247,7 +254,10 @@ func resourcePublicIpCreate(d *pluginsdk.ResourceData, meta interface{}) error {
 		}
 	}
 
-	ddosProtectionMode := d.Get("ddos_protection_mode").(string)
+	ddosSettings, err := expandPublicIpDdosSettings(d)
+	if err != nil {
+		return err
+	}
 
 	publicIp := publicipaddresses.PublicIPAddress{
 		Name:             pointer.To(id.PublicIPAddressesName),
@@ -261,21 +271,9 @@ func resourcePublicIpCreate(d *pluginsdk.ResourceData, meta interface{}) error {
 			PublicIPAllocationMethod: pointer.To(publicipaddresses.IPAllocationMethod(ipAllocationMethod)),
 			PublicIPAddressVersion:   pointer.To(publicipaddresses.IPVersion(d.Get("ip_version").(string))),
 			IdleTimeoutInMinutes:     pointer.To(int64(d.Get("idle_timeout_in_minutes").(int))),
-			DdosSettings: &publicipaddresses.DdosSettings{
-				ProtectionMode: pointer.To(publicipaddresses.DdosSettingsProtectionMode(ddosProtectionMode)),
-			},
+			DdosSettings:             ddosSettings,
 		},
 		Tags: tags.Expand(d.Get("tags").(map[string]interface{})),
-	}
-
-	ddosProtectionPlanId, planOk := d.GetOk("ddos_protection_plan_id")
-	if planOk {
-		if !strings.EqualFold(ddosProtectionMode, "enabled") {
-			return fmt.Errorf("ddos protection plan id can only be set when ddos protection is enabled")
-		}
-		publicIp.Properties.DdosSettings.DdosProtectionPlan = &publicipaddresses.SubResource{
-			Id: pointer.To(ddosProtectionPlanId.(string)),
-		}
 	}
 
 	zones := zones.ExpandUntyped(d.Get("zones").(*schema.Set).List())
@@ -329,7 +327,7 @@ func resourcePublicIpCreate(d *pluginsdk.ResourceData, meta interface{}) error {
 	}
 
 	if err := client.CreateOrUpdateCallbackThenPoll(ctx, id, publicIp, sdk.SetIDAndIdentityCallback(meta, &id, d)); err != nil {
-		return fmt.Errorf("updating %s: %+v", id, err)
+		return fmt.Errorf("creating %s: %+v", id, err)
 	}
 
 	d.SetId(id.ID())
@@ -341,7 +339,7 @@ func resourcePublicIpCreate(d *pluginsdk.ResourceData, meta interface{}) error {
 }
 
 func resourcePublicIpUpdate(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.PublicIPAddresses
+	client := meta.(*clients.Client).Network.PublicIPAddressesClient
 	ctx, cancel := timeouts.ForUpdate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
@@ -368,23 +366,12 @@ func resourcePublicIpUpdate(d *pluginsdk.ResourceData, meta interface{}) error {
 		payload.Properties.PublicIPAllocationMethod = pointer.To(publicipaddresses.IPAllocationMethod(d.Get("allocation_method").(string)))
 	}
 
-	if d.HasChange("ddos_protection_mode") {
-		if payload.Properties.DdosSettings == nil {
-			payload.Properties.DdosSettings = &publicipaddresses.DdosSettings{}
+	if d.HasChanges("ddos_protection_mode", "ddos_protection_plan_id", "ddos_custom_policy_id") {
+		ddosSettings, err := expandPublicIpDdosSettings(d)
+		if err != nil {
+			return err
 		}
-		payload.Properties.DdosSettings.ProtectionMode = pointer.To(publicipaddresses.DdosSettingsProtectionMode(d.Get("ddos_protection_mode").(string)))
-	}
-
-	if d.HasChange("ddos_protection_plan_id") {
-		if !strings.EqualFold(string(*payload.Properties.DdosSettings.ProtectionMode), "enabled") {
-			return fmt.Errorf("ddos protection plan id can only be set when ddos protection is enabled")
-		}
-		if payload.Properties.DdosSettings == nil {
-			payload.Properties.DdosSettings = &publicipaddresses.DdosSettings{}
-		}
-		payload.Properties.DdosSettings.DdosProtectionPlan = &publicipaddresses.SubResource{
-			Id: pointer.To(d.Get("ddos_protection_plan_id").(string)),
-		}
+		payload.Properties.DdosSettings = ddosSettings
 	}
 
 	if d.HasChange("idle_timeout_in_minutes") {
@@ -429,7 +416,7 @@ func resourcePublicIpUpdate(d *pluginsdk.ResourceData, meta interface{}) error {
 }
 
 func resourcePublicIpRead(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.PublicIPAddresses
+	client := meta.(*clients.Client).Network.PublicIPAddressesClient
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
@@ -489,13 +476,20 @@ func resourcePublicIpFlatten(d *pluginsdk.ResourceData, id *commonids.PublicIPAd
 			d.Set("domain_name_label_scope", domainNameLabelScope)
 
 			ddosProtectionMode := string(publicipaddresses.DdosSettingsProtectionModeVirtualNetworkInherited)
+			ddosProtectionPlanId := ""
+			ddosCustomPolicyId := ""
 			if ddosSetting := props.DdosSettings; ddosSetting != nil {
 				ddosProtectionMode = string(pointer.From(ddosSetting.ProtectionMode))
 				if subResource := ddosSetting.DdosProtectionPlan; subResource != nil {
-					d.Set("ddos_protection_plan_id", subResource.Id)
+					ddosProtectionPlanId = pointer.From(subResource.Id)
+				}
+				if subResource := ddosSetting.DdosCustomPolicy; subResource != nil {
+					ddosCustomPolicyId = pointer.From(subResource.Id)
 				}
 			}
 			d.Set("ddos_protection_mode", ddosProtectionMode)
+			d.Set("ddos_protection_plan_id", ddosProtectionPlanId)
+			d.Set("ddos_custom_policy_id", ddosCustomPolicyId)
 
 			d.Set("ip_tags", flattenPublicIpPropsIpTags(props.IPTags))
 
@@ -510,7 +504,7 @@ func resourcePublicIpFlatten(d *pluginsdk.ResourceData, id *commonids.PublicIPAd
 }
 
 func resourcePublicIpDelete(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.PublicIPAddresses
+	client := meta.(*clients.Client).Network.PublicIPAddressesClient
 	ctx, cancel := timeouts.ForDelete(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
@@ -538,4 +532,34 @@ func flattenPublicIpPropsIpTags(input *[]publicipaddresses.IPTag) map[string]int
 	}
 
 	return out
+}
+
+func expandPublicIpDdosSettings(d *pluginsdk.ResourceData) (*publicipaddresses.DdosSettings, error) {
+	ddosProtectionMode := d.Get("ddos_protection_mode").(string)
+
+	settings := &publicipaddresses.DdosSettings{
+		ProtectionMode: pointer.To(publicipaddresses.DdosSettingsProtectionMode(ddosProtectionMode)),
+	}
+
+	if ddosProtectionPlanId, ok := d.GetOk("ddos_protection_plan_id"); ok {
+		if !strings.EqualFold(ddosProtectionMode, string(publicipaddresses.DdosSettingsProtectionModeEnabled)) {
+			return nil, fmt.Errorf("`ddos_protection_plan_id` can only be set when `ddos_protection_mode` is `Enabled`")
+		}
+
+		settings.DdosProtectionPlan = &publicipaddresses.SubResource{
+			Id: pointer.To(ddosProtectionPlanId.(string)),
+		}
+	}
+
+	if ddosCustomPolicyId, ok := d.GetOk("ddos_custom_policy_id"); ok {
+		if !strings.EqualFold(ddosProtectionMode, string(publicipaddresses.DdosSettingsProtectionModeEnabled)) {
+			return nil, fmt.Errorf("`ddos_custom_policy_id` can only be set when `ddos_protection_mode` is `Enabled`")
+		}
+
+		settings.DdosCustomPolicy = &publicipaddresses.SubResource{
+			Id: pointer.To(ddosCustomPolicyId.(string)),
+		}
+	}
+
+	return settings, nil
 }

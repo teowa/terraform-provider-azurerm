@@ -55,10 +55,12 @@ The following arguments are supported:
 -> **Note:** Availability Zones are only supported with a [Standard SKU](https://docs.microsoft.com/azure/virtual-network/virtual-network-ip-addresses-overview-arm#standard) and [in select regions](https://docs.microsoft.com/azure/availability-zones/az-overview) at this time. Standard SKU Public IP Addresses that do not specify a zone are **not** zone-redundant by default.
 
 * `ddos_protection_mode` - (Optional) The DDoS protection mode of the public IP. Possible values are `Disabled`, `Enabled`, and `VirtualNetworkInherited`. Defaults to `VirtualNetworkInherited`.
- 
-* `ddos_protection_plan_id` - (Optional) The ID of DDoS protection plan associated with the public IP. 
 
--> **Note:** `ddos_protection_plan_id` can only be set when `ddos_protection_mode` is `Enabled`.
+* `ddos_custom_policy_id` - (Optional) The ID of the DDoS custom policy associated with the public IP.
+
+* `ddos_protection_plan_id` - (Optional) The ID of the DDoS protection plan associated with the public IP.
+
+~> **Note:** `ddos_custom_policy_id` and `ddos_protection_plan_id` can only be set when `ddos_protection_mode` is `Enabled`.
 
 * `domain_name_label` - (Optional) Label for the Domain Name. Will be used to make up the FQDN. If a domain name label is specified, an A DNS record is created for the public IP in the Microsoft Azure DNS system.
 
@@ -115,14 +117,14 @@ The `timeouts` block allows you to specify [timeouts](https://developer.hashicor
 
 ## Import
 
-Public IPs can be imported using the `resource id`, e.g.
+A Public IP can be imported using the `resource id`, e.g.
 
 ```shell
-terraform import azurerm_public_ip.myPublicIp /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/mygroup1/providers/Microsoft.Network/publicIPAddresses/myPublicIpAddress1
+terraform import azurerm_public_ip.example /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/resourceGroup1/providers/Microsoft.Network/publicIPAddresses/publicIPAddress1
 ```
 
 ## API Providers
 <!-- This section is generated, changes will be overwritten -->
 This resource uses the following Azure API Providers:
 
-* `Microsoft.Network` - 2025-01-01
+* `Microsoft.Network` - 2025-07-01

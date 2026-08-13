@@ -33,6 +33,7 @@ data "azurerm_public_ips" "example" {
 A `public_ips` block contains:
 
 * `id` - The ID of the Public IP Address
+* `ddos_custom_policy_id` - The ID of the DDoS custom policy associated with the Public IP Address
 * `domain_name_label` - The Domain Name Label of the Public IP Address
 * `fqdn` - The FQDN of the Public IP Address
 * `name` - The Name of the Public IP Address
@@ -48,4 +49,4 @@ The `timeouts` block allows you to specify [timeouts](https://developer.hashicor
 <!-- This section is generated, changes will be overwritten -->
 This data source uses the following Azure API Providers:
 
-* `Microsoft.Network` - 2025-01-01
+* `Microsoft.Network` - 2025-07-01

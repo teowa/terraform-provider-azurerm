@@ -21,7 +21,8 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/zones"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2023-11-01/publicipprefixes"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/loadbalancers"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/ddoscustompolicies"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/loadbalancers"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
@@ -140,6 +141,12 @@ func resourceArmLoadBalancer() *pluginsdk.Resource {
 							ValidateFunc: publicipprefixes.ValidatePublicIPPrefixID,
 						},
 
+						"ddos_custom_policy_id": {
+							Type:         pluginsdk.TypeString,
+							Optional:     true,
+							ValidateFunc: ddoscustompolicies.ValidateDdosCustomPolicyID,
+						},
+
 						"private_ip_address_allocation": {
 							Type:     pluginsdk.TypeString,
 							Optional: true,
@@ -246,7 +253,7 @@ func resourceArmLoadBalancer() *pluginsdk.Resource {
 }
 
 func resourceArmLoadBalancerCreate(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).LoadBalancers.LoadBalancersClient
+	client := meta.(*clients.Client).LoadBalancers.LoadBalancersClientV20250701
 	subscriptionId := meta.(*clients.Client).Account.SubscriptionId
 	ctx, cancel := timeouts.ForCreate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
@@ -303,7 +310,7 @@ func resourceArmLoadBalancerCreate(d *pluginsdk.ResourceData, meta interface{}) 
 }
 
 func resourceArmLoadBalancerRead(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).LoadBalancers.LoadBalancersClient
+	client := meta.(*clients.Client).LoadBalancers.LoadBalancersClientV20250701
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
@@ -367,7 +374,7 @@ func resourceArmLoadBalancerRead(d *pluginsdk.ResourceData, meta interface{}) er
 }
 
 func resourceArmLoadBalancerUpdate(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).LoadBalancers.LoadBalancersClient
+	client := meta.(*clients.Client).LoadBalancers.LoadBalancersClientV20250701
 	ctx, cancel := timeouts.ForUpdate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
@@ -405,7 +412,7 @@ func resourceArmLoadBalancerUpdate(d *pluginsdk.ResourceData, meta interface{}) 
 }
 
 func resourceArmLoadBalancerDelete(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).LoadBalancers.LoadBalancersClient
+	client := meta.(*clients.Client).LoadBalancers.LoadBalancersClientV20250701
 	ctx, cancel := timeouts.ForDelete(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
@@ -464,6 +471,14 @@ func expandAzureRmLoadBalancerFrontendIpConfigurations(d *pluginsdk.ResourceData
 			}
 		}
 
+		if v := data["ddos_custom_policy_id"].(string); v != "" {
+			properties.DdosSettings = &loadbalancers.DdosFrontendIPConfigurationSettings{
+				DdosCustomPolicy: &loadbalancers.SubResource{
+					Id: pointer.To(v),
+				},
+			}
+		}
+
 		if v := data["subnet_id"].(string); v != "" {
 			properties.PrivateIPAddressVersion = pointer.To(loadbalancers.IPVersionIPvFour)
 			if v := data["private_ip_address_version"].(string); v != "" {
@@ -512,6 +527,7 @@ func flattenLoadBalancerFrontendIpConfiguration(ipConfigs *[]loadbalancers.Front
 		var outboundRules []interface{}
 		gatewayLoadBalancerId := ""
 		publicIpPrefixId := ""
+		ddosCustomPolicyId := ""
 		privateIPAllocationMethod := ""
 		publicIpAddressId := ""
 		privateIpAddressVersion := ""
@@ -539,6 +555,10 @@ func flattenLoadBalancerFrontendIpConfiguration(ipConfigs *[]loadbalancers.Front
 				publicIpPrefixId = pointer.From(pip.Id)
 			}
 
+			if ddosSettings := props.DdosSettings; ddosSettings != nil && ddosSettings.DdosCustomPolicy != nil {
+				ddosCustomPolicyId = pointer.From(ddosSettings.DdosCustomPolicy.Id)
+			}
+
 			if rules := props.LoadBalancingRules; rules != nil {
 				for _, rule := range *rules {
 					if rule.Id == nil {
@@ -564,17 +584,18 @@ func flattenLoadBalancerFrontendIpConfiguration(ipConfigs *[]loadbalancers.Front
 
 		out := map[string]interface{}{
 			"gateway_load_balancer_frontend_ip_configuration_id": gatewayLoadBalancerId,
-			"id":                            id,
-			"inbound_nat_rules":             pluginsdk.NewSet(pluginsdk.HashString, inboundNatRules),
-			"load_balancer_rules":           pluginsdk.NewSet(pluginsdk.HashString, loadBalancingRules),
-			"name":                          name,
-			"outbound_rules":                pluginsdk.NewSet(pluginsdk.HashString, outboundRules),
-			"public_ip_address_id":          publicIpAddressId,
-			"private_ip_address":            privateIpAddress,
-			"private_ip_address_version":    privateIpAddressVersion,
-			"private_ip_address_allocation": privateIPAllocationMethod,
-			"public_ip_prefix_id":           publicIpPrefixId,
-			"subnet_id":                     subnetId,
+			"ddos_custom_policy_id":                              ddosCustomPolicyId,
+			"id":                                                 id,
+			"inbound_nat_rules":                                  pluginsdk.NewSet(pluginsdk.HashString, inboundNatRules),
+			"load_balancer_rules":                                pluginsdk.NewSet(pluginsdk.HashString, loadBalancingRules),
+			"name":                                               name,
+			"outbound_rules":                                     pluginsdk.NewSet(pluginsdk.HashString, outboundRules),
+			"public_ip_address_id":                               publicIpAddressId,
+			"private_ip_address":                                 privateIpAddress,
+			"private_ip_address_version":                         privateIpAddressVersion,
+			"private_ip_address_allocation":                      privateIPAllocationMethod,
+			"public_ip_prefix_id":                                publicIpPrefixId,
+			"subnet_id":                                          subnetId,
 		}
 
 		flattenedZones := zones.FlattenUntyped(config.Zones)

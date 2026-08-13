@@ -138,6 +138,7 @@ func (r Registration) SupportedResources() map[string]*pluginsdk.Resource {
 		"azurerm_nat_gateway_public_ip_association":        resourceNATGatewayPublicIpAssociation(),
 		"azurerm_nat_gateway_public_ip_prefix_association": resourceNATGatewayPublicIpPrefixAssociation(),
 		"azurerm_network_connection_monitor":               resourceNetworkConnectionMonitor(),
+		"azurerm_network_ddos_custom_policy":               resourceNetworkDDoSCustomPolicy(),
 		"azurerm_network_ddos_protection_plan":             resourceNetworkDDoSProtectionPlan(),
 		"azurerm_network_interface":                        resourceNetworkInterface(),
 

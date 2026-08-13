@@ -9,9 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/publicipaddresses"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/publicipaddresses"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
@@ -82,6 +83,10 @@ func dataSourcePublicIPSchema() map[string]*pluginsdk.Schema {
 						Type:     pluginsdk.TypeString,
 						Computed: true,
 					},
+					"ddos_custom_policy_id": {
+						Type:     pluginsdk.TypeString,
+						Computed: true,
+					},
 				},
 			},
 		},
@@ -89,7 +94,7 @@ func dataSourcePublicIPSchema() map[string]*pluginsdk.Schema {
 }
 
 func dataSourcePublicIPsRead(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.PublicIPAddresses
+	client := meta.(*clients.Client).Network.PublicIPAddressesClient
 	subscriptionId := meta.(*clients.Client).Account.SubscriptionId
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()
@@ -173,6 +178,7 @@ func flattenDataSourcePublicIP(input publicipaddresses.PublicIPAddress) map[stri
 	domainNameLabel := ""
 	fqdn := ""
 	ipAddress := ""
+	ddosCustomPolicyId := ""
 	if props := input.Properties; props != nil {
 		if dns := props.DnsSettings; dns != nil {
 			if dns.Fqdn != nil {
@@ -187,13 +193,18 @@ func flattenDataSourcePublicIP(input publicipaddresses.PublicIPAddress) map[stri
 		if props.IPAddress != nil {
 			ipAddress = *props.IPAddress
 		}
+
+		if ddosSettings := props.DdosSettings; ddosSettings != nil && ddosSettings.DdosCustomPolicy != nil {
+			ddosCustomPolicyId = pointer.From(ddosSettings.DdosCustomPolicy.Id)
+		}
 	}
 
 	return map[string]string{
-		"id":                id,
-		"name":              name,
-		"domain_name_label": domainNameLabel,
-		"fqdn":              fqdn,
-		"ip_address":        ipAddress,
+		"id":                    id,
+		"name":                  name,
+		"domain_name_label":     domainNameLabel,
+		"fqdn":                  fqdn,
+		"ip_address":            ipAddress,
+		"ddos_custom_policy_id": ddosCustomPolicyId,
 	}
 }

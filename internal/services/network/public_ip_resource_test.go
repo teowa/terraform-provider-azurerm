@@ -12,7 +12,7 @@ import (
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/publicipaddresses"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/publicipaddresses"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
@@ -221,6 +221,7 @@ func TestAccPublicIp_standard_withDDoS(t *testing.T) {
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("ddos_protection_mode").HasValue("Enabled"),
+				check.That(data.ResourceName).Key("ddos_custom_policy_id").Exists(),
 				check.That(data.ResourceName).Key("ddos_protection_plan_id").Exists(),
 			),
 		},
@@ -456,7 +457,7 @@ func (t PublicIpResource) Exists(ctx context.Context, clients *clients.Client, s
 		return nil, err
 	}
 
-	resp, err := clients.Network.PublicIPAddresses.Get(ctx, *id, publicipaddresses.DefaultGetOperationOptions())
+	resp, err := clients.Network.PublicIPAddressesClient.Get(ctx, *id, publicipaddresses.DefaultGetOperationOptions())
 	if err != nil {
 		return nil, fmt.Errorf("retrieving %s: %+v", *id, err)
 	}
@@ -472,7 +473,7 @@ func (PublicIpResource) Destroy(ctx context.Context, client *clients.Client, sta
 
 	ctx2, cancel := context.WithTimeout(ctx, 30*time.Minute)
 	defer cancel()
-	if err := client.Network.PublicIPAddresses.DeleteThenPoll(ctx2, *id); err != nil {
+	if err := client.Network.PublicIPAddressesClient.DeleteThenPoll(ctx2, *id); err != nil {
 		return nil, fmt.Errorf("deleting %s: %+v", *id, err)
 	}
 
@@ -596,6 +597,22 @@ resource "azurerm_network_ddos_protection_plan" "test" {
   resource_group_name = azurerm_resource_group.test.name
 }
 
+resource "azurerm_network_ddos_custom_policy" "test" {
+  name                = "acctestddoscp-%d"
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
+
+  detection_rule {
+    name           = "detectionRuleTcp"
+    detection_mode = "TrafficThreshold"
+
+    traffic_detection_rule {
+      packets_per_second = 1000000
+      traffic_type       = "Tcp"
+    }
+  }
+}
+
 resource "azurerm_public_ip" "test" {
   name                    = "acctestpublicip-%d"
   location                = azurerm_resource_group.test.location
@@ -603,9 +620,10 @@ resource "azurerm_public_ip" "test" {
   allocation_method       = "Static"
   sku                     = "Standard"
   ddos_protection_mode    = "Enabled"
+  ddos_custom_policy_id   = azurerm_network_ddos_custom_policy.test.id
   ddos_protection_plan_id = azurerm_network_ddos_protection_plan.test.id
 }
-`, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger)
+`, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger, data.RandomInteger)
 }
 
 func (PublicIpResource) standardPrefix(data acceptance.TestData) string {

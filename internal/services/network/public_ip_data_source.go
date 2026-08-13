@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/zones"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/publicipaddresses"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/publicipaddresses"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
@@ -56,6 +56,11 @@ func dataSourcePublicIP() *pluginsdk.Resource {
 			},
 
 			"ddos_protection_plan_id": {
+				Type:     pluginsdk.TypeString,
+				Computed: true,
+			},
+
+			"ddos_custom_policy_id": {
 				Type:     pluginsdk.TypeString,
 				Computed: true,
 			},
@@ -106,7 +111,7 @@ func dataSourcePublicIP() *pluginsdk.Resource {
 }
 
 func dataSourcePublicIPRead(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.PublicIPAddresses
+	client := meta.(*clients.Client).Network.PublicIPAddressesClient
 	subscriptionId := meta.(*clients.Client).Account.SubscriptionId
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()
@@ -152,6 +157,9 @@ func dataSourcePublicIPRead(d *pluginsdk.ResourceData, meta interface{}) error {
 				d.Set("ddos_protection_mode", string(pointer.From(ddosSetting.ProtectionMode)))
 				if subResource := ddosSetting.DdosProtectionPlan; subResource != nil {
 					d.Set("ddos_protection_plan_id", subResource.Id)
+				}
+				if subResource := ddosSetting.DdosCustomPolicy; subResource != nil {
+					d.Set("ddos_custom_policy_id", subResource.Id)
 				}
 			}
 

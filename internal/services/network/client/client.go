@@ -14,6 +14,8 @@ import (
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/networksecurityperimeterassociations"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/networksecurityperimeterprofiles"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/networksecurityperimeters"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-05-01/ddoscustompolicies"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/publicipaddresses"
 	"github.com/hashicorp/go-azure-sdk/sdk/client/resourcemanager"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/common"
 )
@@ -21,13 +23,15 @@ import (
 type Client struct {
 	*network_2025_01_01.Client
 
-	BastionHostsClient *bastionhosts.BastionHostsClient
+	BastionHostsClient       *bastionhosts.BastionHostsClient
+	DdosCustomPoliciesClient *ddoscustompolicies.DdosCustomPoliciesClient
 	// VMSS Data Source requires the Network Interfaces and VMSSPublicIpAddresses client from `2023-09-01` for the `ListVirtualMachineScaleSetVMNetworkInterfacesComplete` method
 	NetworkInterfacesClient                    *networkinterfaces.NetworkInterfacesClient
 	NetworkSecurityPerimeterAccessRulesClient  *networksecurityperimeteraccessrules.NetworkSecurityPerimeterAccessRulesClient
 	NetworkSecurityPerimeterAssociationsClient *networksecurityperimeterassociations.NetworkSecurityPerimeterAssociationsClient
 	NetworkSecurityPerimeterProfilesClient     *networksecurityperimeterprofiles.NetworkSecurityPerimeterProfilesClient
 	NetworkSecurityPerimetersClient            *networksecurityperimeters.NetworkSecurityPerimetersClient
+	PublicIPAddressesClient                    *publicipaddresses.PublicIPAddressesClient
 	VMSSPublicIPAddressesClient                *vmsspublicipaddresses.VMSSPublicIPAddressesClient
 }
 
@@ -37,6 +41,12 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 		return nil, fmt.Errorf("building Bastion Client: %+v", err)
 	}
 	o.Configure(BastionHostsClient.Client, o.Authorizers.ResourceManager)
+
+	DdosCustomPoliciesClient, err := ddoscustompolicies.NewDdosCustomPoliciesClientWithBaseURI(o.Environment.ResourceManager)
+	if err != nil {
+		return nil, fmt.Errorf("building DDoS Custom Policies Client: %+v", err)
+	}
+	o.Configure(DdosCustomPoliciesClient.Client, o.Authorizers.ResourceManager)
 
 	NetworkInterfacesClient, err := networkinterfaces.NewNetworkInterfacesClientWithBaseURI(o.Environment.ResourceManager)
 	if err != nil {
@@ -68,6 +78,12 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 	}
 	o.Configure(NetworkSecurityPerimetersClient.Client, o.Authorizers.ResourceManager)
 
+	PublicIPAddressesClient, err := publicipaddresses.NewPublicIPAddressesClientWithBaseURI(o.Environment.ResourceManager)
+	if err != nil {
+		return nil, fmt.Errorf("building Public IP Addresses Client: %+v", err)
+	}
+	o.Configure(PublicIPAddressesClient.Client, o.Authorizers.ResourceManager)
+
 	VMSSPublicIPAddressesClient, err := vmsspublicipaddresses.NewVMSSPublicIPAddressesClientWithBaseURI(o.Environment.ResourceManager)
 	if err != nil {
 		return nil, fmt.Errorf("building VMSS Public IP Addresses Client: %+v", err)
@@ -83,11 +99,13 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 
 	return &Client{
 		BastionHostsClient:                         BastionHostsClient,
+		DdosCustomPoliciesClient:                   DdosCustomPoliciesClient,
 		NetworkInterfacesClient:                    NetworkInterfacesClient,
 		NetworkSecurityPerimeterAccessRulesClient:  NetworkSecurityPerimeterAccessRulesClient,
 		NetworkSecurityPerimeterAssociationsClient: NetworkSecurityPerimeterAssociationsClient,
 		NetworkSecurityPerimeterProfilesClient:     NetworkSecurityPerimeterProfilesClient,
 		NetworkSecurityPerimetersClient:            NetworkSecurityPerimetersClient,
+		PublicIPAddressesClient:                    PublicIPAddressesClient,
 		VMSSPublicIPAddressesClient:                VMSSPublicIPAddressesClient,
 		Client:                                     client,
 	}, nil

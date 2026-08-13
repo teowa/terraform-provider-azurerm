@@ -49,23 +49,23 @@ The following arguments are supported:
 
 ---
 
-* `edge_zone` - (Optional) Specifies the Edge Zone within the Azure Region where this Load Balancer should exist. Changing this forces a new Load Balancer to be created.
+* `edge_zone` - (Optional) Specifies the Edge Zone within the Azure Region where this Load Balancer should exist. Changing this forces a new resource to be created.
 
 * `frontend_ip_configuration` - (Optional) One or more `frontend_ip_configuration` blocks as documented below.
 
 -> **Note:** Azure Load Balancer does not allow the complete removal of all previously attached frontend configurations. If you have previously applied with one or more `frontend_ip_configuration` arguments, the removal of them all will result in a replacement  (destroy/create) of the Load Balancer.
 
-* `sku` - (Optional) The SKU of the Azure Load Balancer. Accepted values are `Basic`, `Standard` and `Gateway`. Defaults to `Standard`. Changing this forces a new resource to be created.
+* `sku` - (Optional) The SKU of the Azure Load Balancer. Possible values are `Basic`, `Standard`, and `Gateway`. Defaults to `Standard`. Changing this forces a new resource to be created.
 
 -> **Note:** The `Microsoft.Network/AllowGatewayLoadBalancer` feature is required to be registered in order to use the `Gateway` SKU. The feature can only be registered by the Azure service team, please submit an [Azure support ticket](https://azure.microsoft.com/en-us/support/create-ticket/) for that.
 
-* `sku_tier` - (Optional) `sku_tier` - (Optional) The SKU tier of this Load Balancer. Possible values are `Global` and `Regional`. Defaults to `Regional`. Changing this forces a new resource to be created.
+* `sku_tier` - (Optional) The SKU tier of this Load Balancer. Possible values are `Global` and `Regional`. Defaults to `Regional`. Changing this forces a new resource to be created.
 
 * `tags` - (Optional) A mapping of tags to assign to the resource.
 
 ---
 
-The `frontend_ip_configuration` block supports the following:
+A `frontend_ip_configuration` block supports the following:
 
 * `name` - (Required) Specifies the name of the frontend IP configuration.
 
@@ -78,6 +78,7 @@ The `frontend_ip_configuration` block supports the following:
 * `private_ip_address` - (Optional) Private IP Address to assign to the Load Balancer. The last one and first four IPs in any range are reserved and cannot be manually assigned.
 * `private_ip_address_allocation` - (Optional) The allocation method for the Private IP Address used by this Load Balancer. Possible values as `Dynamic` and `Static`.
 * `private_ip_address_version` - (Optional) The version of IP that the Private IP Address is. Possible values are `IPv4` or `IPv6`.
+* `ddos_custom_policy_id` - (Optional) The ID of the DDoS custom policy associated with the frontend IP configuration.
 * `public_ip_address_id` - (Optional) The ID of a Public IP Address which should be associated with the Load Balancer.
 * `public_ip_prefix_id` - (Optional) The ID of a Public IP Prefix which should be associated with the Load Balancer. Public IP Prefix can only be used with outbound rules.
 
@@ -95,6 +96,7 @@ In addition to the Arguments listed above - the following Attributes are exporte
 A `frontend_ip_configuration` block exports the following:
 
 * `gateway_load_balancer_frontend_ip_configuration_id` - The id of the Frontend IP Configuration of a Gateway Load Balancer that this Load Balancer points to.
+* `ddos_custom_policy_id` - The ID of the DDoS custom policy associated with this frontend IP configuration.
 * `id` - The id of the Frontend IP Configuration.
 * `inbound_nat_rules` - The list of IDs of inbound rules that use this frontend IP.
 * `load_balancer_rules` - The list of IDs of load balancing rules that use this frontend IP.
@@ -126,4 +128,4 @@ terraform import azurerm_lb.example /subscriptions/00000000-0000-0000-0000-00000
 <!-- This section is generated, changes will be overwritten -->
 This resource uses the following Azure API Providers:
 
-* `Microsoft.Network` - 2025-01-01
+* `Microsoft.Network` - 2025-07-01
