@@ -161,6 +161,10 @@ resource "azurerm_storage_mover_source_endpoint" "test" {
   host             = "192.168.0.1"
   nfs_version      = "NFSv4"
   description      = "Example Storage Container Endpoint Description"
+
+  identity {
+    type = "SystemAssigned"
+  }
 }
 `, template, data.RandomInteger)
 }

@@ -204,6 +204,7 @@ resource "azurerm_storage_mover_job_definition" "test" {
   storage_mover_project_id = azurerm_storage_mover_project.test.id
   agent_name               = azurerm_storage_mover_agent.test.name
   copy_mode                = "Additive"
+  job_type                 = "OnPremToCloud"
   source_name              = azurerm_storage_mover_source_endpoint.test.name
   source_sub_path          = "/"
   target_name              = azurerm_storage_mover_target_endpoint.test.name

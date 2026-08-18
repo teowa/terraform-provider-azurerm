@@ -176,6 +176,10 @@ resource "azurerm_storage_mover_target_endpoint" "test" {
   storage_account_id     = azurerm_storage_account.test.id
   storage_container_name = azurerm_storage_container.test.name
   description            = "Example Storage Container Endpoint Description"
+
+  identity {
+    type = "SystemAssigned"
+  }
 }
 `, template, data.RandomInteger)
 }

@@ -5,6 +5,7 @@ package storagemover
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"time"
@@ -12,6 +13,8 @@ import (
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
+	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
+	"github.com/hashicorp/go-azure-helpers/resourcemanager/identity"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/resourceids"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/storagemover/2025-07-01/endpoints"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/storagemover/2025-07-01/storagemovers"
@@ -24,11 +27,16 @@ import (
 //go:generate go run ../../tools/generator-tests resourceidentity -resource-name storage_mover_target_endpoint -service-package-name storagemover -properties "name" -compare-values "subscription_id:storage_mover_id,resource_group_name:storage_mover_id,storage_mover_name:storage_mover_id"
 
 type StorageMoverTargetEndpointModel struct {
-	Name                 string `tfschema:"name"`
-	StorageMoverId       string `tfschema:"storage_mover_id"`
-	StorageAccountId     string `tfschema:"storage_account_id"`
-	StorageContainerName string `tfschema:"storage_container_name"`
-	Description          string `tfschema:"description"`
+	Name                     string                                  `tfschema:"name"`
+	StorageMoverId           string                                  `tfschema:"storage_mover_id"`
+	StorageAccountId         string                                  `tfschema:"storage_account_id"`
+	StorageContainerName     string                                  `tfschema:"storage_container_name"`
+	AzureMultiCloudConnector []AzureMultiCloudConnectorEndpointModel `tfschema:"azure_multi_cloud_connector"`
+	AzureStorageNfsFileShare []AzureStorageFileShareEndpointModel    `tfschema:"azure_storage_nfs_file_share"`
+	AzureStorageSmbFileShare []AzureStorageFileShareEndpointModel    `tfschema:"azure_storage_smb_file_share"`
+	SmbMount                 []SmbMountEndpointModel                 `tfschema:"smb_mount"`
+	Identity                 []identity.ModelSystemAssigned          `tfschema:"identity"`
+	Description              string                                  `tfschema:"description"`
 }
 
 type StorageMoverTargetEndpointResource struct{}
@@ -54,6 +62,14 @@ func (r StorageMoverTargetEndpointResource) IDValidationFunc() pluginsdk.SchemaV
 	return endpoints.ValidateEndpointID
 }
 
+var targetEndpointTypeFieldNames = []string{
+	"storage_account_id",
+	"azure_multi_cloud_connector",
+	"azure_storage_nfs_file_share",
+	"azure_storage_smb_file_share",
+	"smb_mount",
+}
+
 func (r StorageMoverTargetEndpointResource) Arguments() map[string]*pluginsdk.Schema {
 	return map[string]*pluginsdk.Schema{
 		"name": {
@@ -75,17 +91,80 @@ func (r StorageMoverTargetEndpointResource) Arguments() map[string]*pluginsdk.Sc
 
 		"storage_account_id": {
 			Type:         pluginsdk.TypeString,
-			Required:     true,
+			Optional:     true,
 			ForceNew:     true,
 			ValidateFunc: commonids.ValidateStorageAccountID,
+			ExactlyOneOf: targetEndpointTypeFieldNames,
+			RequiredWith: []string{"storage_container_name"},
 		},
 
 		"storage_container_name": {
 			Type:         pluginsdk.TypeString,
-			Required:     true,
+			Optional:     true,
 			ForceNew:     true,
 			ValidateFunc: validate.StorageContainerName,
+			RequiredWith: []string{"storage_account_id"},
 		},
+
+		"azure_multi_cloud_connector": {
+			Type:         pluginsdk.TypeList,
+			Optional:     true,
+			ForceNew:     true,
+			MaxItems:     1,
+			ExactlyOneOf: targetEndpointTypeFieldNames,
+			Elem: &pluginsdk.Resource{
+				Schema: map[string]*pluginsdk.Schema{
+					"aws_s3_bucket_id": {
+						Type:         pluginsdk.TypeString,
+						Required:     true,
+						ForceNew:     true,
+						ValidateFunc: validation.StringIsNotEmpty,
+					},
+
+					"multi_cloud_connector_id": {
+						Type:         pluginsdk.TypeString,
+						Required:     true,
+						ForceNew:     true,
+						ValidateFunc: validation.StringIsNotEmpty,
+					},
+				},
+			},
+		},
+
+		"azure_storage_nfs_file_share": {
+			Type:         pluginsdk.TypeList,
+			Optional:     true,
+			ForceNew:     true,
+			MaxItems:     1,
+			ExactlyOneOf: targetEndpointTypeFieldNames,
+			Elem: &pluginsdk.Resource{
+				Schema: azureStorageFileShareEndpointSchema(),
+			},
+		},
+
+		"azure_storage_smb_file_share": {
+			Type:         pluginsdk.TypeList,
+			Optional:     true,
+			ForceNew:     true,
+			MaxItems:     1,
+			ExactlyOneOf: targetEndpointTypeFieldNames,
+			Elem: &pluginsdk.Resource{
+				Schema: azureStorageFileShareEndpointSchema(),
+			},
+		},
+
+		"smb_mount": {
+			Type:         pluginsdk.TypeList,
+			Optional:     true,
+			ForceNew:     true,
+			MaxItems:     1,
+			ExactlyOneOf: targetEndpointTypeFieldNames,
+			Elem: &pluginsdk.Resource{
+				Schema: smbMountEndpointSchema(),
+			},
+		},
+
+		"identity": commonschema.SystemAssignedIdentityOptional(),
 
 		"description": {
 			Type:         pluginsdk.TypeString,
@@ -127,21 +206,27 @@ func (r StorageMoverTargetEndpointResource) Create() sdk.ResourceFunc {
 				}
 			}
 
-			properties := endpoints.Endpoint{
-				Properties: endpoints.AzureStorageBlobContainerEndpointProperties{
-					BlobContainerName:        model.StorageContainerName,
-					StorageAccountResourceId: model.StorageAccountId,
-				},
+			properties, err := expandTargetEndpointProperties(model)
+			if err != nil {
+				return err
 			}
 
-			if model.Description != "" {
-				if v, ok := properties.Properties.(endpoints.AzureStorageBlobContainerEndpointProperties); ok {
-					v.Description = pointer.To(model.Description)
-					properties.Properties = v
+			payload := endpoints.Endpoint{
+				Properties: properties,
+			}
+
+			if len(model.Identity) > 0 {
+				identityValue, err := identity.ExpandSystemAssignedFromModel(model.Identity)
+				if err != nil {
+					return fmt.Errorf("expanding `identity`: %+v", err)
+				}
+
+				payload.Identity = &identity.LegacySystemAndUserAssignedMap{
+					Type: identityValue.Type,
 				}
 			}
 
-			if _, err := client.CreateOrUpdate(ctx, id, properties); err != nil {
+			if _, err := client.CreateOrUpdate(ctx, id, payload); err != nil {
 				return fmt.Errorf("creating %s: %+v", id, err)
 			}
 
@@ -181,9 +266,46 @@ func (r StorageMoverTargetEndpointResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("description") {
-				if v, ok := properties.Properties.(endpoints.AzureStorageBlobContainerEndpointProperties); ok {
+				switch v := properties.Properties.(type) {
+				case endpoints.AzureStorageBlobContainerEndpointProperties:
 					v.Description = pointer.To(model.Description)
 					properties.Properties = v
+				case endpoints.AzureMultiCloudConnectorEndpointProperties:
+					v.Description = pointer.To(model.Description)
+					properties.Properties = v
+				case endpoints.AzureStorageNfsFileShareEndpointProperties:
+					v.Description = pointer.To(model.Description)
+					properties.Properties = v
+				case endpoints.AzureStorageSmbFileShareEndpointProperties:
+					v.Description = pointer.To(model.Description)
+					properties.Properties = v
+				case endpoints.SmbMountEndpointProperties:
+					v.Description = pointer.To(model.Description)
+					properties.Properties = v
+				}
+			}
+
+			if metadata.ResourceData.HasChange("smb_mount.0.credentials") {
+				if v, ok := properties.Properties.(endpoints.SmbMountEndpointProperties); ok {
+					v.Credentials = expandSmbMountCredentials(model.SmbMount)
+					properties.Properties = v
+				}
+			}
+
+			if metadata.ResourceData.HasChange("identity") {
+				if len(model.Identity) > 0 {
+					identityValue, err := identity.ExpandSystemAssignedFromModel(model.Identity)
+					if err != nil {
+						return fmt.Errorf("expanding `identity`: %+v", err)
+					}
+
+					properties.Identity = &identity.LegacySystemAndUserAssignedMap{
+						Type: identityValue.Type,
+					}
+				} else {
+					properties.Identity = &identity.LegacySystemAndUserAssignedMap{
+						Type: identity.TypeNone,
+					}
 				}
 			}
 
@@ -228,12 +350,67 @@ func (r StorageMoverTargetEndpointResource) flatten(metadata sdk.ResourceMetaDat
 	}
 
 	if model != nil {
-		if v, ok := model.Properties.(endpoints.AzureStorageBlobContainerEndpointProperties); ok {
+		switch v := model.Properties.(type) {
+		case endpoints.AzureStorageBlobContainerEndpointProperties:
 			state.StorageContainerName = v.BlobContainerName
 			state.StorageAccountId = v.StorageAccountResourceId
 
 			state.Description = pointer.From(v.Description)
+
+		case endpoints.AzureMultiCloudConnectorEndpointProperties:
+			state.AzureMultiCloudConnector = []AzureMultiCloudConnectorEndpointModel{
+				{
+					AwsS3BucketId:         v.AwsS3BucketId,
+					MultiCloudConnectorId: v.MultiCloudConnectorId,
+				},
+			}
+			state.Description = pointer.From(v.Description)
+
+		case endpoints.AzureStorageNfsFileShareEndpointProperties:
+			state.AzureStorageNfsFileShare = []AzureStorageFileShareEndpointModel{
+				{
+					FileShareName:            v.FileShareName,
+					StorageAccountResourceId: v.StorageAccountResourceId,
+				},
+			}
+			state.Description = pointer.From(v.Description)
+
+		case endpoints.AzureStorageSmbFileShareEndpointProperties:
+			state.AzureStorageSmbFileShare = []AzureStorageFileShareEndpointModel{
+				{
+					FileShareName:            v.FileShareName,
+					StorageAccountResourceId: v.StorageAccountResourceId,
+				},
+			}
+			state.Description = pointer.From(v.Description)
+
+		case endpoints.SmbMountEndpointProperties:
+			smbMount := SmbMountEndpointModel{
+				Host:      v.Host,
+				ShareName: v.ShareName,
+			}
+
+			if v.Credentials != nil {
+				smbMount.Credentials = []AzureKeyVaultSmbCredentials{
+					{
+						PasswordUri: pointer.From(v.Credentials.PasswordUri),
+						UsernameUri: pointer.From(v.Credentials.UsernameUri),
+					},
+				}
+			}
+
+			state.SmbMount = []SmbMountEndpointModel{smbMount}
+			state.Description = pointer.From(v.Description)
 		}
+	}
+
+	if model != nil && model.Identity != nil {
+		systemAssigned := &identity.SystemAssigned{
+			Type:        model.Identity.Type,
+			PrincipalId: model.Identity.PrincipalId,
+			TenantId:    model.Identity.TenantId,
+		}
+		state.Identity = identity.FlattenSystemAssignedToModel(systemAssigned)
 	}
 
 	if err := pluginsdk.SetResourceIdentityData(metadata.ResourceData, id); err != nil {
@@ -261,4 +438,70 @@ func (r StorageMoverTargetEndpointResource) Delete() sdk.ResourceFunc {
 			return nil
 		},
 	}
+}
+
+func expandTargetEndpointProperties(model StorageMoverTargetEndpointModel) (endpoints.EndpointBaseProperties, error) {
+	var properties endpoints.EndpointBaseProperties
+
+	switch {
+	case model.StorageAccountId != "":
+		properties = endpoints.AzureStorageBlobContainerEndpointProperties{
+			BlobContainerName:        model.StorageContainerName,
+			StorageAccountResourceId: model.StorageAccountId,
+		}
+
+	case len(model.AzureMultiCloudConnector) > 0:
+		v := model.AzureMultiCloudConnector[0]
+		properties = endpoints.AzureMultiCloudConnectorEndpointProperties{
+			AwsS3BucketId:         v.AwsS3BucketId,
+			MultiCloudConnectorId: v.MultiCloudConnectorId,
+		}
+
+	case len(model.AzureStorageNfsFileShare) > 0:
+		v := model.AzureStorageNfsFileShare[0]
+		properties = endpoints.AzureStorageNfsFileShareEndpointProperties{
+			FileShareName:            v.FileShareName,
+			StorageAccountResourceId: v.StorageAccountResourceId,
+		}
+
+	case len(model.AzureStorageSmbFileShare) > 0:
+		v := model.AzureStorageSmbFileShare[0]
+		properties = endpoints.AzureStorageSmbFileShareEndpointProperties{
+			FileShareName:            v.FileShareName,
+			StorageAccountResourceId: v.StorageAccountResourceId,
+		}
+
+	case len(model.SmbMount) > 0:
+		v := model.SmbMount[0]
+		properties = endpoints.SmbMountEndpointProperties{
+			Host:        v.Host,
+			ShareName:   v.ShareName,
+			Credentials: expandSmbMountCredentials(model.SmbMount),
+		}
+
+	default:
+		return nil, errors.New("one of `storage_account_id`, `azure_multi_cloud_connector`, `azure_storage_nfs_file_share`, `azure_storage_smb_file_share` or `smb_mount` must be specified")
+	}
+
+	if model.Description != "" {
+		switch v := properties.(type) {
+		case endpoints.AzureStorageBlobContainerEndpointProperties:
+			v.Description = pointer.To(model.Description)
+			properties = v
+		case endpoints.AzureMultiCloudConnectorEndpointProperties:
+			v.Description = pointer.To(model.Description)
+			properties = v
+		case endpoints.AzureStorageNfsFileShareEndpointProperties:
+			v.Description = pointer.To(model.Description)
+			properties = v
+		case endpoints.AzureStorageSmbFileShareEndpointProperties:
+			v.Description = pointer.To(model.Description)
+			properties = v
+		case endpoints.SmbMountEndpointProperties:
+			v.Description = pointer.To(model.Description)
+			properties = v
+		}
+	}
+
+	return properties, nil
 }

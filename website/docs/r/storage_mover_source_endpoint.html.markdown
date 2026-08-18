@@ -41,19 +41,85 @@ The following arguments are supported:
 
 * `storage_mover_id` - (Required) Specifies the ID of the Storage Mover for this Storage Mover Source Endpoint. Changing this forces a new resource to be created.
 
-* `host` - (Required) Specifies the host name or IP address of the server exporting the file system. Changing this forces a new resource to be created.
+-> **Note:** Exactly one of `host`, `azure_multi_cloud_connector`, `azure_storage_nfs_file_share`, `azure_storage_smb_file_share` or `smb_mount` must be specified.
+
+* `host` - (Optional) Specifies the host name or IP address of the server exporting the file system. Changing this forces a new resource to be created.
 
 * `export` - (Optional) Specifies the directory being exported from the server. Changing this forces a new resource to be created.
 
 * `nfs_version` - (Optional) Specifies the NFS protocol version. Possible values are `NFSauto`, `NFSv3` and `NFSv4`. Defaults to `NFSauto`. Changing this forces a new resource to be created.
 
+* `azure_multi_cloud_connector` - (Optional) An `azure_multi_cloud_connector` block as defined below. Changing this forces a new resource to be created.
+
+* `azure_storage_nfs_file_share` - (Optional) An `azure_storage_nfs_file_share` block as defined below. Changing this forces a new resource to be created.
+
+* `azure_storage_smb_file_share` - (Optional) An `azure_storage_smb_file_share` block as defined below. Changing this forces a new resource to be created.
+
+* `smb_mount` - (Optional) A `smb_mount` block as defined below. Changing this forces a new resource to be created.
+
+* `identity` - (Optional) An `identity` block as defined below.
+
 * `description` - (Optional) Specifies a description for the Storage Mover Source Endpoint.
+
+---
+
+An `azure_multi_cloud_connector` block supports the following:
+
+* `aws_s3_bucket_id` - (Required) Specifies the resource ID of the AWS S3 Bucket connected through the Multi Cloud Connector. Changing this forces a new resource to be created.
+
+* `multi_cloud_connector_id` - (Required) Specifies the resource ID of the Multi Cloud Connector used to access the source. Changing this forces a new resource to be created.
+
+---
+
+An `azure_storage_nfs_file_share` block supports the following:
+
+* `file_share_name` - (Required) Specifies the name of the Azure Storage NFS File Share. Changing this forces a new resource to be created.
+
+* `storage_account_id` - (Required) Specifies the ID of the Storage Account containing the NFS File Share. Changing this forces a new resource to be created.
+
+---
+
+An `azure_storage_smb_file_share` block supports the following:
+
+* `file_share_name` - (Required) Specifies the name of the Azure Storage SMB File Share. Changing this forces a new resource to be created.
+
+* `storage_account_id` - (Required) Specifies the ID of the Storage Account containing the SMB File Share. Changing this forces a new resource to be created.
+
+---
+
+A `smb_mount` block supports the following:
+
+* `host` - (Required) Specifies the host name or IP address of the SMB server. Changing this forces a new resource to be created.
+
+* `share_name` - (Required) Specifies the name of the SMB share. Changing this forces a new resource to be created.
+
+* `credentials` - (Optional) A `credentials` block as defined below.
+
+---
+
+A `credentials` block supports the following:
+
+* `username_uri` - (Optional) Specifies the Azure Key Vault URI containing the username used to access the SMB share.
+
+* `password_uri` - (Optional) Specifies the Azure Key Vault URI containing the password used to access the SMB share.
+
+---
+
+An `identity` block supports the following:
+
+* `type` - (Required) Specifies the type of Managed Service Identity that should be configured on this Storage Mover Source Endpoint. The only possible value is `SystemAssigned`.
 
 ## Attributes Reference
 
 In addition to the Arguments listed above - the following Attributes are exported:
 
 * `id` - The ID of the Storage Mover Source Endpoint.
+
+An `identity` block exports the following:
+
+* `principal_id` - The Principal ID associated with this Managed Service Identity.
+
+* `tenant_id` - The Tenant ID associated with this Managed Service Identity.
 
 ## Timeouts
 
