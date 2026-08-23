@@ -52,9 +52,17 @@ The following attributes are exported:
 
 * `elasticsearch_service_url` - The URL to the Elasticsearch Service associated with this Elasticsearch.
 
+* `generate_api_key_enabled` - Specifies if an API Key has been generated and shared for this Elasticsearch.
+
+* `hosting_type` - The hosting type of this Elasticsearch.
+
+* `identity` - An `identity` block as defined below.
+
 * `kibana_service_url` - The URL to the Kibana Dashboard associated with this Elasticsearch.
 
 * `kibana_sso_uri` - The URI used for SSO to the Kibana Dashboard associated with this Elasticsearch.
+
+* `kind` - The kind of the Elastic resource, such as `observability`, `security` or `search`.
 
 * `location` - The Azure Region in which this Elasticsearch exists.
 
@@ -78,6 +86,16 @@ The `filtering_tag` block exports the following:
 
 ---
 
+An `identity` block exports the following:
+
+* `principal_id` - The Principal ID for the Service Principal associated with the Managed Service Identity of this Elasticsearch.
+
+* `tenant_id` - The Tenant ID for the Service Principal associated with the Managed Service Identity of this Elasticsearch.
+
+* `type` - The type of Managed Service Identity configured on this Elasticsearch.
+
+---
+
 The `logs` block exports the following:
 
 * `filtering_tag` - A list of `filtering_tag` blocks as defined above.
@@ -98,4 +116,4 @@ The `timeouts` block allows you to specify [timeouts](https://developer.hashicor
 <!-- This section is generated, changes will be overwritten -->
 This data source uses the following Azure API Providers:
 
-* `Microsoft.Elastic` - 2023-06-01
+* `Microsoft.Elastic` - 2025-06-01

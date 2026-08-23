@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
+	"github.com/hashicorp/go-azure-helpers/resourcemanager/identity"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2023-06-01/monitorsresource"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2023-06-01/rules"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2025-06-01/elasticmonitorresources"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2025-06-01/tagrules"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/elastic/validate"
@@ -55,6 +57,23 @@ func dataSourceElasticsearch() *pluginsdk.Resource {
 				Type:     pluginsdk.TypeBool,
 				Computed: true,
 			},
+
+			"kind": {
+				Type:     pluginsdk.TypeString,
+				Computed: true,
+			},
+
+			"hosting_type": {
+				Type:     pluginsdk.TypeString,
+				Computed: true,
+			},
+
+			"generate_api_key_enabled": {
+				Type:     pluginsdk.TypeBool,
+				Computed: true,
+			},
+
+			"identity": commonschema.SystemAssignedIdentityComputed(),
 
 			"logs": {
 				Type:     pluginsdk.TypeList,
@@ -138,7 +157,7 @@ func dataSourceElasticsearchRead(d *schema.ResourceData, meta interface{}) error
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
-	id := monitorsresource.NewMonitorID(subscriptionId, d.Get("resource_group_name").(string), d.Get("name").(string))
+	id := elasticmonitorresources.NewMonitorID(subscriptionId, d.Get("resource_group_name").(string), d.Get("name").(string))
 	resp, err := client.MonitorsGet(ctx, id)
 	if err != nil {
 		if response.WasNotFound(resp.HttpResponse) {
@@ -148,8 +167,8 @@ func dataSourceElasticsearchRead(d *schema.ResourceData, meta interface{}) error
 		return fmt.Errorf("retrieving %s: %+v", id, err)
 	}
 
-	tagRuleId := rules.NewTagRuleID(id.SubscriptionId, id.ResourceGroupName, id.MonitorName, "default")
-	rulesResp, err := logsClient.TagRulesGet(ctx, tagRuleId)
+	tagRuleId := tagrules.NewTagRuleID(id.SubscriptionId, id.ResourceGroupName, id.MonitorName, "default")
+	rulesResp, err := logsClient.Get(ctx, tagRuleId)
 	if err != nil {
 		if !response.WasNotFound(rulesResp.HttpResponse) {
 			return fmt.Errorf("retrieving logs for %s: %+v", id, err)
@@ -161,13 +180,20 @@ func dataSourceElasticsearchRead(d *schema.ResourceData, meta interface{}) error
 
 	if model := resp.Model; model != nil {
 		d.Set("location", location.Normalize(model.Location))
+		d.Set("kind", pointer.From(model.Kind))
+
+		if err := d.Set("identity", identity.FlattenSystemAssigned(model.Identity)); err != nil {
+			return fmt.Errorf("setting `identity`: %+v", err)
+		}
 
 		if props := model.Properties; props != nil {
 			monitoringEnabled := false
 			if props.MonitoringStatus != nil {
-				monitoringEnabled = *props.MonitoringStatus == monitorsresource.MonitoringStatusEnabled
+				monitoringEnabled = *props.MonitoringStatus == elasticmonitorresources.MonitoringStatusEnabled
 			}
 			d.Set("monitoring_enabled", monitoringEnabled)
+			d.Set("hosting_type", pointer.From(props.HostingType))
+			d.Set("generate_api_key_enabled", pointer.From(props.GenerateApiKey))
 
 			if elastic := props.ElasticProperties; elastic != nil {
 				if elastic.ElasticCloudDeployment != nil {

@@ -47,6 +47,14 @@ You may find your eligible plans [here](https://portal.azure.com/#view/Microsoft
 
 ---
 
+* `generate_api_key_enabled` - (Optional) Specifies if an API Key should be generated and shared for this Elasticsearch. Changing this forces a new Elasticsearch to be created.
+
+* `hosting_type` - (Optional) The hosting type of this Elasticsearch. Possible values are `Hosted` and `Serverless`. Changing this forces a new Elasticsearch to be created.
+
+* `identity` - (Optional) An `identity` block as defined below. Changing this forces a new Elasticsearch to be created.
+
+* `kind` - (Optional) The kind of the Elastic resource, such as `observability`, `security` or `search`. Changing this forces a new Elasticsearch to be created.
+
 * `logs` - (Optional) A `logs` block as defined below.
 
 * `monitoring_enabled` - (Optional) Specifies if the Elasticsearch should have monitoring configured? Defaults to `true`. Changing this forces a new Elasticsearch to be created.
@@ -62,6 +70,12 @@ The `filtering_tag` block supports the following:
 * `name` - (Required) Specifies the name (key) of the Tag which should be filtered.
 
 * `value` - (Required) Specifies the value of the Tag which should be filtered.
+
+---
+
+The `identity` block supports the following:
+
+* `type` - (Required) Specifies the type of Managed Service Identity that should be configured on this Elasticsearch. The only possible value is `SystemAssigned`.
 
 ---
 
@@ -93,6 +107,14 @@ In addition to the Arguments listed above - the following Attributes are exporte
 
 * `kibana_sso_uri` - The URI used for SSO to the Kibana Dashboard associated with this Elasticsearch.
 
+---
+
+An `identity` block exports the following:
+
+* `principal_id` - The Principal ID for the Service Principal associated with the Managed Service Identity of this Elasticsearch.
+
+* `tenant_id` - The Tenant ID for the Service Principal associated with the Managed Service Identity of this Elasticsearch.
+
 ## Timeouts
 
 The `timeouts` block allows you to specify [timeouts](https://developer.hashicorp.com/terraform/language/resources/configure#define-operation-timeouts) for certain actions:
@@ -114,4 +136,4 @@ terraform import azurerm_elastic_cloud_elasticsearch.example /subscriptions/0000
 <!-- This section is generated, changes will be overwritten -->
 This resource uses the following Azure API Providers:
 
-* `Microsoft.Elastic` - 2023-06-01
+* `Microsoft.Elastic` - 2025-06-01

@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2023-06-01/monitorsresource"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/elastic/2025-06-01/elasticmonitorresources"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
@@ -142,7 +142,7 @@ func TestAccElasticsearch_logsUpdate(t *testing.T) {
 }
 
 func (r ElasticsearchResource) Exists(ctx context.Context, client *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
-	id, err := monitorsresource.ParseMonitorID(state.ID)
+	id, err := elasticmonitorresources.ParseMonitorID(state.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -239,6 +239,12 @@ resource "azurerm_elastic_cloud_elasticsearch" "test" {
   sku_name                    = "ess-consumption-2024_Monthly"
   elastic_cloud_email_address = "terraform-acctest@hashicorp.com"
   monitoring_enabled          = false
+  hosting_type                = "Hosted"
+  generate_api_key_enabled    = true
+
+  identity {
+    type = "SystemAssigned"
+  }
 
   tags = {
     ENV = "Test"
