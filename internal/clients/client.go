@@ -65,6 +65,7 @@ import (
 	desktopvirtualization "github.com/hashicorp/terraform-provider-azurerm/internal/services/desktopvirtualization/client"
 	devtestlabs "github.com/hashicorp/terraform-provider-azurerm/internal/services/devtestlabs/client"
 	digitaltwins "github.com/hashicorp/terraform-provider-azurerm/internal/services/digitaltwins/client"
+	discovery "github.com/hashicorp/terraform-provider-azurerm/internal/services/discovery/client"
 	dns "github.com/hashicorp/terraform-provider-azurerm/internal/services/dns/client"
 	domainservices "github.com/hashicorp/terraform-provider-azurerm/internal/services/domainservices/client"
 	dynatrace "github.com/hashicorp/terraform-provider-azurerm/internal/services/dynatrace/client"
@@ -202,6 +203,7 @@ type Client struct {
 	DesktopVirtualization             *desktopvirtualization.Client
 	DevTestLabs                       *devtestlabs.Client
 	DigitalTwins                      *digitaltwins.Client
+	Discovery                         *discovery.Client
 	Dns                               *dns_v2018_05_01.Client
 	DomainServices                    *domainservices.Client
 	Dynatrace                         *dynatrace.Client
@@ -430,6 +432,9 @@ func (client *Client) Build(ctx context.Context, o *common.ClientOptions) error 
 	}
 	if client.DigitalTwins, err = digitaltwins.NewClient(o); err != nil {
 		return fmt.Errorf("building clients for DigitalTwins: %+v", err)
+	}
+	if client.Discovery, err = discovery.NewClient(o); err != nil {
+		return fmt.Errorf("building clients for Discovery: %+v", err)
 	}
 	if client.Dns, err = dns.NewClient(o); err != nil {
 		return fmt.Errorf("building clients for Dns: %+v", err)
