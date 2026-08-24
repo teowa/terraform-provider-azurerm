@@ -14,6 +14,8 @@ import (
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/networksecurityperimeterassociations"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/networksecurityperimeterprofiles"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/networksecurityperimeters"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/privatednszonegroups"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/privateendpoints"
 	"github.com/hashicorp/go-azure-sdk/sdk/client/resourcemanager"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/common"
 )
@@ -29,6 +31,9 @@ type Client struct {
 	NetworkSecurityPerimeterProfilesClient     *networksecurityperimeterprofiles.NetworkSecurityPerimeterProfilesClient
 	NetworkSecurityPerimetersClient            *networksecurityperimeters.NetworkSecurityPerimetersClient
 	VMSSPublicIPAddressesClient                *vmsspublicipaddresses.VMSSPublicIPAddressesClient
+	// Private Endpoint and Private DNS Zone Group clients are upgraded independently from the rest of `2025-01-01` to consume the `2025-07-01` `billing_sku` property
+	PrivateDnsZoneGroups *privatednszonegroups.PrivateDnsZoneGroupsClient
+	PrivateEndpoints     *privateendpoints.PrivateEndpointsClient
 }
 
 func NewClient(o *common.ClientOptions) (*Client, error) {
@@ -74,6 +79,18 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 	}
 	o.Configure(VMSSPublicIPAddressesClient.Client, o.Authorizers.ResourceManager)
 
+	PrivateDnsZoneGroupsClient, err := privatednszonegroups.NewPrivateDnsZoneGroupsClientWithBaseURI(o.Environment.ResourceManager)
+	if err != nil {
+		return nil, fmt.Errorf("building Private DNS Zone Groups Client: %+v", err)
+	}
+	o.Configure(PrivateDnsZoneGroupsClient.Client, o.Authorizers.ResourceManager)
+
+	PrivateEndpointsClient, err := privateendpoints.NewPrivateEndpointsClientWithBaseURI(o.Environment.ResourceManager)
+	if err != nil {
+		return nil, fmt.Errorf("building Private Endpoints Client: %+v", err)
+	}
+	o.Configure(PrivateEndpointsClient.Client, o.Authorizers.ResourceManager)
+
 	client, err := network_2025_01_01.NewClientWithBaseURI(o.Environment.ResourceManager, func(c *resourcemanager.Client) {
 		o.Configure(c, o.Authorizers.ResourceManager)
 	})
@@ -89,6 +106,8 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 		NetworkSecurityPerimeterProfilesClient:     NetworkSecurityPerimeterProfilesClient,
 		NetworkSecurityPerimetersClient:            NetworkSecurityPerimetersClient,
 		VMSSPublicIPAddressesClient:                VMSSPublicIPAddressesClient,
+		PrivateDnsZoneGroups:                       PrivateDnsZoneGroupsClient,
+		PrivateEndpoints:                           PrivateEndpointsClient,
 		Client:                                     client,
 	}, nil
 }

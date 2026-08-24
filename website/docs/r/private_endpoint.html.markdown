@@ -205,6 +205,8 @@ The following arguments are supported:
 
 * `custom_network_interface_name` - (Optional) The custom name of the network interface attached to the private endpoint. Changing this forces a new resource to be created.
 
+* `billing_sku` - (Optional) The billing SKU of the Private Endpoint. Possible values are `Fixed` and `PayAsYouGo`. Changing this forces a new resource to be created.
+
 * `private_dns_zone_group` - (Optional) A `private_dns_zone_group` block as defined below.
 
 * `private_service_connection` - (Required) A `private_service_connection` block as defined below.

@@ -22,8 +22,8 @@ import (
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cosmosdb/2024-08-15/cosmosdb"
 	mariadbServers "github.com/hashicorp/go-azure-sdk/resource-manager/mariadb/2018-06-01/servers"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/mysql/2017-12-01/servers"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/privatednszonegroups"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/privateendpoints"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/privatednszonegroups"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/privateendpoints"
 	postgresqlServers "github.com/hashicorp/go-azure-sdk/resource-manager/postgresql/2017-12-01/servers"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/privatedns/2024-06-01/privatezones"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/redis/2024-03-01/redis"
@@ -105,6 +105,17 @@ func resourcePrivateEndpoint() *pluginsdk.Resource {
 				Type:     pluginsdk.TypeString,
 				Optional: true,
 				ForceNew: true,
+			},
+
+			"billing_sku": {
+				Type:     pluginsdk.TypeString,
+				Optional: true,
+				Computed: true,
+				ForceNew: true,
+				ValidateFunc: validation.StringInSlice([]string{
+					string(privateendpoints.PrivateEndpointBillingSkuFixed),
+					string(privateendpoints.PrivateEndpointBillingSkuPayAsYouGo),
+				}, false),
 			},
 
 			"private_dns_zone_group": {
@@ -357,6 +368,10 @@ func resourcePrivateEndpointCreate(d *pluginsdk.ResourceData, meta interface{}) 
 		Tags: tags.Expand(d.Get("tags").(map[string]interface{})),
 	}
 
+	if billingSku := d.Get("billing_sku").(string); billingSku != "" {
+		parameters.Properties.BillingSku = pointer.To(privateendpoints.PrivateEndpointBillingSku(billingSku))
+	}
+
 	if err := validatePrivateLinkServiceId(*parameters.Properties.PrivateLinkServiceConnections); err != nil {
 		return err
 	}
@@ -532,6 +547,7 @@ func resourcePrivateEndpointUpdate(d *pluginsdk.ResourceData, meta interface{}) 
 			},
 			IPConfigurations:           expandPrivateEndpointIPConfigurations(ipConfigurations),
 			CustomNetworkInterfaceName: pointer.To(customNicName),
+			BillingSku:                 existing.Model.Properties.BillingSku,
 		},
 		Tags: tags.Expand(d.Get("tags").(map[string]interface{})),
 	}
@@ -696,6 +712,7 @@ func resourcePrivateEndpointFlatten(ctx context.Context, metaClient *clients.Cli
 			}
 			d.Set("subnet_id", subnetId)
 			d.Set("custom_network_interface_name", pointer.From(props.CustomNetworkInterfaceName))
+			d.Set("billing_sku", pointer.From(props.BillingSku))
 
 			if fetchCompleteData {
 				privateDnsZoneIds, err := retrievePrivateDnsZoneGroupsForPrivateEndpoint(ctx, dnsClient, *id)
