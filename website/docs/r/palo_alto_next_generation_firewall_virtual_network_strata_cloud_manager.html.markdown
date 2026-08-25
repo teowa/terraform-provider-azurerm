@@ -181,6 +181,8 @@ A `network_profile` block supports the following:
 
 * `egress_nat_ip_address_ids` - (Optional) A list of Azure Public IP Address IDs that can be used for Egress (Source) Network Address Translation.
 
+* `private_source_nat_rules_destination` - (Optional) A list of IP address ranges used as the destination for private source NAT rules.
+
 * `trusted_address_ranges` - (Optional) A list of trusted ranges to use for the Network.
 
 ---

@@ -150,6 +150,8 @@ A `network_profile` block supports the following:
 
 * `egress_nat_ip_address_ids` - (Optional) A list of Public IP IDs to use for Egress NAT.
 
+* `private_source_nat_rules_destination` - (Optional) A list of IP address ranges used as the destination for private source NAT rules.
+
 * `trusted_address_ranges` - (Optional) A list of trusted ranges to use for the Network.
 
 ## Attributes Reference
