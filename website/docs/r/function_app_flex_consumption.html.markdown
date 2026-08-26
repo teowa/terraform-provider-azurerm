@@ -663,6 +663,8 @@ A `site_config` block supports the following:
 
 * `scm_use_main_ip_restriction` - (Optional) Should the Linux Function App `ip_restriction` configuration be used for the SCM also.
 
+* `site_update_strategy` - (Optional) The strategy used when updating this Function App. Possible values are `Recreate` and `RollingUpdate`.
+
 * `use_32_bit_worker` - (Optional) Should the Linux Web App Linux Function App use a 32-bit worker. Defaults to `false`.
 
 * `vnet_route_all_enabled` - (Optional) Should the Linux Function App route all traffic through the virtual network. Defaults to `false`.

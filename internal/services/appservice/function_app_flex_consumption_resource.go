@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-01-01/resourceproviders"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	webapps20250501 "github.com/hashicorp/go-azure-sdk/resource-manager/web/2025-05-01/webapps"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/locks"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appservice/helpers"
@@ -367,6 +368,7 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
 			client := metadata.Client.AppService.WebAppsClient
+			clientV20250501 := metadata.Client.AppService.WebAppsClientV20250501
 			resourcesClient := metadata.Client.AppService.ResourceProvidersClient
 			servicePlanClient := metadata.Client.AppService.ServicePlanClient
 			subscriptionId := metadata.Client.Account.SubscriptionId
@@ -543,7 +545,18 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 				siteEnvelope.Properties.ClientCertExclusionPaths = pointer.To(functionAppFlexConsumption.ClientCertExclusionPaths)
 			}
 
-			if err = client.CreateOrUpdateCallbackThenPoll(ctx, id, siteEnvelope, metadata.SetIDCallback(&id)); err != nil {
+			siteEnvelopeV20250501, err := bridgeSiteToV20250501(siteEnvelope)
+			if err != nil {
+				return fmt.Errorf("preparing %s for creation: %+v", id, err)
+			}
+
+			if siteUpdateStrategy := functionAppFlexConsumption.SiteConfig[0].SiteUpdateStrategy; siteUpdateStrategy != "" {
+				siteEnvelopeV20250501.Properties.FunctionAppConfig.SiteUpdateStrategy = &webapps20250501.FunctionsSiteUpdateStrategy{
+					Type: pointer.ToEnum[webapps20250501.SiteUpdateStrategyType](siteUpdateStrategy),
+				}
+			}
+
+			if err = clientV20250501.CreateOrUpdateCallbackThenPoll(ctx, id, *siteEnvelopeV20250501, metadata.SetIDCallback(&id)); err != nil {
 				return fmt.Errorf("creating %s: %+v", id, err)
 			}
 
@@ -607,6 +620,7 @@ func (r FunctionAppFlexConsumptionResource) Read() sdk.ResourceFunc {
 		Timeout: 5 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
 			client := metadata.Client.AppService.WebAppsClient
+			clientV20250501 := metadata.Client.AppService.WebAppsClientV20250501
 			id, err := commonids.ParseFunctionAppID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
@@ -616,6 +630,11 @@ func (r FunctionAppFlexConsumptionResource) Read() sdk.ResourceFunc {
 				if response.WasNotFound(functionAppFlexConsumption.HttpResponse) {
 					return metadata.MarkAsGone(id)
 				}
+				return fmt.Errorf("retrieving %s: %+v", id, err)
+			}
+
+			functionAppFlexConsumptionV20250501, err := clientV20250501.Get(ctx, *id)
+			if err != nil {
 				return fmt.Errorf("retrieving %s: %+v", id, err)
 			}
 
@@ -716,6 +735,13 @@ func (r FunctionAppFlexConsumptionResource) Read() sdk.ResourceFunc {
 				if err != nil {
 					return fmt.Errorf("retrieving Site Config for %s: %+v", id, err)
 				}
+
+				if modelV20250501 := functionAppFlexConsumptionV20250501.Model; modelV20250501 != nil && modelV20250501.Properties != nil {
+					if faConfig := modelV20250501.Properties.FunctionAppConfig; faConfig != nil && faConfig.SiteUpdateStrategy != nil {
+						siteConfig.SiteUpdateStrategy = string(pointer.From(faConfig.SiteUpdateStrategy.Type))
+					}
+				}
+
 				state.SiteConfig = []helpers.SiteConfigFunctionAppFlexConsumption{*siteConfig}
 
 				if functionAppConfig := props.FunctionAppConfig; functionAppConfig != nil {
@@ -802,6 +828,7 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 			}
 
 			client := metadata.Client.AppService.WebAppsClient
+			clientV20250501 := metadata.Client.AppService.WebAppsClientV20250501
 			id, err := commonids.ParseFunctionAppID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
@@ -979,7 +1006,25 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 				model.Properties.HTTPSOnly = pointer.To(state.HttpsOnly)
 			}
 
-			if err := client.CreateOrUpdateThenPoll(ctx, *id, model); err != nil {
+			modelV20250501, err := bridgeSiteToV20250501(model)
+			if err != nil {
+				return fmt.Errorf("preparing %s for update: %+v", id, err)
+			}
+
+			if metadata.ResourceData.HasChange("site_config.0.site_update_strategy") {
+				if modelV20250501.Properties.FunctionAppConfig == nil {
+					modelV20250501.Properties.FunctionAppConfig = &webapps20250501.FunctionAppConfig{}
+				}
+				if siteUpdateStrategy := state.SiteConfig[0].SiteUpdateStrategy; siteUpdateStrategy != "" {
+					modelV20250501.Properties.FunctionAppConfig.SiteUpdateStrategy = &webapps20250501.FunctionsSiteUpdateStrategy{
+						Type: pointer.ToEnum[webapps20250501.SiteUpdateStrategyType](siteUpdateStrategy),
+					}
+				} else {
+					modelV20250501.Properties.FunctionAppConfig.SiteUpdateStrategy = nil
+				}
+			}
+
+			if err := clientV20250501.CreateOrUpdateThenPoll(ctx, *id, *modelV20250501); err != nil {
 				return fmt.Errorf("updating %s: %+v", id, err)
 			}
 

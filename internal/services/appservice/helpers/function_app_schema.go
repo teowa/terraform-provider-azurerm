@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/apimanagement/2022-08-01/api"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	webapps20250501 "github.com/hashicorp/go-azure-sdk/resource-manager/web/2025-05-01/webapps"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
@@ -572,6 +573,7 @@ type SiteConfigFunctionAppFlexConsumption struct {
 	Cors                          []CorsSetting               `tfschema:"cors"`
 	DetailedErrorLogging          bool                        `tfschema:"detailed_error_logging_enabled"`
 	VnetRouteAllEnabled           bool                        `tfschema:"vnet_route_all_enabled"`
+	SiteUpdateStrategy            string                      `tfschema:"site_update_strategy"`
 }
 
 func SiteConfigSchemaFunctionAppFlexConsumption() *pluginsdk.Schema {
@@ -806,6 +808,14 @@ func SiteConfigSchemaFunctionAppFlexConsumption() *pluginsdk.Schema {
 					Type:        pluginsdk.TypeBool,
 					Computed:    true,
 					Description: "Is detailed error logging enabled",
+				},
+
+				"site_update_strategy": {
+					Type:     pluginsdk.TypeString,
+					Optional: true,
+					// NOTE: O+C - this defaults to a service-determined value when not set by the user
+					Computed:     true,
+					ValidateFunc: validation.StringInSlice(webapps20250501.PossibleValuesForSiteUpdateStrategyType(), false),
 				},
 			},
 		},
