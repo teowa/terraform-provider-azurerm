@@ -11,15 +11,17 @@ import (
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-01-01/staticsites"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/appserviceplans"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	webapps20250501 "github.com/hashicorp/go-azure-sdk/resource-manager/web/2025-05-01/webapps"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/common"
 )
 
 type Client struct {
-	AppServiceEnvironmentClient *appserviceenvironments.AppServiceEnvironmentsClient
-	ResourceProvidersClient     *resourceproviders.ResourceProvidersClient
-	ServicePlanClient           *appserviceplans.AppServicePlansClient
-	StaticSitesClient           *staticsites.StaticSitesClient
-	WebAppsClient               *webapps.WebAppsClient
+	AppServiceEnvironmentClient  *appserviceenvironments.AppServiceEnvironmentsClient
+	ResourceProvidersClient      *resourceproviders.ResourceProvidersClient
+	ServicePlanClient            *appserviceplans.AppServicePlansClient
+	StaticSitesClient            *staticsites.StaticSitesClient
+	WebAppsClient                *webapps.WebAppsClient
+	FlexConsumptionWebAppsClient *webapps20250501.WebAppsClient
 }
 
 func NewClient(o *common.ClientOptions) (*Client, error) {
@@ -34,6 +36,12 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 		return nil, fmt.Errorf("building WebApps client: %+v", err)
 	}
 	o.Configure(webAppServiceClient.Client, o.Authorizers.ResourceManager)
+
+	flexConsumptionWebAppsClient, err := webapps20250501.NewWebAppsClientWithBaseURI(o.Environment.ResourceManager)
+	if err != nil {
+		return nil, fmt.Errorf("building Flex Consumption WebApps client: %+v", err)
+	}
+	o.Configure(flexConsumptionWebAppsClient.Client, o.Authorizers.ResourceManager)
 
 	resourceProvidersClient, err := resourceproviders.NewResourceProvidersClientWithBaseURI(o.Environment.ResourceManager)
 	if err != nil {
@@ -54,10 +62,11 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 	o.Configure(servicePlanClient.Client, o.Authorizers.ResourceManager)
 
 	return &Client{
-		AppServiceEnvironmentClient: appServiceEnvironmentClient,
-		ResourceProvidersClient:     resourceProvidersClient,
-		ServicePlanClient:           servicePlanClient,
-		StaticSitesClient:           staticSitesClient,
-		WebAppsClient:               webAppServiceClient,
+		AppServiceEnvironmentClient:  appServiceEnvironmentClient,
+		ResourceProvidersClient:      resourceProvidersClient,
+		ServicePlanClient:            servicePlanClient,
+		StaticSitesClient:            staticSitesClient,
+		WebAppsClient:                webAppServiceClient,
+		FlexConsumptionWebAppsClient: flexConsumptionWebAppsClient,
 	}, nil
 }

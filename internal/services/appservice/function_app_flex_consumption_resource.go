@@ -5,7 +5,9 @@ package appservice
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 	"time"
@@ -17,7 +19,8 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/identity"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-01-01/resourceproviders"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	webapps20231201 "github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2025-05-01/webapps"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/locks"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appservice/helpers"
@@ -64,6 +67,7 @@ type FunctionAppFlexConsumptionModel struct {
 	MaximumInstanceCount          int64                                          `tfschema:"maximum_instance_count"`
 	InstanceMemoryInMB            int64                                          `tfschema:"instance_memory_in_mb"`
 	HttpConcurrency               int64                                          `tfschema:"http_concurrency"`
+	SiteUpdateStrategy            string                                         `tfschema:"site_update_strategy"`
 	AlwaysReady                   []FunctionAppAlwaysReady                       `tfschema:"always_ready"`
 	SiteConfig                    []helpers.SiteConfigFunctionAppFlexConsumption `tfschema:"site_config"`
 	Identity                      []identity.ModelSystemAssignedUserAssigned     `tfschema:"identity"`
@@ -195,6 +199,14 @@ func (r FunctionAppFlexConsumptionResource) Arguments() map[string]*pluginsdk.Sc
 			Type:         pluginsdk.TypeInt,
 			Optional:     true,
 			ValidateFunc: validation.IntBetween(1, 1000),
+		},
+
+		"site_update_strategy": {
+			Type:         pluginsdk.TypeString,
+			Optional:     true,
+			Computed:     true,
+			ValidateFunc: validation.StringInSlice(webapps.PossibleValuesForSiteUpdateStrategyType(), false),
+			Description:  "The strategy to use when performing an update to the Function App. Possible values are `Recreate` and `RollingUpdate`.",
 		},
 
 		// the name is always being lower-cased by the api: https://github.com/Azure/azure-rest-api-specs/issues/33095
@@ -366,7 +378,7 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.AppService.WebAppsClient
+			client := metadata.Client.AppService.FlexConsumptionWebAppsClient
 			resourcesClient := metadata.Client.AppService.ResourceProvidersClient
 			servicePlanClient := metadata.Client.AppService.ServicePlanClient
 			subscriptionId := metadata.Client.Account.SubscriptionId
@@ -502,12 +514,23 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 				ScaleAndConcurrency: &scaleAndConcurrencyConfig,
 			}
 
-			siteConfig, err := helpers.ExpandSiteConfigFunctionFlexConsumptionApp(functionAppFlexConsumption.SiteConfig, nil, metadata, false, storageString, storageConnStringForFCApp)
+			if functionAppFlexConsumption.SiteUpdateStrategy != "" {
+				flexFunctionAppConfig.SiteUpdateStrategy = &webapps.FunctionsSiteUpdateStrategy{
+					Type: pointer.ToEnum[webapps.SiteUpdateStrategyType](functionAppFlexConsumption.SiteUpdateStrategy),
+				}
+			}
+
+			siteConfigOld, err := helpers.ExpandSiteConfigFunctionFlexConsumptionApp(functionAppFlexConsumption.SiteConfig, nil, metadata, false, storageString, storageConnStringForFCApp)
 			if err != nil {
 				return fmt.Errorf("expanding `site_config` for %s: %+v", id, err)
 			}
 
-			siteConfig.AppSettings = helpers.MergeUserAppSettings(siteConfig.AppSettings, functionAppFlexConsumption.AppSettings)
+			siteConfigOld.AppSettings = helpers.MergeUserAppSettings(siteConfigOld.AppSettings, functionAppFlexConsumption.AppSettings)
+
+			siteConfig, err := convertWebAppsType[webapps.SiteConfig](siteConfigOld)
+			if err != nil {
+				return fmt.Errorf("converting `site_config` for %s: %+v", id, err)
+			}
 
 			siteEnvelope := webapps.Site{
 				Location: location.Normalize(functionAppFlexConsumption.Location),
@@ -560,9 +583,13 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 				}
 			}
 
-			stickySettings := helpers.ExpandStickySettings(functionAppFlexConsumption.StickySettings)
+			stickySettingsOld := helpers.ExpandStickySettings(functionAppFlexConsumption.StickySettings)
 
-			if stickySettings != nil {
+			if stickySettingsOld != nil {
+				stickySettings, err := convertWebAppsType[webapps.SlotConfigNames](stickySettingsOld)
+				if err != nil {
+					return fmt.Errorf("converting Sticky Settings for %s: %+v", id, err)
+				}
 				stickySettingsUpdate := webapps.SlotConfigNamesResource{
 					Properties: stickySettings,
 				}
@@ -571,29 +598,41 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 				}
 			}
 
-			auth := helpers.ExpandAuthSettings(functionAppFlexConsumption.AuthSettings)
-			if auth.Properties != nil {
+			authOld := helpers.ExpandAuthSettings(functionAppFlexConsumption.AuthSettings)
+			if authOld.Properties != nil {
+				auth, err := convertWebAppsType[webapps.SiteAuthSettings](authOld)
+				if err != nil {
+					return fmt.Errorf("converting Authorisation Settings for %s: %+v", id, err)
+				}
 				if _, err := client.UpdateAuthSettings(ctx, id, *auth); err != nil {
 					return fmt.Errorf("setting Authorisation Settings for %s: %+v", id, err)
 				}
 			}
 
-			authv2 := helpers.ExpandAuthV2Settings(functionAppFlexConsumption.AuthV2Settings)
-			if authv2.Properties != nil {
+			authv2Old := helpers.ExpandAuthV2Settings(functionAppFlexConsumption.AuthV2Settings)
+			if authv2Old.Properties != nil {
+				authv2, err := convertWebAppsType[webapps.SiteAuthSettingsV2](authv2Old)
+				if err != nil {
+					return fmt.Errorf("converting AuthV2 settings for %s: %+v", id, err)
+				}
 				if _, err = client.UpdateAuthSettingsV2(ctx, id, *authv2); err != nil {
 					return fmt.Errorf("updating AuthV2 settings for %s: %+v", id, err)
 				}
 			}
 
-			connectionStrings := helpers.ExpandConnectionStrings(functionAppFlexConsumption.ConnectionStrings)
-			if connectionStrings.Properties != nil {
+			connectionStringsOld := helpers.ExpandConnectionStrings(functionAppFlexConsumption.ConnectionStrings)
+			if connectionStringsOld.Properties != nil {
+				connectionStrings, err := convertWebAppsType[webapps.ConnectionStringDictionary](connectionStringsOld)
+				if err != nil {
+					return fmt.Errorf("converting Connection Strings for %s: %+v", id, err)
+				}
 				if _, err := client.UpdateConnectionStrings(ctx, id, *connectionStrings); err != nil {
 					return fmt.Errorf("setting Connection Strings for %s: %+v", id, err)
 				}
 			}
 
 			if functionAppFlexConsumption.ZipDeployFile != "" {
-				if err = helpers.GetCredentialsAndPublish(ctx, client, id, functionAppFlexConsumption.ZipDeployFile); err != nil {
+				if err = getFlexConsumptionCredentialsAndPublish(ctx, client, id, functionAppFlexConsumption.ZipDeployFile); err != nil {
 					return err
 				}
 			}
@@ -606,7 +645,7 @@ func (r FunctionAppFlexConsumptionResource) Read() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 5 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.AppService.WebAppsClient
+			client := metadata.Client.AppService.FlexConsumptionWebAppsClient
 			id, err := commonids.ParseFunctionAppID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
@@ -634,9 +673,13 @@ func (r FunctionAppFlexConsumptionResource) Read() sdk.ResourceFunc {
 				return fmt.Errorf("retrieving Sticky Settings for %s: %+v", id, err)
 			}
 
-			siteCredentials, err := helpers.ListPublishingCredentials(ctx, client, *id)
+			siteCredentialsNew, err := getFlexConsumptionPublishingCredentials(ctx, client, *id)
 			if err != nil {
 				return fmt.Errorf("listing Site Publishing Credential information for %s: %+v", *id, err)
+			}
+			siteCredentialsOld, err := convertWebAppsType[webapps20231201.User](siteCredentialsNew)
+			if err != nil {
+				return fmt.Errorf("converting Site Publishing Credential information for %s: %+v", *id, err)
 			}
 
 			auth, err := client.GetAuthSettings(ctx, *id)
@@ -668,15 +711,36 @@ func (r FunctionAppFlexConsumptionResource) Read() sdk.ResourceFunc {
 			if err != nil {
 				return fmt.Errorf("flattening `identity`: %+v", err)
 			}
+
+			connectionStringsOld, err := convertWebAppsType[webapps20231201.ConnectionStringDictionary](connectionStrings.Model)
+			if err != nil {
+				return fmt.Errorf("converting Connection String information for %s: %+v", id, err)
+			}
+
+			stickySettingsOld, err := convertWebAppsType[webapps20231201.SlotConfigNames](stickySettings.Model.Properties)
+			if err != nil {
+				return fmt.Errorf("converting Sticky Settings for %s: %+v", id, err)
+			}
+
+			authOld, err := convertWebAppsType[webapps20231201.SiteAuthSettings](auth.Model)
+			if err != nil {
+				return fmt.Errorf("converting Auth Settings for %s: %+v", id, err)
+			}
+
+			authV2Old, err := convertWebAppsType[webapps20231201.SiteAuthSettingsV2](authV2)
+			if err != nil {
+				return fmt.Errorf("converting AuthV2 Settings for %s: %+v", id, err)
+			}
+
 			state := FunctionAppFlexConsumptionModel{
 				Name:                             id.SiteName,
 				ResourceGroup:                    id.ResourceGroupName,
 				Location:                         location.Normalize(model.Location),
-				ConnectionStrings:                helpers.FlattenConnectionStrings(connectionStrings.Model),
-				StickySettings:                   helpers.FlattenStickySettings(stickySettings.Model.Properties),
-				SiteCredentials:                  helpers.FlattenSiteCredentials(siteCredentials),
-				AuthSettings:                     helpers.FlattenAuthSettings(auth.Model),
-				AuthV2Settings:                   helpers.FlattenAuthV2Settings(authV2),
+				ConnectionStrings:                helpers.FlattenConnectionStrings(connectionStringsOld),
+				StickySettings:                   helpers.FlattenStickySettings(stickySettingsOld),
+				SiteCredentials:                  helpers.FlattenSiteCredentials(siteCredentialsOld),
+				AuthSettings:                     helpers.FlattenAuthSettings(authOld),
+				AuthV2Settings:                   helpers.FlattenAuthV2Settings(*authV2Old),
 				PublishingDeployBasicAuthEnabled: basicAuthWebDeploy,
 				Tags:                             pointer.From(model.Tags),
 				Kind:                             pointer.From(model.Kind),
@@ -712,7 +776,12 @@ func (r FunctionAppFlexConsumptionResource) Read() sdk.ResourceFunc {
 					return fmt.Errorf("retrieving Function App Configuration %q: %+v", id.SiteName, err)
 				}
 
-				siteConfig, err := helpers.FlattenSiteConfigFunctionAppFlexConsumption(configResp.Model.Properties)
+				configPropsOld, err := convertWebAppsType[webapps20231201.SiteConfig](configResp.Model.Properties)
+				if err != nil {
+					return fmt.Errorf("converting Site Config for %s: %+v", id, err)
+				}
+
+				siteConfig, err := helpers.FlattenSiteConfigFunctionAppFlexConsumption(configPropsOld)
 				if err != nil {
 					return fmt.Errorf("retrieving Site Config for %s: %+v", id, err)
 				}
@@ -744,6 +813,10 @@ func (r FunctionAppFlexConsumptionResource) Read() sdk.ResourceFunc {
 							state.HttpConcurrency = pointer.From(faConfigScale.Triggers.HTTP.PerInstanceConcurrency)
 						}
 					}
+
+					if faConfigSiteUpdateStrategy := functionAppConfig.SiteUpdateStrategy; faConfigSiteUpdateStrategy != nil {
+						state.SiteUpdateStrategy = string(pointer.From(faConfigSiteUpdateStrategy.Type))
+					}
 				}
 
 				state.unpackFunctionAppFlexConsumptionSettings(*appSettingsResp.Model)
@@ -774,7 +847,7 @@ func (r FunctionAppFlexConsumptionResource) Delete() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.AppService.WebAppsClient
+			client := metadata.Client.AppService.FlexConsumptionWebAppsClient
 			id, err := commonids.ParseFunctionAppID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
@@ -801,7 +874,7 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 				return fmt.Errorf("could not determine Storage domain suffix for environment %q", metadata.Client.Account.Environment.Name)
 			}
 
-			client := metadata.Client.AppService.WebAppsClient
+			client := metadata.Client.AppService.FlexConsumptionWebAppsClient
 			id, err := commonids.ParseFunctionAppID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
@@ -910,9 +983,18 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 			}
 
 			// Note: We process this regardless to give us a "clean" view of service-side app_settings, so we can reconcile the user-defined entries later
-			siteConfig, err := helpers.ExpandSiteConfigFunctionFlexConsumptionApp(state.SiteConfig, model.Properties.SiteConfig, metadata, false, storageString, storageConnStringForFCApp)
+			existingSiteConfigOld, err := convertWebAppsType[webapps20231201.SiteConfig](model.Properties.SiteConfig)
+			if err != nil {
+				return fmt.Errorf("converting existing Site Config for %s: %+v", id, err)
+			}
+			siteConfigOld, err := helpers.ExpandSiteConfigFunctionFlexConsumptionApp(state.SiteConfig, existingSiteConfigOld, metadata, false, storageString, storageConnStringForFCApp)
 			if err != nil {
 				return fmt.Errorf("expanding Site Config for %s: %+v", id, err)
+			}
+
+			siteConfig, err := convertWebAppsType[webapps.SiteConfig](siteConfigOld)
+			if err != nil {
+				return fmt.Errorf("converting Site Config for %s: %+v", id, err)
 			}
 
 			if metadata.ResourceData.HasChange("site_config") {
@@ -953,6 +1035,16 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 				}
 			}
 
+			if metadata.ResourceData.HasChange("site_update_strategy") {
+				if state.SiteUpdateStrategy != "" {
+					model.Properties.FunctionAppConfig.SiteUpdateStrategy = &webapps.FunctionsSiteUpdateStrategy{
+						Type: pointer.ToEnum[webapps.SiteUpdateStrategyType](state.SiteUpdateStrategy),
+					}
+				} else {
+					model.Properties.FunctionAppConfig.SiteUpdateStrategy = nil
+				}
+			}
+
 			if metadata.ResourceData.HasChange("runtime_name") {
 				runtimeName := webapps.RuntimeName(state.RuntimeName)
 				model.Properties.FunctionAppConfig.Runtime.Name = pointer.To(runtimeName)
@@ -962,7 +1054,12 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 				model.Properties.FunctionAppConfig.Runtime.Version = pointer.To(state.RuntimeVersion)
 			}
 
-			model.Properties.SiteConfig.AppSettings = helpers.MergeUserAppSettings(siteConfig.AppSettings, state.AppSettings)
+			mergedAppSettingsOld := helpers.MergeUserAppSettings(siteConfigOld.AppSettings, state.AppSettings)
+			mergedAppSettings, err := convertWebAppsType[[]webapps.NameValuePair](mergedAppSettingsOld)
+			if err != nil {
+				return fmt.Errorf("converting App Settings for %s: %+v", id, err)
+			}
+			model.Properties.SiteConfig.AppSettings = mergedAppSettings
 
 			if metadata.ResourceData.HasChange("public_network_access_enabled") {
 				pna := helpers.PublicNetworkAccessEnabled
@@ -999,9 +1096,13 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("connection_string") {
-				connectionStringUpdate := helpers.ExpandConnectionStrings(state.ConnectionStrings)
-				if connectionStringUpdate.Properties == nil {
-					connectionStringUpdate.Properties = pointer.To(map[string]webapps.ConnStringValueTypePair{})
+				connectionStringUpdateOld := helpers.ExpandConnectionStrings(state.ConnectionStrings)
+				if connectionStringUpdateOld.Properties == nil {
+					connectionStringUpdateOld.Properties = pointer.To(map[string]webapps20231201.ConnStringValueTypePair{})
+				}
+				connectionStringUpdate, err := convertWebAppsType[webapps.ConnectionStringDictionary](connectionStringUpdateOld)
+				if err != nil {
+					return fmt.Errorf("converting Connection Strings for %s: %+v", id, err)
 				}
 				if _, err := client.UpdateConnectionStrings(ctx, *id, *connectionStringUpdate); err != nil {
 					return fmt.Errorf("updating Connection Strings for %s: %+v", id, err)
@@ -1010,7 +1111,7 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 
 			if metadata.ResourceData.HasChange("sticky_settings") {
 				emptySlice := make([]string, 0)
-				stickySettings := helpers.ExpandStickySettings(state.StickySettings)
+				stickySettingsOld := helpers.ExpandStickySettings(state.StickySettings)
 				stickySettingsUpdate := webapps.SlotConfigNamesResource{
 					Properties: &webapps.SlotConfigNames{
 						AppSettingNames:       &emptySlice,
@@ -1018,12 +1119,12 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 					},
 				}
 
-				if stickySettings != nil {
-					if stickySettings.AppSettingNames != nil {
-						stickySettingsUpdate.Properties.AppSettingNames = stickySettings.AppSettingNames
+				if stickySettingsOld != nil {
+					if stickySettingsOld.AppSettingNames != nil {
+						stickySettingsUpdate.Properties.AppSettingNames = stickySettingsOld.AppSettingNames
 					}
-					if stickySettings.ConnectionStringNames != nil {
-						stickySettingsUpdate.Properties.ConnectionStringNames = stickySettings.ConnectionStringNames
+					if stickySettingsOld.ConnectionStringNames != nil {
+						stickySettingsUpdate.Properties.ConnectionStringNames = stickySettingsOld.ConnectionStringNames
 					}
 				}
 
@@ -1033,10 +1134,14 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("auth_settings") {
-				authUpdate := helpers.ExpandAuthSettings(state.AuthSettings)
+				authUpdateOld := helpers.ExpandAuthSettings(state.AuthSettings)
 				// (@jackofallops) - in the case of a removal of this block, we need to zero these settings
-				if authUpdate.Properties == nil {
-					authUpdate.Properties = helpers.DefaultAuthSettingsProperties()
+				if authUpdateOld.Properties == nil {
+					authUpdateOld.Properties = helpers.DefaultAuthSettingsProperties()
+				}
+				authUpdate, err := convertWebAppsType[webapps.SiteAuthSettings](authUpdateOld)
+				if err != nil {
+					return fmt.Errorf("converting Auth Settings for %s: %+v", id, err)
 				}
 				if _, err := client.UpdateAuthSettings(ctx, *id, *authUpdate); err != nil {
 					return fmt.Errorf("updating Auth Settings for %s: %+v", id, err)
@@ -1044,10 +1149,14 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("auth_settings_v2") {
-				authV2Update := helpers.ExpandAuthV2Settings(state.AuthV2Settings)
+				authV2UpdateOld := helpers.ExpandAuthV2Settings(state.AuthV2Settings)
 				// (@toddgiguere) - in the case of a removal of this block, we need to zero these settings
-				if authV2Update.Properties == nil {
-					authV2Update.Properties = helpers.DefaultAuthV2SettingsProperties()
+				if authV2UpdateOld.Properties == nil {
+					authV2UpdateOld.Properties = helpers.DefaultAuthV2SettingsProperties()
+				}
+				authV2Update, err := convertWebAppsType[webapps.SiteAuthSettingsV2](authV2UpdateOld)
+				if err != nil {
+					return fmt.Errorf("converting AuthV2 Settings for %s: %+v", id, err)
 				}
 				if _, err := client.UpdateAuthSettingsV2(ctx, *id, *authV2Update); err != nil {
 					return fmt.Errorf("updating AuthV2 Settings for %s: %+v", id, err)
@@ -1055,14 +1164,18 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("site_config.0.app_service_logs") {
-				appServiceLogs := helpers.ExpandFunctionAppAppServiceLogs(state.SiteConfig[0].AppServiceLogs)
-				if _, err := client.UpdateDiagnosticLogsConfig(ctx, *id, appServiceLogs); err != nil {
+				appServiceLogsOld := helpers.ExpandFunctionAppAppServiceLogs(state.SiteConfig[0].AppServiceLogs)
+				appServiceLogs, err := convertWebAppsType[webapps.SiteLogsConfig](appServiceLogsOld)
+				if err != nil {
+					return fmt.Errorf("converting App Service Log Settings for %s: %+v", id, err)
+				}
+				if _, err := client.UpdateDiagnosticLogsConfig(ctx, *id, *appServiceLogs); err != nil {
 					return fmt.Errorf("updating App Service Log Settings for %s: %+v", id, err)
 				}
 			}
 
 			if metadata.ResourceData.HasChange("zip_deploy_file") {
-				if err = helpers.GetCredentialsAndPublish(ctx, client, *id, state.ZipDeployFile); err != nil {
+				if err = getFlexConsumptionCredentialsAndPublish(ctx, client, *id, state.ZipDeployFile); err != nil {
 					return err
 				}
 			}
@@ -1140,4 +1253,93 @@ func FlattenAlwaysReadyConfiguration(alwaysReady *[]webapps.FunctionsAlwaysReady
 	}
 
 	return alwaysReadyList
+}
+
+// convertWebAppsType converts between the 2023-12-01 and 2025-05-01 `webapps` SDK package types that are used by
+// this resource. The Flex Consumption resource uses the newer `webapps` client to support the `site_update_strategy`
+// property, whilst most of the App Service package's shared helpers remain typed against the older client. Since
+// both packages are wire-compatible for the fields this resource relies on, this converts via a JSON round-trip.
+func convertWebAppsType[TOut any, TIn any](input TIn) (*TOut, error) {
+	data, err := json.Marshal(input)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling %T: %+v", input, err)
+	}
+
+	var output TOut
+	if err := json.Unmarshal(data, &output); err != nil {
+		return nil, fmt.Errorf("unmarshaling into %T: %+v", output, err)
+	}
+
+	return &output, nil
+}
+
+// getFlexConsumptionPublishingCredentials is a Flex Consumption specific (2025-05-01) equivalent of
+// helpers.ListPublishingCredentials, which is typed against the shared (2023-12-01) `webapps.WebAppsClient`.
+func getFlexConsumptionPublishingCredentials(ctx context.Context, client *webapps.WebAppsClient, id commonids.AppServiceId) (*webapps.User, error) {
+	userModel := &webapps.User{}
+
+	siteCredentials, err := client.ListPublishingCredentials(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("listing Site Publishing Credential information for %s: %+v", id, err)
+	}
+
+	// The credentials are regenerated at some point in the creation process, the initial response is not the final
+	// value. The final result error is populated on success as a 404, so we're ignoring it here since this is a R/O
+	// pair of properties
+	_ = siteCredentials.Poller.PollUntilDone(ctx)
+	siteCredentials, err = client.ListPublishingCredentials(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("listing Site Publishing Credential information for %s: %+v", id, err)
+	}
+
+	if siteCredentials.HttpResponse != nil {
+		bytes, err := io.ReadAll(siteCredentials.HttpResponse.Body)
+		if err != nil {
+			return nil, fmt.Errorf("could not decode Publishing Credential information for %s: %+v", id, err)
+		}
+		if err := json.Unmarshal(bytes, userModel); err != nil {
+			return nil, fmt.Errorf("could not decode Publishing Credential information for %s: %+v", id, err)
+		}
+	}
+
+	return userModel, nil
+}
+
+// getFlexConsumptionCredentialsAndPublish is a Flex Consumption specific (2025-05-01) equivalent of
+// helpers.GetCredentialsAndPublish, which is typed against the shared (2023-12-01) `webapps.WebAppsClient`.
+func getFlexConsumptionCredentialsAndPublish(ctx context.Context, client *webapps.WebAppsClient, appID commonids.AppServiceId, sourceFile string) error {
+	site, err := client.Get(ctx, appID)
+	if err != nil || site.Model == nil {
+		return fmt.Errorf("reading site %s to perform zip deploy: %+v", appID.SiteName, err)
+	}
+	props := *site.Model.Properties
+	if sslStates := props.HostNameSslStates; sslStates != nil {
+		for _, v := range *sslStates {
+			if v.Name != nil && *v.Name != "" && pointer.From(v.HostType) == webapps.HostTypeRepository {
+				siteCredentials, err := getFlexConsumptionPublishingCredentials(ctx, client, appID)
+				if err != nil {
+					return err
+				}
+				if siteCredentials.Properties == nil {
+					return fmt.Errorf("could not decode Publishing Credential information for %s", appID)
+				}
+				user := siteCredentials.Properties.PublishingUserName
+				passwd := siteCredentials.Properties.PublishingPassword
+				if passwd == nil {
+					return fmt.Errorf("could not decode Publishing Credential information for %s", appID)
+				}
+				httpsHost := fmt.Sprintf("https://%s", *v.Name)
+
+				if err := helpers.PublishZipDeployLocalFileKuduPush(ctx, httpsHost, user, *passwd, client.Client.UserAgent, sourceFile); err != nil {
+					return fmt.Errorf("publishing source (%s) to site %s: %+v", sourceFile, appID, err)
+				}
+
+				continue
+			}
+		}
+	} else {
+		return fmt.Errorf("could not determine SCM Site name for Site %s for Zip Deployment", appID)
+	}
+
+	return nil
 }
