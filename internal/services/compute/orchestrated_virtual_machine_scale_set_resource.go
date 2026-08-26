@@ -157,6 +157,8 @@ func resourceOrchestratedVirtualMachineScaleSet() *pluginsdk.Resource {
 			// identical for both uniform and flex mode VMSS's
 			"automatic_instance_repair": VirtualMachineScaleSetAutomaticRepairsPolicySchema(),
 
+			"resiliency_policy": OrchestratedVirtualMachineScaleSetResiliencyPolicySchema(),
+
 			"boot_diagnostics": bootDiagnosticsSchema(),
 
 			"capacity_reservation_group_id": {
@@ -843,6 +845,10 @@ func resourceOrchestratedVirtualMachineScaleSetCreate(d *pluginsdk.ResourceData,
 			props.Properties.PriorityMixPolicy = ExpandOrchestratedVirtualMachineScaleSetPriorityMixPolicy(v.([]interface{}))
 		}
 
+		if v, ok := d.GetOk("resiliency_policy"); ok {
+			props.Properties.ResiliencyPolicy = ExpandOrchestratedVirtualMachineScaleSetResiliencyPolicy(v.([]interface{}))
+		}
+
 		props.Properties.VirtualMachineProfile = &virtualMachineProfile
 	}
 
@@ -1219,6 +1225,10 @@ func resourceOrchestratedVirtualMachineScaleSetUpdate(d *pluginsdk.ResourceData,
 			updateProps.AutomaticRepairsPolicy = automaticRepairsPolicy
 		}
 
+		if d.HasChange("resiliency_policy") {
+			updateProps.ResiliencyPolicy = ExpandOrchestratedVirtualMachineScaleSetResiliencyPolicy(d.Get("resiliency_policy").([]interface{}))
+		}
+
 		if d.HasChange("identity") {
 			identityExpanded, err := identity.ExpandSystemAndUserAssignedMap(d.Get("identity").([]interface{}))
 			if err != nil {
@@ -1550,6 +1560,10 @@ func resourceOrchestratedVirtualMachineScaleSetRead(d *pluginsdk.ResourceData, m
 				if err := d.Set("priority_mix", FlattenOrchestratedVirtualMachineScaleSetPriorityMixPolicy(priorityMixPolicy)); err != nil {
 					return fmt.Errorf("setting `priority_mix`: %w", err)
 				}
+			}
+
+			if err := d.Set("resiliency_policy", FlattenOrchestratedVirtualMachineScaleSetResiliencyPolicy(props.ResiliencyPolicy)); err != nil {
+				return fmt.Errorf("setting `resiliency_policy`: %w", err)
 			}
 
 			d.Set("extension_operations_enabled", extensionOperationsEnabled)

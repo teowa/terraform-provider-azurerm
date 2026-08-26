@@ -729,6 +729,116 @@ func OrchestratedVirtualMachineScaleSetTerminationNotificationSchema() *pluginsd
 	}
 }
 
+func OrchestratedVirtualMachineScaleSetResiliencyPolicySchema() *pluginsdk.Schema {
+	return &pluginsdk.Schema{
+		Type:     pluginsdk.TypeList,
+		Optional: true,
+		// NOTE: O+C - the API returns a default resiliency policy when this is not configured
+		Computed: true,
+		MaxItems: 1,
+		Elem: &pluginsdk.Resource{
+			Schema: map[string]*pluginsdk.Schema{
+				"automatic_zone_rebalancing_policy": {
+					Type:     pluginsdk.TypeList,
+					Optional: true,
+					// NOTE: O+C - the API returns a default automatic zone rebalancing policy when this is not configured
+					Computed: true,
+					MaxItems: 1,
+					Elem: &pluginsdk.Resource{
+						Schema: map[string]*pluginsdk.Schema{
+							"enabled": {
+								Type:     pluginsdk.TypeBool,
+								Optional: true,
+							},
+
+							"rebalance_behavior": {
+								Type:     pluginsdk.TypeString,
+								Optional: true,
+								ValidateFunc: validation.StringInSlice(
+									virtualmachinescalesets.PossibleValuesForRebalanceBehavior(),
+									false,
+								),
+							},
+
+							"rebalance_strategy": {
+								Type:     pluginsdk.TypeString,
+								Optional: true,
+								ValidateFunc: validation.StringInSlice(
+									virtualmachinescalesets.PossibleValuesForRebalanceStrategy(),
+									false,
+								),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func ExpandOrchestratedVirtualMachineScaleSetResiliencyPolicy(input []interface{}) *virtualmachinescalesets.ResiliencyPolicy {
+	if len(input) == 0 || input[0] == nil {
+		return nil
+	}
+
+	raw := input[0].(map[string]interface{})
+
+	result := virtualmachinescalesets.ResiliencyPolicy{}
+
+	automaticZoneRebalancingPolicyRaw := raw["automatic_zone_rebalancing_policy"].([]interface{})
+	if len(automaticZoneRebalancingPolicyRaw) > 0 && automaticZoneRebalancingPolicyRaw[0] != nil {
+		policyRaw := automaticZoneRebalancingPolicyRaw[0].(map[string]interface{})
+
+		policy := virtualmachinescalesets.AutomaticZoneRebalancingPolicy{
+			Enabled: pointer.To(policyRaw["enabled"].(bool)),
+		}
+
+		if v := policyRaw["rebalance_behavior"].(string); v != "" {
+			policy.RebalanceBehavior = pointer.ToEnum[virtualmachinescalesets.RebalanceBehavior](v)
+		}
+
+		if v := policyRaw["rebalance_strategy"].(string); v != "" {
+			policy.RebalanceStrategy = pointer.ToEnum[virtualmachinescalesets.RebalanceStrategy](v)
+		}
+
+		result.AutomaticZoneRebalancingPolicy = &policy
+	}
+
+	return &result
+}
+
+func FlattenOrchestratedVirtualMachineScaleSetResiliencyPolicy(input *virtualmachinescalesets.ResiliencyPolicy) []interface{} {
+	if input == nil || input.AutomaticZoneRebalancingPolicy == nil {
+		return []interface{}{}
+	}
+
+	automaticZoneRebalancingPolicy := input.AutomaticZoneRebalancingPolicy
+
+	enabled := pointer.From(automaticZoneRebalancingPolicy.Enabled)
+
+	rebalanceBehavior := ""
+	if automaticZoneRebalancingPolicy.RebalanceBehavior != nil {
+		rebalanceBehavior = string(*automaticZoneRebalancingPolicy.RebalanceBehavior)
+	}
+
+	rebalanceStrategy := ""
+	if automaticZoneRebalancingPolicy.RebalanceStrategy != nil {
+		rebalanceStrategy = string(*automaticZoneRebalancingPolicy.RebalanceStrategy)
+	}
+
+	return []interface{}{
+		map[string]interface{}{
+			"automatic_zone_rebalancing_policy": []interface{}{
+				map[string]interface{}{
+					"enabled":            enabled,
+					"rebalance_behavior": rebalanceBehavior,
+					"rebalance_strategy": rebalanceStrategy,
+				},
+			},
+		},
+	}
+}
+
 func OrchestratedVirtualMachineScaleSetPriorityMixPolicySchema() *pluginsdk.Schema {
 	return &pluginsdk.Schema{
 		Type:     pluginsdk.TypeList,

@@ -104,6 +104,8 @@ The following arguments are supported:
 
 * `proximity_placement_group_id` - (Optional) The ID of the Proximity Placement Group which the Virtual Machine should be assigned to. Changing this forces a new resource to be created.
 
+* `resiliency_policy` - (Optional) A `resiliency_policy` block as defined below.
+
 * `rolling_upgrade_policy` - (Optional) A `rolling_upgrade_policy` block as defined below. Changing this forces a new resource to be created.
 
 ~> **Note:** `rolling_upgrade_policy` is required when `upgrade_mode` is set to `Rolling`, cannot be specified when `upgrade_mode` is set to `Manual`, and requires a valid application health extension when `upgrade_mode` is set to `Rolling`.
@@ -447,6 +449,22 @@ A `public_ip_address` block supports the following:
 -> **Note:** For more information about Public IP Address SKUs and their capabilities, please see the [product documentation](https://docs.microsoft.com/azure/virtual-network/ip-services/public-ip-addresses#sku).
 
 * `version` - (Optional) The Internet Protocol Version which should be used for this public IP address. Possible values are `IPv4` and `IPv6`. Defaults to `IPv4`. Changing this forces a new resource to be created.
+
+---
+
+A `resiliency_policy` block supports the following:
+
+* `automatic_zone_rebalancing_policy` - (Optional) An `automatic_zone_rebalancing_policy` block as defined below.
+
+---
+
+An `automatic_zone_rebalancing_policy` block supports the following:
+
+* `enabled` - (Optional) Should automatic zone rebalancing be enabled for this Virtual Machine Scale Set?
+
+* `rebalance_behavior` - (Optional) The behavior which should be used when rebalancing Virtual Machines across Availability Zones. The only possible value is `CreateBeforeDelete`.
+
+* `rebalance_strategy` - (Optional) The strategy which should be used for rebalancing Virtual Machines across Availability Zones. The only possible value is `Recreate`.
 
 ---
 
