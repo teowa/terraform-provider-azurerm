@@ -23,7 +23,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/zones"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2023-11-01/webapplicationfirewallpolicies"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/applicationgateways"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/applicationgateways"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
@@ -1459,6 +1459,14 @@ func resourceApplicationGateway() *pluginsdk.Resource {
 							ValidateFunc: validation.StringInSlice([]string{
 								string(applicationgateways.ApplicationGatewayClientRevocationOptionsOCSP),
 							}, false),
+						},
+
+						"verify_client_authentication_mode": {
+							Type:     pluginsdk.TypeString,
+							Optional: true,
+							// NOTE: O+C - this value is set by Azure when not specified in the configuration
+							Computed:     true,
+							ValidateFunc: validation.StringInSlice(applicationgateways.PossibleValuesForApplicationGatewayClientAuthVerificationModes(), false),
 						},
 
 						// lintignore:XS003
@@ -4534,13 +4542,19 @@ func expandApplicationGatewaySslProfiles(d *pluginsdk.ResourceData, gatewayID st
 			verifyClientCertificateRevocation = applicationgateways.ApplicationGatewayClientRevocationOptions(v["verify_client_certificate_revocation"].(string))
 		}
 
+		clientAuthConfiguration := &applicationgateways.ApplicationGatewayClientAuthConfiguration{
+			VerifyClientCertIssuerDN: pointer.To(v["verify_client_certificate_issuer_dn"].(bool)),
+			VerifyClientRevocation:   pointer.To(verifyClientCertificateRevocation),
+		}
+
+		if verifyClientAuthenticationMode := v["verify_client_authentication_mode"].(string); verifyClientAuthenticationMode != "" {
+			clientAuthConfiguration.VerifyClientAuthMode = pointer.ToEnum[applicationgateways.ApplicationGatewayClientAuthVerificationModes](verifyClientAuthenticationMode)
+		}
+
 		output := applicationgateways.ApplicationGatewaySslProfile{
 			Name: pointer.To(name),
 			Properties: &applicationgateways.ApplicationGatewaySslProfilePropertiesFormat{
-				ClientAuthConfiguration: &applicationgateways.ApplicationGatewayClientAuthConfiguration{
-					VerifyClientCertIssuerDN: pointer.To(v["verify_client_certificate_issuer_dn"].(bool)),
-					VerifyClientRevocation:   pointer.To(verifyClientCertificateRevocation),
-				},
+				ClientAuthConfiguration: clientAuthConfiguration,
 			},
 		}
 
@@ -4594,12 +4608,16 @@ func flattenApplicationGatewaySslProfiles(input *[]applicationgateways.Applicati
 
 		verifyClientCertIssuerDn := false
 		verifyClientCertificateRevocation := ""
+		verifyClientAuthenticationMode := ""
 
 		if props := v.Properties; props != nil {
 			if props.ClientAuthConfiguration != nil {
 				verifyClientCertIssuerDn = pointer.From(props.ClientAuthConfiguration.VerifyClientCertIssuerDN)
-				if *props.ClientAuthConfiguration.VerifyClientRevocation != applicationgateways.ApplicationGatewayClientRevocationOptionsNone {
-					verifyClientCertificateRevocation = string(pointer.From(props.ClientAuthConfiguration.VerifyClientRevocation))
+				if revocation := props.ClientAuthConfiguration.VerifyClientRevocation; revocation != nil && *revocation != applicationgateways.ApplicationGatewayClientRevocationOptionsNone {
+					verifyClientCertificateRevocation = string(*revocation)
+				}
+				if authMode := props.ClientAuthConfiguration.VerifyClientAuthMode; authMode != nil {
+					verifyClientAuthenticationMode = string(*authMode)
 				}
 			}
 
@@ -4621,6 +4639,7 @@ func flattenApplicationGatewaySslProfiles(input *[]applicationgateways.Applicati
 			output["trusted_client_certificate_names"] = trustedClientCertificateNames
 			output["verify_client_certificate_issuer_dn"] = verifyClientCertIssuerDn
 			output["verify_client_certificate_revocation"] = verifyClientCertificateRevocation
+			output["verify_client_authentication_mode"] = verifyClientAuthenticationMode
 		}
 
 		results = append(results, output)

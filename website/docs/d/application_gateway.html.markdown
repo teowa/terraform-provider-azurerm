@@ -543,6 +543,8 @@ A `ssl_profile` block exports the following:
 
 * `verify_client_certificate_revocation` - The method used to check client certificate revocation status.
 
+* `verify_client_authentication_mode` - The client authentication verification mode.
+
 * `ssl_policy` - a `ssl_policy` block as defined below.
 
 ---
