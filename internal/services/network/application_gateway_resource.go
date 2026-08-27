@@ -23,7 +23,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/zones"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2023-11-01/webapplicationfirewallpolicies"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/applicationgateways"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/applicationgateways"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
@@ -1457,7 +1457,17 @@ func resourceApplicationGateway() *pluginsdk.Resource {
 							Type:     pluginsdk.TypeString,
 							Optional: true,
 							ValidateFunc: validation.StringInSlice([]string{
+								string(applicationgateways.ApplicationGatewayClientRevocationOptionsNone),
 								string(applicationgateways.ApplicationGatewayClientRevocationOptionsOCSP),
+							}, false),
+						},
+
+						"verify_client_auth_mode": {
+							Type:     pluginsdk.TypeString,
+							Optional: true,
+							ValidateFunc: validation.StringInSlice([]string{
+								string(applicationgateways.ApplicationGatewayClientAuthVerificationModesPassthrough),
+								string(applicationgateways.ApplicationGatewayClientAuthVerificationModesStrict),
 							}, false),
 						},
 
@@ -4534,13 +4544,19 @@ func expandApplicationGatewaySslProfiles(d *pluginsdk.ResourceData, gatewayID st
 			verifyClientCertificateRevocation = applicationgateways.ApplicationGatewayClientRevocationOptions(v["verify_client_certificate_revocation"].(string))
 		}
 
+		clientAuthConfiguration := &applicationgateways.ApplicationGatewayClientAuthConfiguration{
+			VerifyClientCertIssuerDN: pointer.To(v["verify_client_certificate_issuer_dn"].(bool)),
+			VerifyClientRevocation:   pointer.To(verifyClientCertificateRevocation),
+		}
+
+		if verifyClientAuthMode := v["verify_client_auth_mode"].(string); verifyClientAuthMode != "" {
+			clientAuthConfiguration.VerifyClientAuthMode = pointer.To(applicationgateways.ApplicationGatewayClientAuthVerificationModes(verifyClientAuthMode))
+		}
+
 		output := applicationgateways.ApplicationGatewaySslProfile{
 			Name: pointer.To(name),
 			Properties: &applicationgateways.ApplicationGatewaySslProfilePropertiesFormat{
-				ClientAuthConfiguration: &applicationgateways.ApplicationGatewayClientAuthConfiguration{
-					VerifyClientCertIssuerDN: pointer.To(v["verify_client_certificate_issuer_dn"].(bool)),
-					VerifyClientRevocation:   pointer.To(verifyClientCertificateRevocation),
-				},
+				ClientAuthConfiguration: clientAuthConfiguration,
 			},
 		}
 
@@ -4594,12 +4610,16 @@ func flattenApplicationGatewaySslProfiles(input *[]applicationgateways.Applicati
 
 		verifyClientCertIssuerDn := false
 		verifyClientCertificateRevocation := ""
+		verifyClientAuthMode := ""
 
 		if props := v.Properties; props != nil {
 			if props.ClientAuthConfiguration != nil {
 				verifyClientCertIssuerDn = pointer.From(props.ClientAuthConfiguration.VerifyClientCertIssuerDN)
 				if *props.ClientAuthConfiguration.VerifyClientRevocation != applicationgateways.ApplicationGatewayClientRevocationOptionsNone {
 					verifyClientCertificateRevocation = string(pointer.From(props.ClientAuthConfiguration.VerifyClientRevocation))
+				}
+				if props.ClientAuthConfiguration.VerifyClientAuthMode != nil {
+					verifyClientAuthMode = string(*props.ClientAuthConfiguration.VerifyClientAuthMode)
 				}
 			}
 
@@ -4621,6 +4641,7 @@ func flattenApplicationGatewaySslProfiles(input *[]applicationgateways.Applicati
 			output["trusted_client_certificate_names"] = trustedClientCertificateNames
 			output["verify_client_certificate_issuer_dn"] = verifyClientCertIssuerDn
 			output["verify_client_certificate_revocation"] = verifyClientCertificateRevocation
+			output["verify_client_auth_mode"] = verifyClientAuthMode
 		}
 
 		results = append(results, output)
