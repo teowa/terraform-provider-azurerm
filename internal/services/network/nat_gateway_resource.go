@@ -11,11 +11,12 @@ import (
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
+	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/zones"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/natgateways"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/natgateways"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
@@ -112,6 +113,13 @@ func resourceNatGatewaySchema() map[string]*pluginsdk.Schema {
 			Computed: true,
 		},
 
+		"source_virtual_network_id": {
+			Type:         pluginsdk.TypeString,
+			Optional:     true,
+			ForceNew:     true,
+			ValidateFunc: commonids.ValidateVirtualNetworkID,
+		},
+
 		"tags": commonschema.Tags(),
 	}
 }
@@ -148,6 +156,12 @@ func resourceNatGatewayCreate(d *pluginsdk.ResourceData, meta interface{}) error
 			Name: pointer.ToEnum[natgateways.NatGatewaySkuName](d.Get("sku_name").(string)),
 		},
 		Tags: tags.Expand(d.Get("tags").(map[string]interface{})),
+	}
+
+	if v, ok := d.GetOk("source_virtual_network_id"); ok {
+		parameters.Properties.SourceVirtualNetwork = &natgateways.SubResource{
+			Id: pointer.To(v.(string)),
+		}
 	}
 
 	zones := zones.ExpandUntyped(d.Get("zones").(*schema.Set).List())
@@ -203,6 +217,7 @@ func resourceNatGatewayUpdate(d *pluginsdk.ResourceData, meta interface{}) error
 			IdleTimeoutInMinutes: props.IdleTimeoutInMinutes,
 			PublicIPAddresses:    props.PublicIPAddresses, // note: these can be managed via the separate resource
 			PublicIPPrefixes:     props.PublicIPPrefixes,
+			SourceVirtualNetwork: props.SourceVirtualNetwork,
 		},
 		Sku:   existing.Model.Sku,
 		Tags:  existing.Model.Tags,
@@ -268,6 +283,12 @@ func resourceNatGatewayFlatten(d *pluginsdk.ResourceData, id *natgateways.NatGat
 		if props := model.Properties; props != nil {
 			d.Set("idle_timeout_in_minutes", props.IdleTimeoutInMinutes)
 			d.Set("resource_guid", props.ResourceGuid)
+
+			sourceVirtualNetworkId := ""
+			if props.SourceVirtualNetwork != nil && props.SourceVirtualNetwork.Id != nil {
+				sourceVirtualNetworkId = *props.SourceVirtualNetwork.Id
+			}
+			d.Set("source_virtual_network_id", sourceVirtualNetworkId)
 		}
 		if err := tags.FlattenAndSet(d, model.Tags); err != nil {
 			return err

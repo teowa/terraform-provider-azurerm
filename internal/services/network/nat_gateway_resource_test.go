@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/natgateways"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/natgateways"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
@@ -84,6 +84,24 @@ func TestAccNatGateway_standardVTwo(t *testing.T) {
 			Config: r.standardVTwo(data),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
+func TestAccNatGateway_sourceVirtualNetwork(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_nat_gateway", "test")
+	r := NatGatewayResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.sourceVirtualNetwork(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("source_virtual_network_id").MatchesOtherKey(
+					check.That("azurerm_virtual_network.test").Key("id"),
+				),
 			),
 		},
 		data.ImportStep(),
@@ -242,4 +260,31 @@ resource "azurerm_nat_gateway" "test" {
   sku_name            = "StandardV2"
 }
 `, data.RandomInteger, data.Locations.Primary, data.RandomInteger)
+}
+
+func (NatGatewayResource) sourceVirtualNetwork(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_resource_group" "test" {
+  name     = "acctestRG-network-%d"
+  location = "%s"
+}
+
+resource "azurerm_virtual_network" "test" {
+  name                = "acctestvnet-%d"
+  address_space       = ["10.0.0.0/16"]
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
+}
+
+resource "azurerm_nat_gateway" "test" {
+  name                      = "acctestnatGateway-%d"
+  location                  = azurerm_resource_group.test.location
+  resource_group_name       = azurerm_resource_group.test.name
+  source_virtual_network_id = azurerm_virtual_network.test.id
+}
+`, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger)
 }

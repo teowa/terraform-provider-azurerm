@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/networksecurityperimeterassociations"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/networksecurityperimeterprofiles"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/networksecurityperimeters"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/natgateways"
 	"github.com/hashicorp/go-azure-sdk/sdk/client/resourcemanager"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/common"
 )
@@ -29,6 +30,8 @@ type Client struct {
 	NetworkSecurityPerimeterProfilesClient     *networksecurityperimeterprofiles.NetworkSecurityPerimeterProfilesClient
 	NetworkSecurityPerimetersClient            *networksecurityperimeters.NetworkSecurityPerimetersClient
 	VMSSPublicIPAddressesClient                *vmsspublicipaddresses.VMSSPublicIPAddressesClient
+	// NatGateways is sourced from `2025-07-01` for `source_virtual_network_id` support
+	NatGateways *natgateways.NatGatewaysClient
 }
 
 func NewClient(o *common.ClientOptions) (*Client, error) {
@@ -74,6 +77,12 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 	}
 	o.Configure(VMSSPublicIPAddressesClient.Client, o.Authorizers.ResourceManager)
 
+	NatGatewaysClient, err := natgateways.NewNatGatewaysClientWithBaseURI(o.Environment.ResourceManager)
+	if err != nil {
+		return nil, fmt.Errorf("building NatGateways Client: %+v", err)
+	}
+	o.Configure(NatGatewaysClient.Client, o.Authorizers.ResourceManager)
+
 	client, err := network_2025_01_01.NewClientWithBaseURI(o.Environment.ResourceManager, func(c *resourcemanager.Client) {
 		o.Configure(c, o.Authorizers.ResourceManager)
 	})
@@ -89,6 +98,7 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 		NetworkSecurityPerimeterProfilesClient:     NetworkSecurityPerimeterProfilesClient,
 		NetworkSecurityPerimetersClient:            NetworkSecurityPerimetersClient,
 		VMSSPublicIPAddressesClient:                VMSSPublicIPAddressesClient,
+		NatGateways:                                NatGatewaysClient,
 		Client:                                     client,
 	}, nil
 }
