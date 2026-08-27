@@ -14,12 +14,16 @@ import (
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/networksecurityperimeterassociations"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/networksecurityperimeterprofiles"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/networksecurityperimeters"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/applicationgateways"
 	"github.com/hashicorp/go-azure-sdk/sdk/client/resourcemanager"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/common"
 )
 
 type Client struct {
 	*network_2025_01_01.Client
+
+	// Application Gateways use a dedicated `2025-07-01` client so `ssl_profile.verify_client_auth_mode` is available ahead of a broader Network API bump.
+	ApplicationGateways *applicationgateways.ApplicationGatewaysClient
 
 	BastionHostsClient *bastionhosts.BastionHostsClient
 	// VMSS Data Source requires the Network Interfaces and VMSSPublicIpAddresses client from `2023-09-01` for the `ListVirtualMachineScaleSetVMNetworkInterfacesComplete` method
@@ -32,6 +36,12 @@ type Client struct {
 }
 
 func NewClient(o *common.ClientOptions) (*Client, error) {
+	ApplicationGatewaysClient, err := applicationgateways.NewApplicationGatewaysClientWithBaseURI(o.Environment.ResourceManager)
+	if err != nil {
+		return nil, fmt.Errorf("building ApplicationGateways Client: %+v", err)
+	}
+	o.Configure(ApplicationGatewaysClient.Client, o.Authorizers.ResourceManager)
+
 	BastionHostsClient, err := bastionhosts.NewBastionHostsClientWithBaseURI(o.Environment.ResourceManager)
 	if err != nil {
 		return nil, fmt.Errorf("building Bastion Client: %+v", err)
@@ -82,6 +92,7 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 	}
 
 	return &Client{
+		ApplicationGateways:                        ApplicationGatewaysClient,
 		BastionHostsClient:                         BastionHostsClient,
 		NetworkInterfacesClient:                    NetworkInterfacesClient,
 		NetworkSecurityPerimeterAccessRulesClient:  NetworkSecurityPerimeterAccessRulesClient,
