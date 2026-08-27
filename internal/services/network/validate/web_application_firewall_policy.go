@@ -56,6 +56,7 @@ var ValidateWebApplicationFirewallPolicyRuleGroupName = validation.StringInSlice
 	"MS-ThreatIntel-SQLI",
 	"MS-ThreatIntel-CVEs",
 	"MS-ThreatIntel-XSS",
+	"ExcessiveRequests",
 }, false)
 
 var ValidateWebApplicationFirewallPolicyRuleSetVersion = validation.StringInSlice([]string{
@@ -74,6 +75,7 @@ var ValidateWebApplicationFirewallPolicyRuleSetType = validation.StringInSlice([
 	"OWASP",
 	"Microsoft_BotManagerRuleSet",
 	"Microsoft_DefaultRuleSet",
+	"Microsoft_HTTPDDoSRuleSet",
 }, false)
 
 var ValidateWebApplicationFirewallPolicyExclusionRuleSetVersion = validation.StringInSlice([]string{
