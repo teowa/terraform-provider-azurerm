@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/applicationgateways"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/applicationgateways"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
@@ -1151,6 +1151,7 @@ func TestAccApplicationGateway_sslProfileWithClientCertificateVerification(t *te
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("ssl_profile.0.verify_client_certificate_issuer_dn").HasValue("false"),
 				check.That(data.ResourceName).Key("ssl_profile.0.trusted_client_certificate_names.0").Exists(),
+				check.That(data.ResourceName).Key("ssl_profile.0.verify_client_auth_mode").HasValue("Strict"),
 				check.That(data.ResourceName).Key("http_listener.0.ssl_profile_name").Exists(),
 				check.That(data.ResourceName).Key("ssl_profile.0.ssl_policy.0.policy_type").HasValue("Custom"),
 				check.That(data.ResourceName).Key("ssl_profile.0.ssl_policy.0.min_protocol_version").HasValue("TLSv1_2"),
@@ -8446,6 +8447,7 @@ resource "azurerm_application_gateway" "test" {
   ssl_profile {
     name                             = local.ssl_profile_name
     trusted_client_certificate_names = [local.trusted_client_cert_name]
+    verify_client_auth_mode          = "Strict"
     ssl_policy {
       policy_type          = "Custom"
       min_protocol_version = "TLSv1_2"

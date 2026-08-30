@@ -599,6 +599,8 @@ A `ssl_profile` block supports the following:
  
 * `verify_client_certificate_revocation` - (Optional) Specify the method to check client certificate revocation status. Possible value is `OCSP`.
 
+* `verify_client_auth_mode` - (Optional) Specify the mode used to verify the client certificate. Possible values are `Passthrough` and `Strict`.
+
 * `ssl_policy` - (Optional) a `ssl_policy` block as defined below.
 
 ---
