@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-01-01/staticsites"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/appserviceplans"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	webapps20250501 "github.com/hashicorp/go-azure-sdk/resource-manager/web/2025-05-01/webapps"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/common"
 )
 
@@ -20,6 +21,7 @@ type Client struct {
 	ServicePlanClient           *appserviceplans.AppServicePlansClient
 	StaticSitesClient           *staticsites.StaticSitesClient
 	WebAppsClient               *webapps.WebAppsClient
+	WebAppsClient_v2025_05_01   *webapps20250501.WebAppsClient
 }
 
 func NewClient(o *common.ClientOptions) (*Client, error) {
@@ -34,6 +36,12 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 		return nil, fmt.Errorf("building WebApps client: %+v", err)
 	}
 	o.Configure(webAppServiceClient.Client, o.Authorizers.ResourceManager)
+
+	webAppServiceClientV20250501, err := webapps20250501.NewWebAppsClientWithBaseURI(o.Environment.ResourceManager)
+	if err != nil {
+		return nil, fmt.Errorf("building WebApps (2025-05-01) client: %+v", err)
+	}
+	o.Configure(webAppServiceClientV20250501.Client, o.Authorizers.ResourceManager)
 
 	resourceProvidersClient, err := resourceproviders.NewResourceProvidersClientWithBaseURI(o.Environment.ResourceManager)
 	if err != nil {
@@ -59,5 +67,6 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 		ServicePlanClient:           servicePlanClient,
 		StaticSitesClient:           staticSitesClient,
 		WebAppsClient:               webAppServiceClient,
+		WebAppsClient_v2025_05_01:   webAppServiceClientV20250501,
 	}, nil
 }

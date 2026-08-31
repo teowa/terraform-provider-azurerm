@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/identity"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-01-01/resourceproviders"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	webapps20250501 "github.com/hashicorp/go-azure-sdk/resource-manager/web/2025-05-01/webapps"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/locks"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appservice/helpers"
@@ -65,6 +65,7 @@ type FunctionAppFlexConsumptionModel struct {
 	InstanceMemoryInMB            int64                                          `tfschema:"instance_memory_in_mb"`
 	HttpConcurrency               int64                                          `tfschema:"http_concurrency"`
 	AlwaysReady                   []FunctionAppAlwaysReady                       `tfschema:"always_ready"`
+	SiteUpdateStrategy            string                                         `tfschema:"site_update_strategy"`
 	SiteConfig                    []helpers.SiteConfigFunctionAppFlexConsumption `tfschema:"site_config"`
 	Identity                      []identity.ModelSystemAssignedUserAssigned     `tfschema:"identity"`
 	Tags                          map[string]string                              `tfschema:"tags"`
@@ -125,7 +126,7 @@ func (r FunctionAppFlexConsumptionResource) Arguments() map[string]*pluginsdk.Sc
 		"storage_container_type": {
 			Type:         pluginsdk.TypeString,
 			Required:     true,
-			ValidateFunc: validation.StringInSlice(webapps.PossibleValuesForFunctionsDeploymentStorageType(), false),
+			ValidateFunc: validation.StringInSlice(webapps20250501.PossibleValuesForFunctionsDeploymentStorageType(), false),
 			Description:  "The type of the storage container where the function app's code is hosted. Only `blobContainer` is supported currently.",
 		},
 
@@ -138,7 +139,7 @@ func (r FunctionAppFlexConsumptionResource) Arguments() map[string]*pluginsdk.Sc
 		"storage_authentication_type": {
 			Type:         pluginsdk.TypeString,
 			Required:     true,
-			ValidateFunc: validation.StringInSlice(webapps.PossibleValuesForAuthenticationType(), false),
+			ValidateFunc: validation.StringInSlice(webapps20250501.PossibleValuesForAuthenticationType(), false),
 		},
 
 		"storage_access_key": {
@@ -156,7 +157,7 @@ func (r FunctionAppFlexConsumptionResource) Arguments() map[string]*pluginsdk.Sc
 		"runtime_name": {
 			Type:         pluginsdk.TypeString,
 			Required:     true,
-			ValidateFunc: validation.StringInSlice(webapps.PossibleValuesForRuntimeName(), false),
+			ValidateFunc: validation.StringInSlice(webapps20250501.PossibleValuesForRuntimeName(), false),
 		},
 
 		"runtime_version": {
@@ -206,6 +207,14 @@ func (r FunctionAppFlexConsumptionResource) Arguments() map[string]*pluginsdk.Sc
 			},
 		},
 
+		"site_update_strategy": {
+			Type:         pluginsdk.TypeString,
+			Optional:     true,
+			Computed:     true,
+			ValidateFunc: validation.StringInSlice(webapps20250501.PossibleValuesForSiteUpdateStrategyType(), false),
+			Description:  "The strategy to use when updating the Function App's Site configuration. Possible values are `Recreate` and `RollingUpdate`.",
+		},
+
 		"site_config": helpers.SiteConfigSchemaFunctionAppFlexConsumption(),
 
 		"sticky_settings": helpers.StickySettingsSchema(),
@@ -233,8 +242,8 @@ func (r FunctionAppFlexConsumptionResource) Arguments() map[string]*pluginsdk.Sc
 		"client_certificate_mode": {
 			Type:         pluginsdk.TypeString,
 			Optional:     true,
-			Default:      webapps.ClientCertModeOptional,
-			ValidateFunc: validation.StringInSlice(webapps.PossibleValuesForClientCertMode(), false),
+			Default:      webapps20250501.ClientCertModeOptional,
+			ValidateFunc: validation.StringInSlice(webapps20250501.PossibleValuesForClientCertMode(), false),
 			Description:  "The mode of the Function App's client certificates requirement for incoming requests. Possible values are `Required`, `Optional`, and `OptionalInteractiveUser` ",
 		},
 
@@ -349,7 +358,7 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.AppService.WebAppsClient
+			client := metadata.Client.AppService.WebAppsClient_v2025_05_01
 			resourcesClient := metadata.Client.AppService.ResourceProvidersClient
 			servicePlanClient := metadata.Client.AppService.ServicePlanClient
 			subscriptionId := metadata.Client.Account.SubscriptionId
@@ -417,14 +426,14 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 				return fmt.Errorf("expanding `identity`: %+v", err)
 			}
 
-			blobContainerType := webapps.FunctionsDeploymentStorageType(functionAppFlexConsumption.StorageContainerType)
-			storageDeployment := &webapps.FunctionsDeployment{
-				Storage: &webapps.FunctionsDeploymentStorage{
+			blobContainerType := webapps20250501.FunctionsDeploymentStorageType(functionAppFlexConsumption.StorageContainerType)
+			storageDeployment := &webapps20250501.FunctionsDeployment{
+				Storage: &webapps20250501.FunctionsDeploymentStorage{
 					Type:  &blobContainerType,
 					Value: &functionAppFlexConsumption.StorageContainerEndpoint,
 				},
 			}
-			storageAuthType := webapps.AuthenticationType(functionAppFlexConsumption.StorageAuthType)
+			storageAuthType := webapps20250501.AuthenticationType(functionAppFlexConsumption.StorageAuthType)
 			storageConnStringForFCApp := "DEPLOYMENT_STORAGE_CONNECTION_STRING"
 			endpoint := strings.TrimPrefix(functionAppFlexConsumption.StorageContainerEndpoint, "https://")
 			var storageString string
@@ -434,17 +443,17 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 			} else {
 				return fmt.Errorf("retrieving storage container endpoint error, the expected format is https://storagename.blob.core.windows.net/containername, the received value is %s", functionAppFlexConsumption.StorageContainerEndpoint)
 			}
-			storageAuth := webapps.FunctionsDeploymentStorageAuthentication{
+			storageAuth := webapps20250501.FunctionsDeploymentStorageAuthentication{
 				Type: &storageAuthType,
 			}
 
-			if functionAppFlexConsumption.StorageAuthType == string(webapps.AuthenticationTypeStorageAccountConnectionString) {
+			if functionAppFlexConsumption.StorageAuthType == string(webapps20250501.AuthenticationTypeStorageAccountConnectionString) {
 				if functionAppFlexConsumption.StorageAccessKey == "" {
 					return fmt.Errorf("the storage account access key must be specified when using the storage key based access")
 				}
 			} else {
 				storageConnStringForFCApp = ""
-				if functionAppFlexConsumption.StorageAuthType == string(webapps.AuthenticationTypeUserAssignedIdentity) {
+				if functionAppFlexConsumption.StorageAuthType == string(webapps20250501.AuthenticationTypeUserAssignedIdentity) {
 					if functionAppFlexConsumption.StorageUserAssignedIdentityID == "" {
 						return fmt.Errorf("the user assigned identity id must be specified when using the user assigned identity to access the storage account")
 					}
@@ -454,8 +463,8 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 
 			storageAuth.StorageAccountConnectionStringName = &storageConnStringForFCApp
 			storageDeployment.Storage.Authentication = &storageAuth
-			runtimeName := webapps.RuntimeName(functionAppFlexConsumption.RuntimeName)
-			runtime := webapps.FunctionsRuntime{
+			runtimeName := webapps20250501.RuntimeName(functionAppFlexConsumption.RuntimeName)
+			runtime := webapps20250501.FunctionsRuntime{
 				Name:    &runtimeName,
 				Version: &functionAppFlexConsumption.RuntimeVersion,
 			}
@@ -465,46 +474,52 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 				return fmt.Errorf("expanding `always_ready` for %s: %+v", id, err)
 			}
 
-			scaleAndConcurrencyConfig := webapps.FunctionsScaleAndConcurrency{
+			scaleAndConcurrencyConfig := webapps20250501.FunctionsScaleAndConcurrency{
 				AlwaysReady:          alwaysReady,
 				InstanceMemoryMB:     &functionAppFlexConsumption.InstanceMemoryInMB,
 				MaximumInstanceCount: &functionAppFlexConsumption.MaximumInstanceCount,
 			}
 
 			if functionAppFlexConsumption.HttpConcurrency >= 1 {
-				scaleAndConcurrencyConfig.Triggers = &webapps.FunctionsScaleAndConcurrencyTriggers{
-					HTTP: &webapps.FunctionsScaleAndConcurrencyTriggersHTTP{
+				scaleAndConcurrencyConfig.Triggers = &webapps20250501.FunctionsScaleAndConcurrencyTriggers{
+					HTTP: &webapps20250501.FunctionsScaleAndConcurrencyTriggersHTTP{
 						PerInstanceConcurrency: &functionAppFlexConsumption.HttpConcurrency,
 					},
 				}
 			}
 
-			flexFunctionAppConfig := &webapps.FunctionAppConfig{
+			flexFunctionAppConfig := &webapps20250501.FunctionAppConfig{
 				Deployment:          storageDeployment,
 				Runtime:             &runtime,
 				ScaleAndConcurrency: &scaleAndConcurrencyConfig,
 			}
 
-			siteConfig, err := helpers.ExpandSiteConfigFunctionFlexConsumptionApp(functionAppFlexConsumption.SiteConfig, nil, metadata, false, storageString, storageConnStringForFCApp)
+			if functionAppFlexConsumption.SiteUpdateStrategy != "" {
+				flexFunctionAppConfig.SiteUpdateStrategy = &webapps20250501.FunctionsSiteUpdateStrategy{
+					Type: pointer.ToEnum[webapps20250501.SiteUpdateStrategyType](functionAppFlexConsumption.SiteUpdateStrategy),
+				}
+			}
+
+			siteConfig, err := helpers.ExpandSiteConfigFunctionFlexConsumptionAppV20250501(functionAppFlexConsumption.SiteConfig, nil, metadata, false, storageString, storageConnStringForFCApp)
 			if err != nil {
 				return fmt.Errorf("expanding `site_config` for %s: %+v", id, err)
 			}
 
-			siteConfig.AppSettings = helpers.MergeUserAppSettings(siteConfig.AppSettings, functionAppFlexConsumption.AppSettings)
+			siteConfig.AppSettings = helpers.MergeUserAppSettingsV20250501(siteConfig.AppSettings, functionAppFlexConsumption.AppSettings)
 
-			siteEnvelope := webapps.Site{
+			siteEnvelope := webapps20250501.Site{
 				Location: location.Normalize(functionAppFlexConsumption.Location),
 				Tags:     pointer.To(functionAppFlexConsumption.Tags),
 				Kind:     pointer.To("functionapp,linux"),
 				Identity: expandedIdentity,
-				Properties: &webapps.SiteProperties{
+				Properties: &webapps20250501.SiteProperties{
 					ServerFarmId:      pointer.To(functionAppFlexConsumption.ServicePlanId),
 					Enabled:           pointer.To(functionAppFlexConsumption.Enabled),
 					SiteConfig:        siteConfig,
 					HTTPSOnly:         pointer.To(functionAppFlexConsumption.HttpsOnly),
 					FunctionAppConfig: flexFunctionAppConfig,
 					ClientCertEnabled: pointer.To(functionAppFlexConsumption.ClientCertEnabled),
-					ClientCertMode:    pointer.ToEnum[webapps.ClientCertMode](functionAppFlexConsumption.ClientCertMode),
+					ClientCertMode:    pointer.ToEnum[webapps20250501.ClientCertMode](functionAppFlexConsumption.ClientCertMode),
 				},
 			}
 
@@ -533,8 +548,8 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 			metadata.SetID(id)
 
 			if !functionAppFlexConsumption.PublishingDeployBasicAuthEnabled {
-				sitePolicy := webapps.CsmPublishingCredentialsPoliciesEntity{
-					Properties: &webapps.CsmPublishingCredentialsPoliciesEntityProperties{
+				sitePolicy := webapps20250501.CsmPublishingCredentialsPoliciesEntity{
+					Properties: &webapps20250501.CsmPublishingCredentialsPoliciesEntityProperties{
 						Allow: false,
 					},
 				}
@@ -543,10 +558,10 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 				}
 			}
 
-			stickySettings := helpers.ExpandStickySettings(functionAppFlexConsumption.StickySettings)
+			stickySettings := helpers.ExpandStickySettingsV20250501(functionAppFlexConsumption.StickySettings)
 
 			if stickySettings != nil {
-				stickySettingsUpdate := webapps.SlotConfigNamesResource{
+				stickySettingsUpdate := webapps20250501.SlotConfigNamesResource{
 					Properties: stickySettings,
 				}
 				if _, err := client.UpdateSlotConfigurationNames(ctx, id, stickySettingsUpdate); err != nil {
@@ -554,21 +569,21 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 				}
 			}
 
-			auth := helpers.ExpandAuthSettings(functionAppFlexConsumption.AuthSettings)
+			auth := helpers.ExpandAuthSettingsV20250501(functionAppFlexConsumption.AuthSettings)
 			if auth.Properties != nil {
 				if _, err := client.UpdateAuthSettings(ctx, id, *auth); err != nil {
 					return fmt.Errorf("setting Authorisation Settings for %s: %+v", id, err)
 				}
 			}
 
-			authv2 := helpers.ExpandAuthV2Settings(functionAppFlexConsumption.AuthV2Settings)
+			authv2 := helpers.ExpandAuthV2SettingsV20250501(functionAppFlexConsumption.AuthV2Settings)
 			if authv2.Properties != nil {
 				if _, err = client.UpdateAuthSettingsV2(ctx, id, *authv2); err != nil {
 					return fmt.Errorf("updating AuthV2 settings for %s: %+v", id, err)
 				}
 			}
 
-			connectionStrings := helpers.ExpandConnectionStrings(functionAppFlexConsumption.ConnectionStrings)
+			connectionStrings := helpers.ExpandConnectionStringsV20250501(functionAppFlexConsumption.ConnectionStrings)
 			if connectionStrings.Properties != nil {
 				if _, err := client.UpdateConnectionStrings(ctx, id, *connectionStrings); err != nil {
 					return fmt.Errorf("setting Connection Strings for %s: %+v", id, err)
@@ -576,7 +591,7 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 			}
 
 			if functionAppFlexConsumption.ZipDeployFile != "" {
-				if err = helpers.GetCredentialsAndPublish(ctx, client, id, functionAppFlexConsumption.ZipDeployFile); err != nil {
+				if err = helpers.GetCredentialsAndPublishV20250501(ctx, client, id, functionAppFlexConsumption.ZipDeployFile); err != nil {
 					return err
 				}
 			}
@@ -589,7 +604,7 @@ func (r FunctionAppFlexConsumptionResource) Read() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 5 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.AppService.WebAppsClient
+			client := metadata.Client.AppService.WebAppsClient_v2025_05_01
 			id, err := commonids.ParseFunctionAppID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
@@ -617,7 +632,7 @@ func (r FunctionAppFlexConsumptionResource) Read() sdk.ResourceFunc {
 				return fmt.Errorf("retrieving Sticky Settings for %s: %+v", id, err)
 			}
 
-			siteCredentials, err := helpers.ListPublishingCredentials(ctx, client, *id)
+			siteCredentials, err := helpers.ListPublishingCredentialsV20250501(ctx, client, *id)
 			if err != nil {
 				return fmt.Errorf("listing Site Publishing Credential information for %s: %+v", *id, err)
 			}
@@ -627,7 +642,7 @@ func (r FunctionAppFlexConsumptionResource) Read() sdk.ResourceFunc {
 				return fmt.Errorf("retrieving Auth Settings for %s: %+v", id, err)
 			}
 
-			var authV2 webapps.SiteAuthSettingsV2
+			var authV2 webapps20250501.SiteAuthSettingsV2
 			if auth.Model != nil && auth.Model.Properties != nil && strings.EqualFold(pointer.From(auth.Model.Properties.ConfigVersion), "v2") {
 				authV2Resp, err := client.GetAuthSettingsV2(ctx, *id)
 				if err != nil {
@@ -655,11 +670,11 @@ func (r FunctionAppFlexConsumptionResource) Read() sdk.ResourceFunc {
 				Name:                             id.SiteName,
 				ResourceGroup:                    id.ResourceGroupName,
 				Location:                         location.Normalize(model.Location),
-				ConnectionStrings:                helpers.FlattenConnectionStrings(connectionStrings.Model),
-				StickySettings:                   helpers.FlattenStickySettings(stickySettings.Model.Properties),
-				SiteCredentials:                  helpers.FlattenSiteCredentials(siteCredentials),
-				AuthSettings:                     helpers.FlattenAuthSettings(auth.Model),
-				AuthV2Settings:                   helpers.FlattenAuthV2Settings(authV2),
+				ConnectionStrings:                helpers.FlattenConnectionStringsV20250501(connectionStrings.Model),
+				StickySettings:                   helpers.FlattenStickySettingsV20250501(stickySettings.Model.Properties),
+				SiteCredentials:                  helpers.FlattenSiteCredentialsV20250501(siteCredentials),
+				AuthSettings:                     helpers.FlattenAuthSettingsV20250501(auth.Model),
+				AuthV2Settings:                   helpers.FlattenAuthV2SettingsV20250501(authV2),
 				PublishingDeployBasicAuthEnabled: basicAuthWebDeploy,
 				Tags:                             pointer.From(model.Tags),
 				Kind:                             pointer.From(model.Kind),
@@ -695,7 +710,7 @@ func (r FunctionAppFlexConsumptionResource) Read() sdk.ResourceFunc {
 					return fmt.Errorf("retrieving Function App Configuration %q: %+v", id.SiteName, err)
 				}
 
-				siteConfig, err := helpers.FlattenSiteConfigFunctionAppFlexConsumption(configResp.Model.Properties)
+				siteConfig, err := helpers.FlattenSiteConfigFunctionAppFlexConsumptionV20250501(configResp.Model.Properties)
 				if err != nil {
 					return fmt.Errorf("retrieving Site Config for %s: %+v", id, err)
 				}
@@ -727,6 +742,10 @@ func (r FunctionAppFlexConsumptionResource) Read() sdk.ResourceFunc {
 							state.HttpConcurrency = pointer.From(faConfigScale.Triggers.HTTP.PerInstanceConcurrency)
 						}
 					}
+
+					if faConfigSiteUpdateStrategy := functionAppConfig.SiteUpdateStrategy; faConfigSiteUpdateStrategy != nil {
+						state.SiteUpdateStrategy = string(pointer.From(faConfigSiteUpdateStrategy.Type))
+					}
 				}
 
 				state.unpackFunctionAppFlexConsumptionSettings(*appSettingsResp.Model)
@@ -757,13 +776,13 @@ func (r FunctionAppFlexConsumptionResource) Delete() sdk.ResourceFunc {
 	return sdk.ResourceFunc{
 		Timeout: 30 * time.Minute,
 		Func: func(ctx context.Context, metadata sdk.ResourceMetaData) error {
-			client := metadata.Client.AppService.WebAppsClient
+			client := metadata.Client.AppService.WebAppsClient_v2025_05_01
 			id, err := commonids.ParseFunctionAppID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
 			}
 
-			delOptions := webapps.DeleteOperationOptions{
+			delOptions := webapps20250501.DeleteOperationOptions{
 				DeleteEmptyServerFarm: pointer.To(false),
 				DeleteMetrics:         pointer.To(false),
 			}
@@ -784,7 +803,7 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 				return fmt.Errorf("could not determine Storage domain suffix for environment %q", metadata.Client.Account.Environment.Name)
 			}
 
-			client := metadata.Client.AppService.WebAppsClient
+			client := metadata.Client.AppService.WebAppsClient_v2025_05_01
 			id, err := commonids.ParseFunctionAppID(metadata.ResourceData.Id())
 			if err != nil {
 				return err
@@ -834,7 +853,7 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("client_certificate_mode") {
-				model.Properties.ClientCertMode = pointer.ToEnum[webapps.ClientCertMode](state.ClientCertMode)
+				model.Properties.ClientCertMode = pointer.ToEnum[webapps20250501.ClientCertMode](state.ClientCertMode)
 			}
 
 			if metadata.ResourceData.HasChange("client_certificate_exclusion_paths") {
@@ -867,18 +886,18 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 
 			storageConnStringForFCApp := "DEPLOYMENT_STORAGE_CONNECTION_STRING"
 			if metadata.ResourceData.HasChange("storage_authentication_type") {
-				storageAuthType := webapps.AuthenticationType(state.StorageAuthType)
-				storageAuth := webapps.FunctionsDeploymentStorageAuthentication{
+				storageAuthType := webapps20250501.AuthenticationType(state.StorageAuthType)
+				storageAuth := webapps20250501.FunctionsDeploymentStorageAuthentication{
 					Type: &storageAuthType,
 				}
-				if state.StorageAuthType == string(webapps.AuthenticationTypeStorageAccountConnectionString) {
+				if state.StorageAuthType == string(webapps20250501.AuthenticationTypeStorageAccountConnectionString) {
 					if state.StorageAccessKey == "" {
 						return fmt.Errorf("the storage account access key must be specified when using the storage key based access")
 					}
 					storageAuth.StorageAccountConnectionStringName = pointer.To(storageConnStringForFCApp)
 				} else {
 					storageConnStringForFCApp = ""
-					if state.StorageAuthType == string(webapps.AuthenticationTypeUserAssignedIdentity) {
+					if state.StorageAuthType == string(webapps20250501.AuthenticationTypeUserAssignedIdentity) {
 						if state.StorageUserAssignedIdentityID == "" {
 							return fmt.Errorf("the user assigned identity id must be specified when using the user assigned identity to access the storage account")
 						}
@@ -893,7 +912,7 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 			}
 
 			// Note: We process this regardless to give us a "clean" view of service-side app_settings, so we can reconcile the user-defined entries later
-			siteConfig, err := helpers.ExpandSiteConfigFunctionFlexConsumptionApp(state.SiteConfig, model.Properties.SiteConfig, metadata, false, storageString, storageConnStringForFCApp)
+			siteConfig, err := helpers.ExpandSiteConfigFunctionFlexConsumptionAppV20250501(state.SiteConfig, model.Properties.SiteConfig, metadata, false, storageString, storageConnStringForFCApp)
 			if err != nil {
 				return fmt.Errorf("expanding Site Config for %s: %+v", id, err)
 			}
@@ -924,20 +943,20 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 
 			if metadata.ResourceData.HasChange("http_concurrency") {
 				if state.HttpConcurrency > 0 {
-					model.Properties.FunctionAppConfig.ScaleAndConcurrency.Triggers = &webapps.FunctionsScaleAndConcurrencyTriggers{
-						HTTP: &webapps.FunctionsScaleAndConcurrencyTriggersHTTP{
+					model.Properties.FunctionAppConfig.ScaleAndConcurrency.Triggers = &webapps20250501.FunctionsScaleAndConcurrencyTriggers{
+						HTTP: &webapps20250501.FunctionsScaleAndConcurrencyTriggersHTTP{
 							PerInstanceConcurrency: &state.HttpConcurrency,
 						},
 					}
 				} else {
-					model.Properties.FunctionAppConfig.ScaleAndConcurrency.Triggers = &webapps.FunctionsScaleAndConcurrencyTriggers{
+					model.Properties.FunctionAppConfig.ScaleAndConcurrency.Triggers = &webapps20250501.FunctionsScaleAndConcurrencyTriggers{
 						HTTP: nil,
 					}
 				}
 			}
 
 			if metadata.ResourceData.HasChange("runtime_name") {
-				runtimeName := webapps.RuntimeName(state.RuntimeName)
+				runtimeName := webapps20250501.RuntimeName(state.RuntimeName)
 				model.Properties.FunctionAppConfig.Runtime.Name = pointer.To(runtimeName)
 			}
 
@@ -945,7 +964,17 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 				model.Properties.FunctionAppConfig.Runtime.Version = pointer.To(state.RuntimeVersion)
 			}
 
-			model.Properties.SiteConfig.AppSettings = helpers.MergeUserAppSettings(siteConfig.AppSettings, state.AppSettings)
+			if metadata.ResourceData.HasChange("site_update_strategy") {
+				if state.SiteUpdateStrategy != "" {
+					model.Properties.FunctionAppConfig.SiteUpdateStrategy = &webapps20250501.FunctionsSiteUpdateStrategy{
+						Type: pointer.ToEnum[webapps20250501.SiteUpdateStrategyType](state.SiteUpdateStrategy),
+					}
+				} else {
+					model.Properties.FunctionAppConfig.SiteUpdateStrategy = nil
+				}
+			}
+
+			model.Properties.SiteConfig.AppSettings = helpers.MergeUserAppSettingsV20250501(siteConfig.AppSettings, state.AppSettings)
 
 			if metadata.ResourceData.HasChange("public_network_access_enabled") {
 				pna := helpers.PublicNetworkAccessEnabled
@@ -967,8 +996,8 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("webdeploy_publish_basic_authentication_enabled") {
-				sitePolicy := webapps.CsmPublishingCredentialsPoliciesEntity{
-					Properties: &webapps.CsmPublishingCredentialsPoliciesEntityProperties{
+				sitePolicy := webapps20250501.CsmPublishingCredentialsPoliciesEntity{
+					Properties: &webapps20250501.CsmPublishingCredentialsPoliciesEntityProperties{
 						Allow: state.PublishingDeployBasicAuthEnabled,
 					},
 				}
@@ -977,14 +1006,14 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 				}
 			}
 
-			if _, err := client.UpdateConfiguration(ctx, *id, webapps.SiteConfigResource{Properties: model.Properties.SiteConfig}); err != nil {
+			if _, err := client.UpdateConfiguration(ctx, *id, webapps20250501.SiteConfigResource{Properties: model.Properties.SiteConfig}); err != nil {
 				return fmt.Errorf("updating Site Config for %s: %+v", id, err)
 			}
 
 			if metadata.ResourceData.HasChange("connection_string") {
-				connectionStringUpdate := helpers.ExpandConnectionStrings(state.ConnectionStrings)
+				connectionStringUpdate := helpers.ExpandConnectionStringsV20250501(state.ConnectionStrings)
 				if connectionStringUpdate.Properties == nil {
-					connectionStringUpdate.Properties = pointer.To(map[string]webapps.ConnStringValueTypePair{})
+					connectionStringUpdate.Properties = pointer.To(map[string]webapps20250501.ConnStringValueTypePair{})
 				}
 				if _, err := client.UpdateConnectionStrings(ctx, *id, *connectionStringUpdate); err != nil {
 					return fmt.Errorf("updating Connection Strings for %s: %+v", id, err)
@@ -993,9 +1022,9 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 
 			if metadata.ResourceData.HasChange("sticky_settings") {
 				emptySlice := make([]string, 0)
-				stickySettings := helpers.ExpandStickySettings(state.StickySettings)
-				stickySettingsUpdate := webapps.SlotConfigNamesResource{
-					Properties: &webapps.SlotConfigNames{
+				stickySettings := helpers.ExpandStickySettingsV20250501(state.StickySettings)
+				stickySettingsUpdate := webapps20250501.SlotConfigNamesResource{
+					Properties: &webapps20250501.SlotConfigNames{
 						AppSettingNames:       &emptySlice,
 						ConnectionStringNames: &emptySlice,
 					},
@@ -1016,10 +1045,10 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("auth_settings") {
-				authUpdate := helpers.ExpandAuthSettings(state.AuthSettings)
+				authUpdate := helpers.ExpandAuthSettingsV20250501(state.AuthSettings)
 				// (@jackofallops) - in the case of a removal of this block, we need to zero these settings
 				if authUpdate.Properties == nil {
-					authUpdate.Properties = helpers.DefaultAuthSettingsProperties()
+					authUpdate.Properties = helpers.DefaultAuthSettingsPropertiesV20250501()
 				}
 				if _, err := client.UpdateAuthSettings(ctx, *id, *authUpdate); err != nil {
 					return fmt.Errorf("updating Auth Settings for %s: %+v", id, err)
@@ -1027,10 +1056,10 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("auth_settings_v2") {
-				authV2Update := helpers.ExpandAuthV2Settings(state.AuthV2Settings)
+				authV2Update := helpers.ExpandAuthV2SettingsV20250501(state.AuthV2Settings)
 				// (@toddgiguere) - in the case of a removal of this block, we need to zero these settings
 				if authV2Update.Properties == nil {
-					authV2Update.Properties = helpers.DefaultAuthV2SettingsProperties()
+					authV2Update.Properties = helpers.DefaultAuthV2SettingsPropertiesV20250501()
 				}
 				if _, err := client.UpdateAuthSettingsV2(ctx, *id, *authV2Update); err != nil {
 					return fmt.Errorf("updating AuthV2 Settings for %s: %+v", id, err)
@@ -1038,14 +1067,14 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("site_config.0.app_service_logs") {
-				appServiceLogs := helpers.ExpandFunctionAppAppServiceLogs(state.SiteConfig[0].AppServiceLogs)
+				appServiceLogs := helpers.ExpandFunctionAppAppServiceLogsV20250501(state.SiteConfig[0].AppServiceLogs)
 				if _, err := client.UpdateDiagnosticLogsConfig(ctx, *id, appServiceLogs); err != nil {
 					return fmt.Errorf("updating App Service Log Settings for %s: %+v", id, err)
 				}
 			}
 
 			if metadata.ResourceData.HasChange("zip_deploy_file") {
-				if err = helpers.GetCredentialsAndPublish(ctx, client, *id, state.ZipDeployFile); err != nil {
+				if err = helpers.GetCredentialsAndPublishV20250501(ctx, client, *id, state.ZipDeployFile); err != nil {
 					return err
 				}
 			}
@@ -1055,7 +1084,7 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 	}
 }
 
-func (m *FunctionAppFlexConsumptionModel) unpackFunctionAppFlexConsumptionSettings(input webapps.StringDictionary) {
+func (m *FunctionAppFlexConsumptionModel) unpackFunctionAppFlexConsumptionSettings(input webapps20250501.StringDictionary) {
 	if input.Properties == nil {
 		return
 	}
@@ -1087,15 +1116,15 @@ func (m *FunctionAppFlexConsumptionModel) unpackFunctionAppFlexConsumptionSettin
 	m.AppSettings = appSettings
 }
 
-func ExpandAlwaysReadyConfiguration(input []FunctionAppAlwaysReady, maximumInstanceCount int64) (*[]webapps.FunctionsAlwaysReadyConfig, error) {
+func ExpandAlwaysReadyConfiguration(input []FunctionAppAlwaysReady, maximumInstanceCount int64) (*[]webapps20250501.FunctionsAlwaysReadyConfig, error) {
 	if len(input) == 0 {
 		return nil, nil
 	}
 	var totalInstanceCount int64
-	arList := make([]webapps.FunctionsAlwaysReadyConfig, 0)
+	arList := make([]webapps20250501.FunctionsAlwaysReadyConfig, 0)
 	for _, v := range input {
 		totalInstanceCount += v.InstanceCount
-		arList = append(arList, webapps.FunctionsAlwaysReadyConfig{
+		arList = append(arList, webapps20250501.FunctionsAlwaysReadyConfig{
 			Name:          pointer.To(v.Name),
 			InstanceCount: pointer.To(v.InstanceCount),
 		})
@@ -1108,7 +1137,7 @@ func ExpandAlwaysReadyConfiguration(input []FunctionAppAlwaysReady, maximumInsta
 	return &arList, nil
 }
 
-func FlattenAlwaysReadyConfiguration(alwaysReady *[]webapps.FunctionsAlwaysReadyConfig) []FunctionAppAlwaysReady {
+func FlattenAlwaysReadyConfiguration(alwaysReady *[]webapps20250501.FunctionsAlwaysReadyConfig) []FunctionAppAlwaysReady {
 	if alwaysReady == nil || len(*alwaysReady) == 0 {
 		return []FunctionAppAlwaysReady{}
 	}

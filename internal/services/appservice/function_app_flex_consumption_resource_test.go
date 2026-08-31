@@ -613,6 +613,37 @@ func TestAccFunctionAppFlexConsumption_httpConcurrencyUpdate(t *testing.T) {
 	})
 }
 
+func TestAccFunctionAppFlexConsumption_siteUpdateStrategyUpdate(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_function_app_flex_consumption", "test")
+	r := FunctionAppFlexConsumptionResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.basic(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep("site_credential.0.password"),
+		{
+			Config: r.siteUpdateStrategy(data, "RollingUpdate"),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("site_update_strategy").HasValue("RollingUpdate"),
+			),
+		},
+		data.ImportStep("site_credential.0.password"),
+		{
+			Config: r.siteUpdateStrategy(data, "Recreate"),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("site_update_strategy").HasValue("Recreate"),
+			),
+		},
+		data.ImportStep("site_credential.0.password"),
+	})
+}
+
 func (r FunctionAppFlexConsumptionResource) Exists(ctx context.Context, client *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
 	id, err := commonids.ParseFunctionAppID(state.ID)
 	if err != nil {
@@ -897,6 +928,35 @@ resource "azurerm_function_app_flex_consumption" "test" {
   site_config {}
 }
 `, r.template(data), data.RandomInteger, httpConcurrency)
+}
+
+func (r FunctionAppFlexConsumptionResource) siteUpdateStrategy(data acceptance.TestData, siteUpdateStrategy string) string {
+	return fmt.Sprintf(`
+provider "azurerm" {
+  features {}
+}
+
+%s
+
+resource "azurerm_function_app_flex_consumption" "test" {
+  name                = "acctest-LFA-%d"
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
+  service_plan_id     = azurerm_service_plan.test.id
+
+  storage_container_type      = "blobContainer"
+  storage_container_endpoint  = "${azurerm_storage_account.test.primary_blob_endpoint}${azurerm_storage_container.test.name}"
+  storage_authentication_type = "StorageAccountConnectionString"
+  storage_access_key          = azurerm_storage_account.test.primary_access_key
+  runtime_name                = "node"
+  runtime_version             = "20"
+  maximum_instance_count      = 100
+  instance_memory_in_mb       = 2048
+  site_update_strategy        = "%s"
+
+  site_config {}
+}
+`, r.template(data), data.RandomInteger, siteUpdateStrategy)
 }
 
 func (r FunctionAppFlexConsumptionResource) connectionString(data acceptance.TestData) string {

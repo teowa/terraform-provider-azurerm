@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	webapps20250501 "github.com/hashicorp/go-azure-sdk/resource-manager/web/2025-05-01/webapps"
 	"github.com/hashicorp/go-azure-sdk/sdk/client/pollers"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appservice/custompollers"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
@@ -83,6 +84,35 @@ func GetCredentialsAndPublishSlot(ctx context.Context, client *webapps.WebAppsCl
 	return nil
 }
 
+func GetCredentialsAndPublishV20250501(ctx context.Context, client *webapps20250501.WebAppsClient, appID commonids.AppServiceId, sourceFile string) error {
+	site, err := client.Get(ctx, appID)
+	if err != nil || site.Model == nil {
+		return fmt.Errorf("reading site %s to perform zip deploy: %+v", appID.SiteName, err)
+	}
+	props := *site.Model.Properties
+	if sslStates := props.HostNameSslStates; sslStates != nil {
+		for _, v := range *sslStates {
+			if v.Name != nil && *v.Name != "" && pointer.From(v.HostType) == webapps20250501.HostTypeRepository {
+				user, passwd, err := GetSitePublishingCredentialsV20250501(ctx, client, appID)
+				if err != nil {
+					return err
+				}
+				httpsHost := fmt.Sprintf("https://%s", *v.Name)
+
+				if err := PublishZipDeployLocalFileKuduPush(ctx, httpsHost, *user, *passwd, client.Client.UserAgent, sourceFile); err != nil {
+					return fmt.Errorf("publishing source (%s) to site %s: %+v", sourceFile, appID, err)
+				}
+
+				continue
+			}
+		}
+	} else {
+		return fmt.Errorf("could not determine SCM Site name for Site %s for Zip Deployment", appID)
+	}
+
+	return nil
+}
+
 func GetSitePublishingCredentials(ctx context.Context, client *webapps.WebAppsClient, appID commonids.AppServiceId) (user *string, passwd *string, err error) {
 	siteCredentials, err := ListPublishingCredentials(ctx, client, appID)
 	if err != nil {
@@ -105,6 +135,18 @@ func GetSitePublishingCredentialsSlot(ctx context.Context, client *webapps.WebAp
 		return pointer.To(siteCredentials.Properties.PublishingUserName), siteCredentials.Properties.PublishingPassword, nil
 	}
 	return nil, nil, fmt.Errorf("could not decode Publishing Credential information for %s", id)
+}
+
+func GetSitePublishingCredentialsV20250501(ctx context.Context, client *webapps20250501.WebAppsClient, appID commonids.AppServiceId) (user *string, passwd *string, err error) {
+	siteCredentials, err := ListPublishingCredentialsV20250501(ctx, client, appID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if siteCredentials.Properties != nil {
+		return pointer.To(siteCredentials.Properties.PublishingUserName), siteCredentials.Properties.PublishingPassword, nil
+	}
+	return nil, nil, fmt.Errorf("could not decode Publishing Credential information for %s", appID)
 }
 
 func PublishZipDeployLocalFileKuduPush(ctx context.Context, host string, user string, passwd string, userAgent string, zipSource string) error {

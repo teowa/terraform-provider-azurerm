@@ -141,6 +141,8 @@ The following arguments are supported:
 
 ~> **Note:** A value will be assigned by the system if `http_concurrency` is not specified.
 
+* `site_update_strategy` - (Optional) The strategy to use when updating the Function App's Site configuration. Possible values are `Recreate` and `RollingUpdate`.
+
 * `tags` - (Optional) A mapping of tags which should be assigned to the Linux Function App.
 
 * `virtual_network_subnet_id` - (Optional) The subnet id which will be used by this Function App for [regional virtual network integration](https://docs.microsoft.com/en-us/azure/app-service/overview-vnet-integration#regional-virtual-network-integration).

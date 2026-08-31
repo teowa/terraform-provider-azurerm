@@ -11,6 +11,7 @@ import (
 
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	webapps20250501 "github.com/hashicorp/go-azure-sdk/resource-manager/web/2025-05-01/webapps"
 )
 
 func ListPublishingCredentials(ctx context.Context, client *webapps.WebAppsClient, id commonids.AppServiceId) (*webapps.User, error) {
@@ -65,6 +66,44 @@ func ListPublishingCredentialsSlot(ctx context.Context, client *webapps.WebAppsC
 }
 
 func UnmarshalCredentialsResponse(r io.Reader, user *webapps.User) error {
+	bytes, err := io.ReadAll(r)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(bytes, user); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ListPublishingCredentialsV20250501(ctx context.Context, client *webapps20250501.WebAppsClient, id commonids.AppServiceId) (*webapps20250501.User, error) {
+	userModel := &webapps20250501.User{}
+
+	siteCredentials, err := client.ListPublishingCredentials(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("listing Site Publishing Credential information for %s: %+v", id, err)
+	}
+
+	// The credentials are regenerated at some point in the creation process, the initial response is not the final
+	// value. The final result error is populated on success as a 404, so we're ignoring it here since this is a R/O
+	// pair of properties
+	_ = siteCredentials.Poller.PollUntilDone(ctx)
+	siteCredentials, err = client.ListPublishingCredentials(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("listing Site Publishing Credential information for %s: %+v", id, err)
+	}
+
+	if siteCredentials.HttpResponse != nil {
+		if err = UnmarshalCredentialsResponseV20250501(siteCredentials.HttpResponse.Body, userModel); err != nil {
+			return nil, fmt.Errorf("could not decode Publishing Credential information for %s: %+v", id, err)
+		}
+	}
+
+	return userModel, nil
+}
+
+func UnmarshalCredentialsResponseV20250501(r io.Reader, user *webapps20250501.User) error {
 	bytes, err := io.ReadAll(r)
 	if err != nil {
 		return err
