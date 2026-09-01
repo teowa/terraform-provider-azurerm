@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package springcloud
@@ -8,6 +8,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/hashicorp/go-azure-helpers/lang/pointer"
+	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/springcloud/migration"
@@ -15,12 +17,13 @@ import (
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/springcloud/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/timeouts"
-	"github.com/hashicorp/terraform-provider-azurerm/utils"
-	"github.com/tombuildsstuff/kermit/sdk/appplatform/2023-05-01-preview/appplatform"
+	"github.com/jackofallops/kermit/sdk/appplatform/2023-05-01-preview/appplatform"
 )
 
 func resourceSpringCloudAPIPortalCustomDomain() *pluginsdk.Resource {
 	return &pluginsdk.Resource{
+		DeprecationMessage: "Azure Spring Apps is now deprecated and will be retired on 2028-05-31 - as such the `azurerm_spring_cloud_api_portal_custom_domain` resource is deprecated and will be removed in a future major version of the AzureRM Provider. See https://aka.ms/asaretirement for more information.",
+
 		Create: resourceSpringCloudAPIPortalCustomDomainCreateUpdate,
 		Read:   resourceSpringCloudAPIPortalCustomDomainRead,
 		Update: resourceSpringCloudAPIPortalCustomDomainCreateUpdate,
@@ -64,6 +67,7 @@ func resourceSpringCloudAPIPortalCustomDomain() *pluginsdk.Resource {
 		},
 	}
 }
+
 func resourceSpringCloudAPIPortalCustomDomainCreateUpdate(d *pluginsdk.ResourceData, meta interface{}) error {
 	subscriptionId := meta.(*clients.Client).Account.SubscriptionId
 	client := meta.(*clients.Client).AppPlatform.APIPortalCustomDomainClient
@@ -77,20 +81,22 @@ func resourceSpringCloudAPIPortalCustomDomainCreateUpdate(d *pluginsdk.ResourceD
 	id := parse.NewSpringCloudAPIPortalCustomDomainID(subscriptionId, portalId.ResourceGroup, portalId.SpringName, portalId.ApiPortalName, d.Get("name").(string))
 
 	if d.IsNewResource() {
-		existing, err := client.Get(ctx, id.ResourceGroup, id.SpringName, id.ApiPortalName, id.DomainName)
-		if err != nil {
-			if !utils.ResponseWasNotFound(existing.Response) {
-				return fmt.Errorf("checking for existing %s: %+v", id, err)
+		if !meta.(*clients.Client).Features.SkipImportCheckOnCreateAndAllowOverwritingExistingResources {
+			existing, err := client.Get(ctx, id.ResourceGroup, id.SpringName, id.ApiPortalName, id.DomainName)
+			if err != nil {
+				if !response.WasNotFound(existing.Response.Response) {
+					return fmt.Errorf("checking for existing %s: %+v", id, err)
+				}
 			}
-		}
-		if !utils.ResponseWasNotFound(existing.Response) {
-			return tf.ImportAsExistsError("azurerm_spring_cloud_api_portal_custom_domain", id.ID())
+			if !response.WasNotFound(existing.Response.Response) {
+				return tf.ImportAsExistsError("azurerm_spring_cloud_api_portal_custom_domain", id.ID())
+			}
 		}
 	}
 
 	apiPortalCustomDomainResource := appplatform.APIPortalCustomDomainResource{
 		Properties: &appplatform.APIPortalCustomDomainProperties{
-			Thumbprint: utils.String(d.Get("thumbprint").(string)),
+			Thumbprint: pointer.To(d.Get("thumbprint").(string)),
 		},
 	}
 	future, err := client.CreateOrUpdate(ctx, id.ResourceGroup, id.SpringName, id.ApiPortalName, id.DomainName, apiPortalCustomDomainResource)
@@ -98,11 +104,14 @@ func resourceSpringCloudAPIPortalCustomDomainCreateUpdate(d *pluginsdk.ResourceD
 		return fmt.Errorf("creating/updating %s: %+v", id, err)
 	}
 
+	if d.IsNewResource() {
+		d.SetId(id.ID())
+	}
+
 	if err := future.WaitForCompletionRef(ctx, client.Client); err != nil {
 		return fmt.Errorf("waiting for creation/update of %s: %+v", id, err)
 	}
 
-	d.SetId(id.ID())
 	return resourceSpringCloudAPIPortalCustomDomainRead(d, meta)
 }
 
@@ -118,7 +127,7 @@ func resourceSpringCloudAPIPortalCustomDomainRead(d *pluginsdk.ResourceData, met
 
 	resp, err := client.Get(ctx, id.ResourceGroup, id.SpringName, id.ApiPortalName, id.DomainName)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if response.WasNotFound(resp.Response.Response) {
 			log.Printf("[INFO] appplatform %q does not exist - removing from state", d.Id())
 			d.SetId("")
 			return nil

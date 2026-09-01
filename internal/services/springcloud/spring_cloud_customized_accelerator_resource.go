@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package springcloud
@@ -57,8 +57,15 @@ type SshAuthModel struct {
 
 type SpringCloudCustomizedAcceleratorResource struct{}
 
-var _ sdk.ResourceWithUpdate = SpringCloudCustomizedAcceleratorResource{}
-var _ sdk.ResourceWithStateMigration = SpringCloudCustomizedAcceleratorResource{}
+func (s SpringCloudCustomizedAcceleratorResource) DeprecationMessage() string {
+	return "Azure Spring Apps is now deprecated and will be retired on 2028-05-31 - as such the `azurerm_spring_cloud_customized_accelerator` resource is deprecated and will be removed in a future major version of the AzureRM Provider. See https://aka.ms/asaretirement for more information."
+}
+
+var (
+	_ sdk.ResourceWithUpdate                      = SpringCloudCustomizedAcceleratorResource{}
+	_ sdk.ResourceWithStateMigration              = SpringCloudCustomizedAcceleratorResource{}
+	_ sdk.ResourceWithDeprecationAndNoReplacement = SpringCloudCustomizedAcceleratorResource{}
+)
 
 func (s SpringCloudCustomizedAcceleratorResource) ResourceType() string {
 	return "azurerm_spring_cloud_customized_accelerator"
@@ -211,13 +218,10 @@ func (s SpringCloudCustomizedAcceleratorResource) Arguments() map[string]*schema
 		},
 
 		"accelerator_type": {
-			Type:     pluginsdk.TypeString,
-			Optional: true,
-			Default:  appplatform.CustomizedAcceleratorTypeAccelerator,
-			ValidateFunc: validation.StringInSlice([]string{
-				string(appplatform.CustomizedAcceleratorTypeAccelerator),
-				string(appplatform.CustomizedAcceleratorTypeFragment),
-			}, false),
+			Type:         pluginsdk.TypeString,
+			Optional:     true,
+			Default:      appplatform.CustomizedAcceleratorTypeAccelerator,
+			ValidateFunc: validation.StringInSlice(appplatform.PossibleValuesForCustomizedAcceleratorType(), false),
 		},
 
 		"description": {
@@ -260,17 +264,19 @@ func (s SpringCloudCustomizedAcceleratorResource) Create() sdk.ResourceFunc {
 			}
 			id := appplatform.NewCustomizedAcceleratorID(springAcceleratorId.SubscriptionId, springAcceleratorId.ResourceGroupName, springAcceleratorId.SpringName, springAcceleratorId.ApplicationAcceleratorName, model.Name)
 
-			existing, err := client.CustomizedAcceleratorsGet(ctx, id)
-			if err != nil && !response.WasNotFound(existing.HttpResponse) {
-				return fmt.Errorf("checking for existing %s: %+v", id, err)
-			}
-			if !response.WasNotFound(existing.HttpResponse) {
-				return metadata.ResourceRequiresImport(s.ResourceType(), id)
+			if !metadata.Client.Features.SkipImportCheckOnCreateAndAllowOverwritingExistingResources {
+				existing, err := client.CustomizedAcceleratorsGet(ctx, id)
+				if err != nil && !response.WasNotFound(existing.HttpResponse) {
+					return fmt.Errorf("checking for existing %s: %+v", id, err)
+				}
+				if !response.WasNotFound(existing.HttpResponse) {
+					return metadata.ResourceRequiresImport(s.ResourceType(), id)
+				}
 			}
 
 			CustomizedAcceleratorResource := appplatform.CustomizedAcceleratorResource{
 				Properties: &appplatform.CustomizedAcceleratorProperties{
-					AcceleratorType: pointer.To(appplatform.CustomizedAcceleratorType(model.AcceleratorType)),
+					AcceleratorType: pointer.ToEnum[appplatform.CustomizedAcceleratorType](model.AcceleratorType),
 					DisplayName:     pointer.To(model.DisplayName),
 					Description:     pointer.To(model.Description),
 					IconURL:         pointer.To(model.IconURL),
@@ -278,12 +284,12 @@ func (s SpringCloudCustomizedAcceleratorResource) Create() sdk.ResourceFunc {
 					GitRepository:   expandSpringCloudCustomizedAcceleratorGitRepository(model.GitRepository),
 				},
 			}
-			err = client.CustomizedAcceleratorsCreateOrUpdateThenPoll(ctx, id, CustomizedAcceleratorResource)
-			if err != nil {
+
+			if err := client.CustomizedAcceleratorsCreateOrUpdateCallbackThenPoll(ctx, id, CustomizedAcceleratorResource, metadata.SetIDCallback(&id)); err != nil {
 				return fmt.Errorf("creating %s: %+v", id, err)
 			}
-
 			metadata.SetID(id)
+
 			return nil
 		},
 	}
@@ -324,7 +330,7 @@ func (s SpringCloudCustomizedAcceleratorResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("accelerator_type") {
-				properties.AcceleratorType = pointer.To(appplatform.CustomizedAcceleratorType(model.AcceleratorType))
+				properties.AcceleratorType = pointer.ToEnum[appplatform.CustomizedAcceleratorType](model.AcceleratorType)
 			}
 
 			if metadata.ResourceData.HasChange("description") {
@@ -342,8 +348,7 @@ func (s SpringCloudCustomizedAcceleratorResource) Update() sdk.ResourceFunc {
 			CustomizedAcceleratorResource := appplatform.CustomizedAcceleratorResource{
 				Properties: properties,
 			}
-			err = client.CustomizedAcceleratorsCreateOrUpdateThenPoll(ctx, *id, CustomizedAcceleratorResource)
-			if err != nil {
+			if err = client.CustomizedAcceleratorsCreateOrUpdateThenPoll(ctx, *id, CustomizedAcceleratorResource); err != nil {
 				return fmt.Errorf("updating %s: %+v", id, err)
 			}
 
@@ -417,8 +422,7 @@ func (s SpringCloudCustomizedAcceleratorResource) Delete() sdk.ResourceFunc {
 				return err
 			}
 
-			err = client.CustomizedAcceleratorsDeleteThenPoll(ctx, *id)
-			if err != nil {
+			if err = client.CustomizedAcceleratorsDeleteThenPoll(ctx, *id); err != nil {
 				return fmt.Errorf("deleting %s: %+v", *id, err)
 			}
 
@@ -506,44 +510,19 @@ func flattenSpringCloudCustomizedAcceleratorGitRepository(state []GitRepositoryM
 		sshAuth = append(sshAuth, sshAuthState)
 	}
 
-	branch := ""
-	if input.Branch != nil {
-		branch = *input.Branch
-	}
-
-	commit := ""
-	if input.Commit != nil {
-		commit = *input.Commit
-	}
-
-	gitTag := ""
-	if input.GitTag != nil {
-		gitTag = *input.GitTag
-	}
-
-	var intervalInSeconds int64
-	if input.IntervalInSeconds != nil {
-		intervalInSeconds = *input.IntervalInSeconds
-	}
-
-	subPath := ""
-	if input.SubPath != nil {
-		subPath = *input.SubPath
-	}
-
 	url := input.Url
 
 	return []GitRepositoryModel{
 		{
 			BasicAuth:         basicAuth,
 			SshAuth:           sshAuth,
-			Branch:            branch,
+			Branch:            pointer.From(input.Branch),
 			CaCertificateId:   caCertificateId,
-			Commit:            commit,
-			GitTag:            gitTag,
-			IntervalInSeconds: intervalInSeconds,
+			Commit:            pointer.From(input.Commit),
+			GitTag:            pointer.From(input.GitTag),
+			IntervalInSeconds: pointer.From(input.IntervalInSeconds),
 			Url:               url,
-			Path:              subPath,
+			Path:              pointer.From(input.SubPath),
 		},
 	}
 }

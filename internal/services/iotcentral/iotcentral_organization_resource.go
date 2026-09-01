@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package iotcentral
@@ -13,14 +13,12 @@ import (
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/iotcentral/parse"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/iotcentral/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
-	dataplane "github.com/tombuildsstuff/kermit/sdk/iotcentral/2022-10-31-preview/iotcentral"
+	dataplane "github.com/jackofallops/kermit/sdk/iotcentral/2022-10-31-preview/iotcentral"
 )
 
 type IotCentralOrganizationResource struct{}
 
-var (
-	_ sdk.ResourceWithUpdate = IotCentralOrganizationResource{}
-)
+var _ sdk.ResourceWithUpdate = IotCentralOrganizationResource{}
 
 type IotCentralOrganizationModel struct {
 	IotCentralApplicationId string `tfschema:"iotcentral_application_id"`
@@ -86,6 +84,8 @@ func (r IotCentralOrganizationResource) Create() sdk.ResourceFunc {
 				return err
 			}
 
+			// TODO: import check
+
 			app, err := client.AppsClient.Get(ctx, *appId)
 			if err != nil || app.Model == nil {
 				return fmt.Errorf("checking for the presence of existing %q: %+v", appId, err)
@@ -128,9 +128,6 @@ func (r IotCentralOrganizationResource) Read() sdk.ResourceFunc {
 			}
 
 			appId := apps.NewIotAppID(id.SubscriptionId, id.ResourceGroup, id.IotAppName)
-			if err != nil {
-				return err
-			}
 
 			app, err := client.AppsClient.Get(ctx, appId)
 			if err != nil || app.Model == nil {
@@ -182,9 +179,6 @@ func (r IotCentralOrganizationResource) Update() sdk.ResourceFunc {
 			}
 
 			appId := apps.NewIotAppID(id.SubscriptionId, id.ResourceGroup, id.IotAppName)
-			if err != nil {
-				return err
-			}
 
 			app, err := client.AppsClient.Get(ctx, appId)
 			if err != nil || app.Model == nil {
@@ -209,8 +203,7 @@ func (r IotCentralOrganizationResource) Update() sdk.ResourceFunc {
 				existing.DisplayName = &state.DisplayName
 			}
 
-			_, err = orgClient.Update(ctx, *existing.ID, existing, "*")
-			if err != nil {
+			if _, err = orgClient.Update(ctx, *existing.ID, existing, "*"); err != nil {
 				return fmt.Errorf("updating %s: %+v", id, err)
 			}
 
@@ -235,9 +228,6 @@ func (r IotCentralOrganizationResource) Delete() sdk.ResourceFunc {
 			}
 
 			appId := apps.NewIotAppID(id.SubscriptionId, id.ResourceGroup, id.IotAppName)
-			if err != nil {
-				return err
-			}
 
 			app, err := client.AppsClient.Get(ctx, appId)
 			if err != nil || app.Model == nil {
@@ -249,8 +239,7 @@ func (r IotCentralOrganizationResource) Delete() sdk.ResourceFunc {
 				return fmt.Errorf("creating organization client: %+v", err)
 			}
 
-			_, err = orgClient.Remove(ctx, id.Name)
-			if err != nil {
+			if _, err = orgClient.Remove(ctx, id.Name); err != nil {
 				return fmt.Errorf("deleting %s: %+v", id, err)
 			}
 

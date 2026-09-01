@@ -1,9 +1,11 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package network
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -14,24 +16,22 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2023-11-01/networksecuritygroups"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2024-03-01/flowlogs"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2024-03-01/networkwatchers"
-	"github.com/hashicorp/terraform-provider-azurerm/helpers/azure"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/flowlogs"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/networksecuritygroups"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/networkwatchers"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/operationalinsights/2020-08-01/workspaces"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/features"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/locks"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/migration"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/timeouts"
-	"github.com/hashicorp/terraform-provider-azurerm/utils"
 )
 
 func resourceNetworkWatcherFlowLog() *pluginsdk.Resource {
-	resource := &pluginsdk.Resource{
+	return &pluginsdk.Resource{
 		Create: resourceNetworkWatcherFlowLogCreate,
 		Read:   resourceNetworkWatcherFlowLogRead,
 		Update: resourceNetworkWatcherFlowLogUpdate,
@@ -72,11 +72,15 @@ func resourceNetworkWatcherFlowLog() *pluginsdk.Resource {
 				ValidateFunc: validate.NetworkWatcherFlowLogName,
 			},
 
-			"network_security_group_id": {
-				Type:         pluginsdk.TypeString,
-				Required:     true,
-				ForceNew:     true,
-				ValidateFunc: networksecuritygroups.ValidateNetworkSecurityGroupID,
+			"target_resource_id": {
+				Type:     pluginsdk.TypeString,
+				Required: true,
+				ValidateFunc: validation.Any(
+					networksecuritygroups.ValidateNetworkSecurityGroupID,
+					commonids.ValidateVirtualNetworkID,
+					commonids.ValidateSubnetID,
+					commonids.ValidateNetworkInterfaceID,
+				),
 			},
 
 			"storage_account_id": {
@@ -136,9 +140,10 @@ func resourceNetworkWatcherFlowLog() *pluginsdk.Resource {
 						},
 
 						"workspace_resource_id": {
-							Type:         pluginsdk.TypeString,
-							Required:     true,
-							ValidateFunc: azure.ValidateResourceIDOrEmpty, // nolint: staticcheck
+							Type:     pluginsdk.TypeString,
+							Required: true,
+							// TODO: check to see if empty values should be allowed (the previous validator permitted them)
+							ValidateFunc: validation.Any(validation.StringIsEmpty, workspaces.ValidateWorkspaceID),
 						},
 
 						"interval_in_minutes": {
@@ -170,18 +175,19 @@ func resourceNetworkWatcherFlowLog() *pluginsdk.Resource {
 
 			"tags": commonschema.Tags(),
 		},
-	}
 
-	if !features.FourPointOhBeta() {
-		resource.Schema["version"] = &pluginsdk.Schema{
-			Type:         pluginsdk.TypeInt,
-			Optional:     true,
-			Computed:     true,
-			ValidateFunc: validation.IntBetween(1, 2),
-		}
-	}
+		CustomizeDiff: func(_ context.Context, d *pluginsdk.ResourceDiff, _ any) error {
+			if d.Id() == "" {
+				targetResourceId := d.Get("target_resource_id").(string)
 
-	return resource
+				if _, err := networksecuritygroups.ParseNetworkSecurityGroupID(targetResourceId); err == nil {
+					return errors.New("creation of new NSG flow logs is no longer supported by Azure as of June 30, 2025. NSG flow logs will be retired on September 30, 2027. For more information, see https://learn.microsoft.com/azure/network-watcher/nsg-flow-logs-migrate")
+				}
+			}
+
+			return nil
+		},
+	}
 }
 
 func azureRMSuppressFlowLogRetentionPolicyEnabledDiff(_, old, _ string, d *pluginsdk.ResourceData) bool {
@@ -203,15 +209,6 @@ func resourceNetworkWatcherFlowLogCreate(d *pluginsdk.ResourceData, meta interfa
 	defer cancel()
 
 	id := flowlogs.NewFlowLogID(subscriptionId, d.Get("resource_group_name").(string), d.Get("network_watcher_name").(string), d.Get("name").(string))
-	nsgId, err := networksecuritygroups.ParseNetworkSecurityGroupID(d.Get("network_security_group_id").(string))
-	if err != nil {
-		return err
-	}
-
-	// For newly created resources, the "name" is required, it is set as Optional and Computed is merely for the existing ones for the sake of backward compatibility.
-	if id.NetworkWatcherName == "" {
-		return fmt.Errorf("`name` is required for Network Watcher Flow Log")
-	}
 
 	existing, err := client.Get(ctx, id)
 	if err != nil {
@@ -224,8 +221,10 @@ func resourceNetworkWatcherFlowLogCreate(d *pluginsdk.ResourceData, meta interfa
 		return tf.ImportAsExistsError("azurerm_network_watcher_flow_log", id.ID())
 	}
 
-	locks.ByID(nsgId.ID())
-	defer locks.UnlockByID(nsgId.ID())
+	targetResourceId := d.Get("target_resource_id").(string)
+
+	locks.ByID(targetResourceId)
+	defer locks.UnlockByID(targetResourceId)
 
 	loc := d.Get("location").(string)
 	if loc == "" {
@@ -242,9 +241,9 @@ func resourceNetworkWatcherFlowLogCreate(d *pluginsdk.ResourceData, meta interfa
 	}
 
 	parameters := flowlogs.FlowLog{
-		Location: utils.String(location.Normalize(loc)),
+		Location: pointer.To(location.Normalize(loc)),
 		Properties: &flowlogs.FlowLogPropertiesFormat{
-			TargetResourceId: nsgId.ID(),
+			TargetResourceId: targetResourceId,
 			StorageId:        d.Get("storage_account_id").(string),
 			Enabled:          pointer.To(d.Get("enabled").(bool)),
 			RetentionPolicy:  expandNetworkWatcherFlowLogRetentionPolicy(d.Get("retention_policy").([]interface{})),
@@ -257,11 +256,9 @@ func resourceNetworkWatcherFlowLogCreate(d *pluginsdk.ResourceData, meta interfa
 	}
 
 	if version, ok := d.GetOk("version"); ok {
-		format := &flowlogs.FlowLogFormatParameters{
+		parameters.Properties.Format = &flowlogs.FlowLogFormatParameters{
 			Version: pointer.To(int64(version.(int))),
 		}
-
-		parameters.Properties.Format = format
 	}
 
 	if err := client.CreateOrUpdateThenPoll(ctx, id, parameters); err != nil {
@@ -297,12 +294,10 @@ func resourceNetworkWatcherFlowLogUpdate(d *pluginsdk.ResourceData, meta interfa
 
 	payload := existing.Model
 
-	nsgId, err := networksecuritygroups.ParseNetworkSecurityGroupID(d.Get("network_security_group_id").(string))
-	if err != nil {
-		return err
-	}
-	locks.ByID(nsgId.ID())
-	defer locks.UnlockByID(nsgId.ID())
+	targetResourceId := d.Get("target_resource_id").(string)
+
+	locks.ByID(targetResourceId)
+	defer locks.UnlockByID(targetResourceId)
 
 	if d.HasChange("storage_account_id") {
 		payload.Properties.StorageId = d.Get("storage_account_id").(string)
@@ -332,6 +327,10 @@ func resourceNetworkWatcherFlowLogUpdate(d *pluginsdk.ResourceData, meta interfa
 
 	if d.HasChange("tags") {
 		payload.Tags = tags.Expand(d.Get("tags").(map[string]interface{}))
+	}
+
+	if d.HasChange("target_resource_id") {
+		payload.Properties.TargetResourceId = targetResourceId
 	}
 
 	if err := client.CreateOrUpdateThenPoll(ctx, *id, *payload); err != nil {
@@ -389,19 +388,27 @@ func resourceNetworkWatcherFlowLogRead(d *pluginsdk.ResourceData, meta interface
 				d.Set("storage_account_id", props.StorageId)
 			}
 
-			networkSecurityGroupId := ""
-			nsgId, err := networksecuritygroups.ParseNetworkSecurityGroupIDInsensitively(props.TargetResourceId)
-			if err == nil {
-				networkSecurityGroupId = nsgId.ID()
+			targetResourceId := props.TargetResourceId
+			if nsgId, err := networksecuritygroups.ParseNetworkSecurityGroupIDInsensitively(props.TargetResourceId); err == nil {
+				targetResourceId = nsgId.ID()
+			} else if vnetId, err := commonids.ParseVirtualNetworkIDInsensitively(props.TargetResourceId); err == nil {
+				targetResourceId = vnetId.ID()
+			} else if subnetId, err := commonids.ParseSubnetIDInsensitively(props.TargetResourceId); err == nil {
+				targetResourceId = subnetId.ID()
+			} else if nicId, err := commonids.ParseNetworkInterfaceIDInsensitively(props.TargetResourceId); err == nil {
+				targetResourceId = nicId.ID()
 			}
-			d.Set("network_security_group_id", networkSecurityGroupId)
+
+			d.Set("target_resource_id", targetResourceId)
 
 			if err := d.Set("retention_policy", flattenNetworkWatcherFlowLogRetentionPolicy(props.RetentionPolicy)); err != nil {
 				return fmt.Errorf("setting `retention_policy`: %+v", err)
 			}
 		}
 
-		return tags.FlattenAndSet(d, model.Tags)
+		if err := tags.FlattenAndSet(d, model.Tags); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -422,16 +429,18 @@ func resourceNetworkWatcherFlowLogDelete(d *pluginsdk.ResourceData, meta interfa
 		return fmt.Errorf("retrieving %s: %+v", id, err)
 	}
 	if resp.Model == nil || resp.Model.Properties == nil || resp.Model.Properties.TargetResourceId == "" {
-		return fmt.Errorf("retreiving %s: `properties` or `properties.TargetResourceID` was nil", id)
+		return fmt.Errorf("retrieving %s: `properties` or `properties.TargetResourceID` was nil", id)
 	}
 
-	networkSecurityGroupId, err := networksecuritygroups.ParseNetworkSecurityGroupIDInsensitively(resp.Model.Properties.TargetResourceId)
-	if err != nil {
-		return fmt.Errorf("parsing %q as a Network Security Group ID: %+v", resp.Model.Properties.TargetResourceId, err)
+	targetResourceId := resp.Model.Properties.TargetResourceId
+	if nsgId, err := networksecuritygroups.ParseNetworkSecurityGroupIDInsensitively(resp.Model.Properties.TargetResourceId); err == nil {
+		targetResourceId = nsgId.ID()
+	} else if vnetId, err := commonids.ParseVirtualNetworkIDInsensitively(resp.Model.Properties.TargetResourceId); err == nil {
+		targetResourceId = vnetId.ID()
 	}
 
-	locks.ByID(networkSecurityGroupId.ID())
-	defer locks.UnlockByID(networkSecurityGroupId.ID())
+	locks.ByID(targetResourceId)
+	defer locks.UnlockByID(targetResourceId)
 
 	if err := client.DeleteThenPoll(ctx, *id); err != nil {
 		return fmt.Errorf("deleting %s: %v", id, err)
@@ -459,17 +468,13 @@ func flattenNetworkWatcherFlowLogRetentionPolicy(input *flowlogs.RetentionPolicy
 	output := make([]interface{}, 0)
 
 	if input != nil {
-		enabled := false
-		if input.Enabled != nil {
-			enabled = *input.Enabled
-		}
 		days := 0
 		if input.Days != nil {
 			days = int(*input.Days)
 		}
 		output = append(output, map[string]interface{}{
 			"days":    days,
-			"enabled": enabled,
+			"enabled": pointer.From(input.Enabled),
 		})
 	}
 
@@ -480,33 +485,16 @@ func flattenNetworkWatcherFlowLogTrafficAnalytics(input *flowlogs.TrafficAnalyti
 	output := make([]interface{}, 0)
 	if input != nil {
 		if cfg := input.NetworkWatcherFlowAnalyticsConfiguration; cfg != nil {
-			enabled := false
-			if cfg.Enabled != nil {
-				enabled = *cfg.Enabled
-			}
-			workspaceId := ""
-			if cfg.WorkspaceId != nil {
-				workspaceId = *cfg.WorkspaceId
-			}
-			workspaceRegion := ""
-			if cfg.WorkspaceRegion != nil {
-				workspaceRegion = *cfg.WorkspaceRegion
-			}
-			workspaceResourceId := ""
-			if cfg.WorkspaceResourceId != nil {
-				workspaceResourceId = *cfg.WorkspaceResourceId
-			}
-
 			intervalInMinutes := 0
 			if cfg.TrafficAnalyticsInterval != nil {
 				intervalInMinutes = int(*cfg.TrafficAnalyticsInterval)
 			}
 			output = append(output, map[string]interface{}{
-				"enabled":               enabled,
+				"enabled":               pointer.From(cfg.Enabled),
 				"interval_in_minutes":   intervalInMinutes,
-				"workspace_id":          workspaceId,
-				"workspace_region":      workspaceRegion,
-				"workspace_resource_id": workspaceResourceId,
+				"workspace_id":          pointer.From(cfg.WorkspaceId),
+				"workspace_region":      pointer.From(cfg.WorkspaceRegion),
+				"workspace_resource_id": pointer.From(cfg.WorkspaceResourceId),
 			})
 		}
 	}
@@ -516,6 +504,10 @@ func flattenNetworkWatcherFlowLogTrafficAnalytics(input *flowlogs.TrafficAnalyti
 
 func expandNetworkWatcherFlowLogTrafficAnalytics(d *pluginsdk.ResourceData) *flowlogs.TrafficAnalyticsProperties {
 	vs := d.Get("traffic_analytics").([]interface{})
+
+	if len(vs) == 0 {
+		return nil
+	}
 
 	v := vs[0].(map[string]interface{})
 	enabled := v["enabled"].(bool)
@@ -527,9 +519,9 @@ func expandNetworkWatcherFlowLogTrafficAnalytics(d *pluginsdk.ResourceData) *flo
 	return &flowlogs.TrafficAnalyticsProperties{
 		NetworkWatcherFlowAnalyticsConfiguration: &flowlogs.TrafficAnalyticsConfigurationProperties{
 			Enabled:                  pointer.To(enabled),
-			WorkspaceId:              utils.String(workspaceID),
-			WorkspaceRegion:          utils.String(workspaceRegion),
-			WorkspaceResourceId:      utils.String(workspaceResourceID),
+			WorkspaceId:              pointer.To(workspaceID),
+			WorkspaceRegion:          pointer.To(workspaceRegion),
+			WorkspaceResourceId:      pointer.To(workspaceResourceID),
 			TrafficAnalyticsInterval: pointer.To(int64(interval)),
 		},
 	}

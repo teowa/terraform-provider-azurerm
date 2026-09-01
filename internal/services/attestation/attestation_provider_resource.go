@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package attestation
@@ -22,13 +22,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/features"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/attestation/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/timeouts"
-	"github.com/hashicorp/terraform-provider-azurerm/utils"
 	"github.com/jackofallops/kermit/sdk/attestation/2022-08-01/attestation"
 )
+
+//go:generate go run ../../tools/generator-tests resourceidentity -test-name basicForResourceIdentity
 
 func resourceAttestationProvider() *pluginsdk.Resource {
 	return &pluginsdk.Resource{
@@ -44,10 +44,11 @@ func resourceAttestationProvider() *pluginsdk.Resource {
 			Delete: pluginsdk.DefaultTimeout(30 * time.Minute),
 		},
 
-		Importer: pluginsdk.ImporterValidatingResourceId(func(id string) error {
-			_, err := attestationproviders.ParseAttestationProvidersID(id)
-			return err
-		}),
+		Importer: pluginsdk.ImporterValidatingIdentity(&attestationproviders.AttestationProvidersId{}),
+
+		Identity: &schema.ResourceIdentity{
+			SchemaFunc: pluginsdk.GenerateIdentitySchema(&attestationproviders.AttestationProvidersId{}),
+		},
 
 		CustomizeDiff: func(ctx context.Context, diff *schema.ResourceDiff, i interface{}) error {
 			if o, n := diff.GetChange("open_enclave_policy_base64"); o.(string) != "" && n.(string) == "" {
@@ -70,7 +71,7 @@ func resourceAttestationProvider() *pluginsdk.Resource {
 		},
 
 		Schema: func() map[string]*pluginsdk.Schema {
-			s := map[string]*pluginsdk.Schema{
+			return map[string]*pluginsdk.Schema{
 				"name": {
 					Type:         pluginsdk.TypeString,
 					Required:     true,
@@ -125,29 +126,6 @@ func resourceAttestationProvider() *pluginsdk.Resource {
 					ValidateFunc: validate.ContainsABase64UriEncodedJWTOfAStoredAttestationPolicy,
 				},
 			}
-
-			if !features.FourPointOhBeta() {
-				s["policy"] = &pluginsdk.Schema{
-					Type:       pluginsdk.TypeList,
-					Optional:   true,
-					Deprecated: "This field is no longer used and will be removed in v4.0 of the Azure Provider - use `open_enclave_policy_base64`, `sgx_enclave_policy_base64`, `tpm_policy_base64` and `sev_snp_policy_base64` instead.",
-					Elem: &pluginsdk.Resource{
-						Schema: map[string]*pluginsdk.Schema{
-							"environment_type": {
-								Type:     pluginsdk.TypeString,
-								Optional: true,
-							},
-
-							"data": {
-								Type:     pluginsdk.TypeString,
-								Optional: true,
-							},
-						},
-					},
-				}
-			}
-
-			return s
 		}(),
 	}
 }
@@ -159,14 +137,17 @@ func resourceAttestationProviderCreate(d *pluginsdk.ResourceData, meta interface
 	defer cancel()
 
 	id := attestationproviders.NewAttestationProvidersID(subscriptionId, d.Get("resource_group_name").(string), d.Get("name").(string))
-	existing, err := attestationClients.ProviderClient.Get(ctx, id)
-	if err != nil {
-		if !response.WasNotFound(existing.HttpResponse) {
-			return fmt.Errorf("checking for presence of exisiting %s: %+v", id, err)
+
+	if !meta.(*clients.Client).Features.SkipImportCheckOnCreateAndAllowOverwritingExistingResources {
+		existing, err := attestationClients.ProviderClient.Get(ctx, id)
+		if err != nil {
+			if !response.WasNotFound(existing.HttpResponse) {
+				return fmt.Errorf("checking for presence of exisiting %s: %+v", id, err)
+			}
 		}
-	}
-	if !response.WasNotFound(existing.HttpResponse) {
-		return tf.ImportAsExistsError("azurerm_attestation_provider", id.ID())
+		if !response.WasNotFound(existing.HttpResponse) {
+			return tf.ImportAsExistsError("azurerm_attestation_provider", id.ID())
+		}
 	}
 
 	props := attestationproviders.AttestationServiceCreationParams{
@@ -176,8 +157,8 @@ func resourceAttestationProviderCreate(d *pluginsdk.ResourceData, meta interface
 	}
 
 	// NOTE: This maybe an slice in a future release or even a slice of slices
-	//       The service team does not currently have any user data for this
-	//       pluginsdk.
+	//    The service team does not currently have any user data for this
+	//    pluginsdk.
 	policySigningCertificate := d.Get("policy_signing_certificate_data").(string)
 
 	if policySigningCertificate != "" {
@@ -194,6 +175,9 @@ func resourceAttestationProviderCreate(d *pluginsdk.ResourceData, meta interface
 		return fmt.Errorf("creating %s: %+v", id, err)
 	}
 	d.SetId(id.ID())
+	if err := pluginsdk.SetResourceIdentityData(d, &id); err != nil {
+		return err
+	}
 
 	dataPlaneUri, err := attestationClients.DataPlaneEndpointForProvider(ctx, id)
 	if err != nil {
@@ -259,19 +243,19 @@ func resourceAttestationProviderRead(d *pluginsdk.ResourceData, meta interface{}
 
 	// Status=400 Code="Bad request" Message="Tpm attestation is not supported in the 'UKSouth' region"
 	openEnclavePolicy, err := dataPlaneClient.Get(ctx, *dataPlaneUri, attestation.TypeOpenEnclave)
-	if err != nil && !utils.ResponseWasBadRequest(openEnclavePolicy.Response) {
+	if err != nil && !response.WasBadRequest(openEnclavePolicy.Response.Response) {
 		return fmt.Errorf("retrieving OpenEnclave Policy for %s: %+v", *id, err)
 	}
 	sgxEnclavePolicy, err := dataPlaneClient.Get(ctx, *dataPlaneUri, attestation.TypeSgxEnclave)
-	if err != nil && !utils.ResponseWasBadRequest(sgxEnclavePolicy.Response) {
+	if err != nil && !response.WasBadRequest(sgxEnclavePolicy.Response.Response) {
 		return fmt.Errorf("retrieving SgxEnclave Policy for %s: %+v", *id, err)
 	}
 	tpmPolicy, err := dataPlaneClient.Get(ctx, *dataPlaneUri, attestation.TypeTpm)
-	if err != nil && !utils.ResponseWasBadRequest(tpmPolicy.Response) {
+	if err != nil && !response.WasBadRequest(tpmPolicy.Response.Response) {
 		return fmt.Errorf("retrieving Tpm Policy for %s: %+v", *id, err)
 	}
 	sevSnpPolicy, err := dataPlaneClient.Get(ctx, *dataPlaneUri, attestation.TypeSevSnpVM)
-	if err != nil && !utils.ResponseWasBadRequest(sevSnpPolicy.Response) {
+	if err != nil && !response.WasBadRequest(sevSnpPolicy.Response.Response) {
 		return fmt.Errorf("retrieving SEV-SNP Policy for %s: %+v", *id, err)
 	}
 
@@ -315,13 +299,7 @@ func resourceAttestationProviderRead(d *pluginsdk.ResourceData, meta interface{}
 	}
 	d.Set("sev_snp_policy_base64", pointer.From(sevSnpPolicyData))
 
-	if !features.FourPointOhBeta() {
-		if err := d.Set("policy", []interface{}{}); err != nil {
-			return fmt.Errorf("setting `policy`: %+v", err)
-		}
-	}
-
-	return nil
+	return pluginsdk.SetResourceIdentityData(d, id)
 }
 
 func resourceAttestationProviderUpdate(d *pluginsdk.ResourceData, meta interface{}) error {
@@ -343,7 +321,12 @@ func resourceAttestationProviderUpdate(d *pluginsdk.ResourceData, meta interface
 		}
 	}
 
-	if d.HasChanges("open_enclave_policy_base64", "sgx_enclave_policy_base64", "tpm_policy_base64", "sev_snp_policy_base64") {
+	if d.HasChanges(
+		"open_enclave_policy_base64",
+		"sgx_enclave_policy_base64",
+		"tpm_policy_base64",
+		"sev_snp_policy_base64",
+	) {
 		dataPlaneUri, err := attestationClients.DataPlaneEndpointForProvider(ctx, *id)
 		if err != nil {
 			return fmt.Errorf("determining Data Plane URI for %s: %+v", *id, err)
@@ -394,12 +377,12 @@ func resourceAttestationProviderDelete(d *pluginsdk.ResourceData, meta interface
 	return nil
 }
 
-func expandArmAttestationProviderJSONWebKeySet(pem string) *attestationproviders.JsonWebKeySet {
+func expandArmAttestationProviderJSONWebKeySet(pem string) *attestationproviders.JSONWebKeySet {
 	if len(pem) == 0 {
 		return nil
 	}
 
-	result := attestationproviders.JsonWebKeySet{
+	result := attestationproviders.JSONWebKeySet{
 		Keys: expandArmAttestationProviderJSONWebKeyArray(pem),
 	}
 

@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package sentinel
@@ -7,11 +7,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/go-azure-sdk/resource-manager/securityinsights/2022-10-01-preview/alertrules"
+	"github.com/hashicorp/go-azure-helpers/lang/pointer"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/securityinsights/2023-12-01-preview/alertrules"
+	"github.com/hashicorp/terraform-provider-azurerm/helpers"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
-	"github.com/hashicorp/terraform-provider-azurerm/utils"
 )
 
 func importSentinelAlertRule(expectKind alertrules.AlertRuleKind) pluginsdk.ImporterFunc {
@@ -75,7 +76,7 @@ func assertAlertRuleKind(rule alertrules.AlertRule, expectKind alertrules.AlertR
 		kind = alertrules.AlertRuleKindThreatIntelligence
 	}
 	if expectKind != kind {
-		return fmt.Errorf("Sentinel Alert Rule has mismatched kind, expected: %q, got %q", expectKind, kind)
+		return fmt.Errorf("'Sentinel Alert Rule' has mismatched kind, expected: %q, got %q", expectKind, kind)
 	}
 	return nil
 }
@@ -121,12 +122,10 @@ func expandAlertRuleIncidentConfiguration(input []interface{}, createIncidentKey
 
 	raw := input[0].(map[string]interface{})
 
-	output := &alertrules.IncidentConfiguration{
+	return &alertrules.IncidentConfiguration{
 		CreateIncident:        raw[createIncidentKey].(bool),
 		GroupingConfiguration: expandAlertRuleGrouping(raw["grouping"].([]interface{}), withGroupByPrefix),
 	}
-
-	return output
 }
 
 func flattenAlertRuleIncidentConfiguration(input *alertrules.IncidentConfiguration, createIncidentKey string, withGroupByPrefix bool) []interface{} {
@@ -140,6 +139,22 @@ func flattenAlertRuleIncidentConfiguration(input *alertrules.IncidentConfigurati
 			"grouping":        flattenAlertRuleGrouping(input.GroupingConfiguration, withGroupByPrefix),
 		},
 	}
+}
+
+func expandAlertRuleEventGroupingSetting(input []interface{}) *alertrules.EventGroupingSettings {
+	if len(input) == 0 || input[0] == nil {
+		return nil
+	}
+
+	v := input[0].(map[string]interface{})
+	result := alertrules.EventGroupingSettings{}
+
+	if aggregationKind := v["aggregation_method"].(string); aggregationKind != "" {
+		kind := alertrules.EventGroupingAggregationKind(aggregationKind)
+		result.AggregationKind = &kind
+	}
+
+	return &result
 }
 
 func expandAlertRuleGrouping(input []interface{}, withGroupPrefix bool) *alertrules.GroupingConfiguration {
@@ -182,7 +197,7 @@ func expandAlertRuleGrouping(input []interface{}, withGroupPrefix bool) *alertru
 	if withGroupPrefix {
 		key = "group_" + key
 	}
-	output.GroupByCustomDetails = utils.ExpandStringSlice(raw[key].([]interface{}))
+	output.GroupByCustomDetails = helpers.ExpandStringSlice(raw[key].([]interface{}))
 
 	return output
 }
@@ -237,6 +252,23 @@ func flattenAlertRuleGrouping(input *alertrules.GroupingConfiguration, withGroup
 	}
 }
 
+func flattenAlertRuleEventGroupingSetting(input *alertrules.EventGroupingSettings) []interface{} {
+	if input == nil {
+		return []interface{}{}
+	}
+
+	var aggregationKind string
+	if input.AggregationKind != nil {
+		aggregationKind = string(*input.AggregationKind)
+	}
+
+	return []interface{}{
+		map[string]interface{}{
+			"aggregation_method": aggregationKind,
+		},
+	}
+}
+
 func expandAlertRuleAlertDetailsOverride(input []interface{}) *alertrules.AlertDetailsOverride {
 	if len(input) == 0 || input[0] == nil {
 		return nil
@@ -246,16 +278,16 @@ func expandAlertRuleAlertDetailsOverride(input []interface{}) *alertrules.AlertD
 	output := &alertrules.AlertDetailsOverride{}
 
 	if v := b["description_format"]; v != "" {
-		output.AlertDescriptionFormat = utils.String(v.(string))
+		output.AlertDescriptionFormat = pointer.To(v.(string))
 	}
 	if v := b["display_name_format"]; v != "" {
-		output.AlertDisplayNameFormat = utils.String(v.(string))
+		output.AlertDisplayNameFormat = pointer.To(v.(string))
 	}
 	if v := b["severity_column_name"]; v != "" {
-		output.AlertSeverityColumnName = utils.String(v.(string))
+		output.AlertSeverityColumnName = pointer.To(v.(string))
 	}
 	if v := b["tactics_column_name"]; v != "" {
-		output.AlertTacticsColumnName = utils.String(v.(string))
+		output.AlertTacticsColumnName = pointer.To(v.(string))
 	}
 	if v := b["dynamic_property"]; v != nil && len(v.([]interface{})) > 0 {
 		output.AlertDynamicProperties = expandAlertRuleAlertDynamicProperties(v.([]interface{}))
@@ -269,26 +301,6 @@ func flattenAlertRuleAlertDetailsOverride(input *alertrules.AlertDetailsOverride
 		return []interface{}{}
 	}
 
-	var descriptionFormat string
-	if input.AlertDescriptionFormat != nil {
-		descriptionFormat = *input.AlertDescriptionFormat
-	}
-
-	var displayNameFormat string
-	if input.AlertDisplayNameFormat != nil {
-		displayNameFormat = *input.AlertDisplayNameFormat
-	}
-
-	var severityColumnName string
-	if input.AlertSeverityColumnName != nil {
-		severityColumnName = *input.AlertSeverityColumnName
-	}
-
-	var tacticsColumnName string
-	if input.AlertTacticsColumnName != nil {
-		tacticsColumnName = *input.AlertTacticsColumnName
-	}
-
 	var dynamicProperties []interface{}
 	if input.AlertDynamicProperties != nil {
 		dynamicProperties = flattenAlertRuleAlertDynamicProperties(input.AlertDynamicProperties)
@@ -296,10 +308,10 @@ func flattenAlertRuleAlertDetailsOverride(input *alertrules.AlertDetailsOverride
 
 	return []interface{}{
 		map[string]interface{}{
-			"description_format":   descriptionFormat,
-			"display_name_format":  displayNameFormat,
-			"severity_column_name": severityColumnName,
-			"tactics_column_name":  tacticsColumnName,
+			"description_format":   pointer.From(input.AlertDescriptionFormat),
+			"display_name_format":  pointer.From(input.AlertDisplayNameFormat),
+			"severity_column_name": pointer.From(input.AlertSeverityColumnName),
+			"tactics_column_name":  pointer.From(input.AlertTacticsColumnName),
 			"dynamic_property":     dynamicProperties,
 		},
 	}
@@ -316,7 +328,7 @@ func expandAlertRuleAlertDynamicProperties(input []interface{}) *[]alertrules.Al
 		property := alertrules.AlertProperty(b["name"].(string))
 		output = append(output, alertrules.AlertPropertyMapping{
 			AlertProperty: &property,
-			Value:         utils.String(b["value"].(string)),
+			Value:         pointer.To(b["value"].(string)),
 		})
 	}
 
@@ -390,8 +402,8 @@ func expandAlertRuleFieldMapping(input []interface{}) *[]alertrules.FieldMapping
 	for _, e := range input {
 		b := e.(map[string]interface{})
 		result = append(result, alertrules.FieldMapping{
-			Identifier: utils.String(b["identifier"].(string)),
-			ColumnName: utils.String(b["column_name"].(string)),
+			Identifier: pointer.To(b["identifier"].(string)),
+			ColumnName: pointer.To(b["column_name"].(string)),
 		})
 	}
 
@@ -405,19 +417,9 @@ func flattenAlertRuleFieldMapping(input *[]alertrules.FieldMapping) []interface{
 
 	output := make([]interface{}, 0, len(*input))
 	for _, e := range *input {
-		var identifier string
-		if e.Identifier != nil {
-			identifier = *e.Identifier
-		}
-
-		var columnName string
-		if e.ColumnName != nil {
-			columnName = *e.ColumnName
-		}
-
 		output = append(output, map[string]interface{}{
-			"identifier":  identifier,
-			"column_name": columnName,
+			"identifier":  pointer.From(e.Identifier),
+			"column_name": pointer.From(e.ColumnName),
 		})
 	}
 
@@ -433,7 +435,7 @@ func expandAlertRuleSentinelEntityMapping(input []interface{}) *[]alertrules.Sen
 	for _, e := range input {
 		b := e.(map[string]interface{})
 		result = append(result, alertrules.SentinelEntityMapping{
-			ColumnName: utils.String(b["column_name"].(string)),
+			ColumnName: pointer.To(b["column_name"].(string)),
 		})
 	}
 
@@ -447,13 +449,8 @@ func flattenAlertRuleSentinelEntityMapping(input *[]alertrules.SentinelEntityMap
 
 	output := make([]interface{}, 0, len(*input))
 	for _, e := range *input {
-		var columnName string
-		if e.ColumnName != nil {
-			columnName = *e.ColumnName
-		}
-
 		output = append(output, map[string]interface{}{
-			"column_name": columnName,
+			"column_name": pointer.From(e.ColumnName),
 		})
 	}
 
