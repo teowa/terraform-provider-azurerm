@@ -10,13 +10,14 @@ import (
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
-	application "github.com/hashicorp/go-azure-sdk/resource-manager/batch/2024-07-01/applications"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/batch/2024-07-01/application"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/azure"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/batch/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/timeouts"
 )
 
@@ -70,7 +71,7 @@ func resourceBatchApplication() *pluginsdk.Resource {
 			"display_name": {
 				Type:         pluginsdk.TypeString,
 				Optional:     true,
-				ValidateFunc: validate.ApplicationDisplayName,
+				ValidateFunc: validation.StringLenBetween(1, 1024),
 			},
 		},
 
@@ -88,14 +89,16 @@ func resourceBatchApplicationCreate(d *pluginsdk.ResourceData, meta interface{})
 
 	id := application.NewApplicationID(subscriptionId, d.Get("resource_group_name").(string), d.Get("account_name").(string), d.Get("name").(string))
 
-	resp, err := client.ApplicationGet(ctx, id)
-	if err != nil {
-		if !response.WasNotFound(resp.HttpResponse) {
-			return fmt.Errorf("checking for presence of existing %s: %+v", id, err)
+	if !meta.(*clients.Client).Features.SkipImportCheckOnCreateAndAllowOverwritingExistingResources {
+		resp, err := client.Get(ctx, id)
+		if err != nil {
+			if !response.WasNotFound(resp.HttpResponse) {
+				return fmt.Errorf("checking for presence of existing %s: %+v", id, err)
+			}
 		}
-	}
-	if !response.WasNotFound(resp.HttpResponse) {
-		return tf.ImportAsExistsError("azurerm_batch_application", id.ID())
+		if !response.WasNotFound(resp.HttpResponse) {
+			return tf.ImportAsExistsError("azurerm_batch_application", id.ID())
+		}
 	}
 
 	allowUpdates := d.Get("allow_updates").(bool)
@@ -110,7 +113,7 @@ func resourceBatchApplicationCreate(d *pluginsdk.ResourceData, meta interface{})
 		},
 	}
 
-	if _, err := client.ApplicationCreate(ctx, id, parameters); err != nil {
+	if _, err := client.Create(ctx, id, parameters); err != nil {
 		return fmt.Errorf("creating %s: %+v", id, err)
 	}
 
@@ -132,7 +135,7 @@ func resourceBatchApplicationRead(d *pluginsdk.ResourceData, meta interface{}) e
 		return err
 	}
 
-	resp, err := client.ApplicationGet(ctx, *id)
+	resp, err := client.Get(ctx, *id)
 	if err != nil {
 		if response.WasNotFound(resp.HttpResponse) {
 			log.Printf("[INFO] Batch Application %q does not exist - removing from state", d.Id())
@@ -179,7 +182,7 @@ func resourceBatchApplicationUpdate(d *pluginsdk.ResourceData, meta interface{})
 		},
 	}
 
-	if _, err := client.ApplicationUpdate(ctx, *id, parameters); err != nil {
+	if _, err := client.Update(ctx, *id, parameters); err != nil {
 		return fmt.Errorf("updating %s: %+v", *id, err)
 	}
 
@@ -196,7 +199,7 @@ func resourceBatchApplicationDelete(d *pluginsdk.ResourceData, meta interface{})
 		return err
 	}
 
-	if _, err := client.ApplicationDelete(ctx, *id); err != nil {
+	if _, err := client.Delete(ctx, *id); err != nil {
 		return fmt.Errorf("deleting %s: %+v", *id, err)
 	}
 
