@@ -216,13 +216,10 @@ func resourceVirtualMachine() *pluginsdk.Resource {
 				Elem: &pluginsdk.Resource{
 					Schema: map[string]*pluginsdk.Schema{
 						"os_type": {
-							Type:     pluginsdk.TypeString,
-							Optional: true,
-							Computed: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								string(virtualmachines.OperatingSystemTypesLinux),
-								string(virtualmachines.OperatingSystemTypesWindows),
-							}, false),
+							Type:         pluginsdk.TypeString,
+							Optional:     true,
+							Computed:     true,
+							ValidateFunc: validation.StringInSlice(virtualmachines.PossibleValuesForOperatingSystemTypes(), false),
 						},
 
 						"name": {
@@ -281,7 +278,7 @@ func resourceVirtualMachine() *pluginsdk.Resource {
 							Type:         pluginsdk.TypeInt,
 							Optional:     true,
 							Computed:     true,
-							ValidateFunc: validate.DiskSizeGB,
+							ValidateFunc: validation.IntBetween(0, 32767),
 						},
 
 						"write_accelerator_enabled": {
@@ -350,7 +347,7 @@ func resourceVirtualMachine() *pluginsdk.Resource {
 							Type:         pluginsdk.TypeInt,
 							Optional:     true,
 							Computed:     true,
-							ValidateFunc: validate.DiskSizeGB,
+							ValidateFunc: validation.IntBetween(0, 32767),
 						},
 
 						"lun": {
