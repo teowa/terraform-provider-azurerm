@@ -21,7 +21,8 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/zones"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2023-11-01/publicipprefixes"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/loadbalancers"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/ddoscustompolicies"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/loadbalancers"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
@@ -121,6 +122,12 @@ func resourceArmLoadBalancer() *pluginsdk.Resource {
 							Type:         pluginsdk.TypeString,
 							Optional:     true,
 							ValidateFunc: commonids.ValidatePublicIPAddressID,
+						},
+
+						"ddos_custom_policy_id": {
+							Type:         pluginsdk.TypeString,
+							Optional:     true,
+							ValidateFunc: ddoscustompolicies.ValidateDdosCustomPolicyID,
 						},
 
 						"public_ip_prefix_id": {
@@ -449,6 +456,14 @@ func expandAzureRmLoadBalancerFrontendIpConfigurations(d *pluginsdk.ResourceData
 			}
 		}
 
+		if v := data["ddos_custom_policy_id"].(string); v != "" {
+			properties.DdosSettings = &loadbalancers.DdosFrontendIPConfigurationSettings{
+				DdosCustomPolicy: &loadbalancers.SubResource{
+					Id: pointer.To(v),
+				},
+			}
+		}
+
 		if v := data["subnet_id"].(string); v != "" {
 			properties.PrivateIPAddressVersion = pointer.To(loadbalancers.IPVersionIPvFour)
 			if v := data["private_ip_address_version"].(string); v != "" {
@@ -496,6 +511,7 @@ func flattenLoadBalancerFrontendIpConfiguration(ipConfigs *[]loadbalancers.Front
 		privateIpAddressVersion := ""
 		subnetId := ""
 		privateIpAddress := ""
+		ddosCustomPolicyId := ""
 
 		if props := config.Properties; props != nil {
 			privateIPAllocationMethod = string(pointer.From(props.PrivateIPAllocationMethod))
@@ -516,6 +532,12 @@ func flattenLoadBalancerFrontendIpConfiguration(ipConfigs *[]loadbalancers.Front
 
 			if pip := props.PublicIPPrefix; pip != nil {
 				publicIpPrefixId = pointer.From(pip.Id)
+			}
+
+			if ddosSettings := props.DdosSettings; ddosSettings != nil {
+				if customPolicy := ddosSettings.DdosCustomPolicy; customPolicy != nil {
+					ddosCustomPolicyId = pointer.From(customPolicy.Id)
+				}
 			}
 
 			if rules := props.LoadBalancingRules; rules != nil {
@@ -554,6 +576,7 @@ func flattenLoadBalancerFrontendIpConfiguration(ipConfigs *[]loadbalancers.Front
 			"private_ip_address_allocation": privateIPAllocationMethod,
 			"public_ip_prefix_id":           publicIpPrefixId,
 			"subnet_id":                     subnetId,
+			"ddos_custom_policy_id":         ddosCustomPolicyId,
 		}
 
 		flattenedZones := zones.FlattenUntyped(config.Zones)

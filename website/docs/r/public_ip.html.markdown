@@ -54,11 +54,13 @@ The following arguments are supported:
 
 -> **Note:** Availability Zones are only supported with a [Standard SKU](https://docs.microsoft.com/azure/virtual-network/virtual-network-ip-addresses-overview-arm#standard) and [in select regions](https://docs.microsoft.com/azure/availability-zones/az-overview) at this time. Standard SKU Public IP Addresses that do not specify a zone are **not** zone-redundant by default.
 
+* `ddos_custom_policy_id` - (Optional) The ID of DDoS custom policy associated with the public IP.
+
 * `ddos_protection_mode` - (Optional) The DDoS protection mode of the public IP. Possible values are `Disabled`, `Enabled`, and `VirtualNetworkInherited`. Defaults to `VirtualNetworkInherited`.
  
 * `ddos_protection_plan_id` - (Optional) The ID of DDoS protection plan associated with the public IP. 
 
--> **Note:** `ddos_protection_plan_id` can only be set when `ddos_protection_mode` is `Enabled`.
+-> **Note:** `ddos_protection_plan_id` and `ddos_custom_policy_id` can only be set when `ddos_protection_mode` is `Enabled`.
 
 * `domain_name_label` - (Optional) Label for the Domain Name. Will be used to make up the FQDN. If a domain name label is specified, an A DNS record is created for the public IP in the Microsoft Azure DNS system.
 

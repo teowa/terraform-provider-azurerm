@@ -80,6 +80,7 @@ The `frontend_ip_configuration` block supports the following:
 * `private_ip_address_version` - (Optional) The version of IP that the Private IP Address is. Possible values are `IPv4` or `IPv6`.
 * `public_ip_address_id` - (Optional) The ID of a Public IP Address which should be associated with the Load Balancer.
 * `public_ip_prefix_id` - (Optional) The ID of a Public IP Prefix which should be associated with the Load Balancer. Public IP Prefix can only be used with outbound rules.
+* `ddos_custom_policy_id` - (Optional) The ID of a DDoS custom policy associated with this Frontend IP Configuration's Public IP.
 
 ## Attributes Reference
 
@@ -104,6 +105,7 @@ A `frontend_ip_configuration` block exports the following:
 * `public_ip_address_id` - The ID of a Public IP Address which is associated with this Load Balancer.
 * `public_ip_prefix_id` - The ID of a Public IP Prefix which is associated with the Load Balancer.
 * `subnet_id` - The ID of the Subnet which is associated with the IP Configuration.
+* `ddos_custom_policy_id` - The ID of a DDoS custom policy associated with this Frontend IP Configuration's Public IP.
 
 ## Timeouts
 

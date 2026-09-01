@@ -19,7 +19,8 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/zones"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2023-09-01/ddosprotectionplans"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2023-11-01/publicipprefixes"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/publicipaddresses"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/ddoscustompolicies"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/publicipaddresses"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
@@ -82,6 +83,12 @@ func resourcePublicIp() *pluginsdk.Resource {
 				Type:         pluginsdk.TypeString,
 				Optional:     true,
 				ValidateFunc: ddosprotectionplans.ValidateDdosProtectionPlanID,
+			},
+
+			"ddos_custom_policy_id": {
+				Type:         pluginsdk.TypeString,
+				Optional:     true,
+				ValidateFunc: ddoscustompolicies.ValidateDdosCustomPolicyID,
 			},
 
 			"edge_zone": commonschema.EdgeZoneOptionalForceNew(),
@@ -265,6 +272,16 @@ func resourcePublicIpCreate(d *pluginsdk.ResourceData, meta interface{}) error {
 		}
 	}
 
+	ddosCustomPolicyId, customPolicyOk := d.GetOk("ddos_custom_policy_id")
+	if customPolicyOk {
+		if !strings.EqualFold(ddosProtectionMode, "enabled") {
+			return fmt.Errorf("ddos custom policy id can only be set when ddos protection is enabled")
+		}
+		publicIp.Properties.DdosSettings.DdosCustomPolicy = &publicipaddresses.SubResource{
+			Id: pointer.To(ddosCustomPolicyId.(string)),
+		}
+	}
+
 	zones := zones.ExpandUntyped(d.Get("zones").(*schema.Set).List())
 	if len(zones) > 0 {
 		publicIp.Zones = &zones
@@ -374,6 +391,15 @@ func resourcePublicIpUpdate(d *pluginsdk.ResourceData, meta interface{}) error {
 		}
 	}
 
+	if d.HasChange("ddos_custom_policy_id") {
+		if payload.Properties.DdosSettings == nil || !strings.EqualFold(string(pointer.From(payload.Properties.DdosSettings.ProtectionMode)), "enabled") {
+			return fmt.Errorf("ddos custom policy id can only be set when ddos protection is enabled")
+		}
+		payload.Properties.DdosSettings.DdosCustomPolicy = &publicipaddresses.SubResource{
+			Id: pointer.To(d.Get("ddos_custom_policy_id").(string)),
+		}
+	}
+
 	if d.HasChange("idle_timeout_in_minutes") {
 		payload.Properties.IdleTimeoutInMinutes = pointer.To(int64(d.Get("idle_timeout_in_minutes").(int)))
 	}
@@ -480,6 +506,9 @@ func resourcePublicIpFlatten(d *pluginsdk.ResourceData, id *commonids.PublicIPAd
 				ddosProtectionMode = string(pointer.From(ddosSetting.ProtectionMode))
 				if subResource := ddosSetting.DdosProtectionPlan; subResource != nil {
 					d.Set("ddos_protection_plan_id", subResource.Id)
+				}
+				if customPolicy := ddosSetting.DdosCustomPolicy; customPolicy != nil {
+					d.Set("ddos_custom_policy_id", customPolicy.Id)
 				}
 			}
 			d.Set("ddos_protection_mode", ddosProtectionMode)
