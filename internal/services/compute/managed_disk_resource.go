@@ -26,7 +26,6 @@ import (
 	"github.com/hashicorp/terraform-provider-azurerm/internal/locks"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/compute/migration"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/services/compute/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/suppress"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
@@ -72,17 +71,9 @@ func resourceManagedDisk() *pluginsdk.Resource {
 			"resource_group_name": commonschema.ResourceGroupName(),
 
 			"storage_account_type": {
-				Type:     pluginsdk.TypeString,
-				Required: true,
-				ValidateFunc: validation.StringInSlice([]string{
-					string(disks.DiskStorageAccountTypesStandardLRS),
-					string(disks.DiskStorageAccountTypesStandardSSDZRS),
-					string(disks.DiskStorageAccountTypesPremiumLRS),
-					string(disks.DiskStorageAccountTypesPremiumVTwoLRS),
-					string(disks.DiskStorageAccountTypesPremiumZRS),
-					string(disks.DiskStorageAccountTypesStandardSSDLRS),
-					string(disks.DiskStorageAccountTypesUltraSSDLRS),
-				}, false),
+				Type:             pluginsdk.TypeString,
+				Required:         true,
+				ValidateFunc:     validation.StringInSlice(disks.PossibleValuesForDiskStorageAccountTypes(), false),
 				DiffSuppressFunc: suppress.CaseDifference,
 			},
 
@@ -163,19 +154,16 @@ func resourceManagedDisk() *pluginsdk.Resource {
 			},
 
 			"os_type": {
-				Type:     pluginsdk.TypeString,
-				Optional: true,
-				ValidateFunc: validation.StringInSlice([]string{
-					string(disks.OperatingSystemTypesWindows),
-					string(disks.OperatingSystemTypesLinux),
-				}, false),
+				Type:         pluginsdk.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice(disks.PossibleValuesForOperatingSystemTypes(), false),
 			},
 
 			"disk_size_gb": {
 				Type:         pluginsdk.TypeInt,
 				Optional:     true,
 				Computed:     true,
-				ValidateFunc: validate.ManagedDiskSizeGB,
+				ValidateFunc: validation.IntBetween(0, 65536),
 			},
 
 			"upload_size_bytes": {
@@ -226,14 +214,10 @@ func resourceManagedDisk() *pluginsdk.Resource {
 			"encryption_settings": encryptionSettingsSchema(),
 
 			"network_access_policy": {
-				Type:     pluginsdk.TypeString,
-				Optional: true,
-				Default:  disks.NetworkAccessPolicyAllowAll,
-				ValidateFunc: validation.StringInSlice([]string{
-					string(disks.NetworkAccessPolicyAllowAll),
-					string(disks.NetworkAccessPolicyAllowPrivate),
-					string(disks.NetworkAccessPolicyDenyAll),
-				}, false),
+				Type:         pluginsdk.TypeString,
+				Optional:     true,
+				Default:      disks.NetworkAccessPolicyAllowAll,
+				ValidateFunc: validation.StringInSlice(disks.PossibleValuesForNetworkAccessPolicy(), false),
 			},
 			"disk_access_id": {
 				Type:     pluginsdk.TypeString,
@@ -289,13 +273,10 @@ func resourceManagedDisk() *pluginsdk.Resource {
 			},
 
 			"hyper_v_generation": {
-				Type:     pluginsdk.TypeString,
-				Optional: true,
-				ForceNew: true, // Not supported by disk update
-				ValidateFunc: validation.StringInSlice([]string{
-					string(disks.HyperVGenerationVOne),
-					string(disks.HyperVGenerationVTwo),
-				}, false),
+				Type:         pluginsdk.TypeString,
+				Optional:     true,
+				ForceNew:     true, // Not supported by disk update
+				ValidateFunc: validation.StringInSlice(disks.PossibleValuesForHyperVGeneration(), false),
 			},
 
 			"on_demand_bursting_enabled": {

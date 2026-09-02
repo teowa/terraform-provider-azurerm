@@ -378,10 +378,7 @@ func (r MongoClusterResource) Create() sdk.ResourceFunc {
 			// Therefore, we have to use the customized function instead of the common one, since the common function always sets `userAssignedIdentities` to `nil` in the request payload.
 			// Service team confirmed that it will be more flexible, and we will allow `userAssignedIdentities = nil` in the future. Tracking issue: https://github.com/Azure/azure-rest-api-specs/issues/38575
 			if identityVal != nil && identityVal.Type != identity.TypeNone {
-				parameter.Identity = &identity.LegacySystemAndUserAssignedMap{
-					Type:        identityVal.Type,
-					IdentityIds: identityVal.IdentityIds,
-				}
+				parameter.Identity = identityVal
 			}
 
 			if state.AdministratorUserName != "" {
@@ -613,14 +610,7 @@ func (r MongoClusterResource) Update() sdk.ResourceFunc {
 				if err != nil {
 					return fmt.Errorf(`expanding "identity": %v`, err)
 				}
-				if identityVal == nil {
-					payload.Identity = nil
-				} else {
-					payload.Identity = &identity.LegacySystemAndUserAssignedMap{
-						Type:        identityVal.Type,
-						IdentityIds: identityVal.IdentityIds,
-					}
-				}
+				payload.Identity = identityVal
 			}
 
 			if err := client.CreateOrUpdateThenPoll(ctx, *id, *payload); err != nil {
@@ -665,18 +655,13 @@ func (r MongoClusterResource) Read() sdk.ResourceFunc {
 			if model := resp.Model; model != nil {
 				state.Location = location.Normalize(model.Location)
 
-				identityVal, err := identity.FlattenLegacySystemAndUserAssignedMapToModel(model.Identity)
+				identityVal, err := identity.FlattenUserAssignedMapToModel(model.Identity)
 				if err != nil {
 					return fmt.Errorf("flattening `identity`: %+v", err)
 				}
-				modelUserAssignedList := make([]identity.ModelUserAssigned, 0, len(identityVal))
-				for _, assigned := range identityVal {
-					modelUserAssignedList = append(modelUserAssignedList, identity.ModelUserAssigned{
-						Type:        assigned.Type,
-						IdentityIds: assigned.IdentityIds,
-					})
+				if identityVal != nil {
+					state.Identity = *identityVal
 				}
-				state.Identity = modelUserAssignedList
 
 				if props := model.Properties; props != nil {
 					// API doesn't return the value of administrator_password
