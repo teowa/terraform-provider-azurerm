@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package main
@@ -161,7 +161,7 @@ func (teamCityServicesListGenerator) outputPath(rootDirectory string) string {
 }
 
 func (teamCityServicesListGenerator) run(outputFileName string, packagesToSkip map[string]struct{}) error {
-	template := `// Copyright (c) HashiCorp, Inc.
+	template := `// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 // NOTE: this is Generated from the Service Definitions - manual changes will be lost
 //       to re-generate this file, run 'make generate' in the root of the repository
@@ -251,23 +251,13 @@ func (websiteCategoriesGenerator) run(outputFileName string, _ map[string]struct
 	// sort them
 	sort.Strings(websiteCategories)
 
-	fileContents := strings.Join(websiteCategories, "\n")
+	// the file needs to start with an empty line to allow documentation without any subcategory e.g. provider function docs
+	fileContents := "\n" + strings.Join(websiteCategories, "\n")
 	return writeToFile(outputFileName, fileContents)
 }
 
-const githubIssueLabelsTemplate = `# NOTE: this file is generated via 'make generate'
-bug:
-  - 'panic:'
-crash:
-  - 'panic:'
-v/1.x (legacy):
-  - '### AzureRM Provider Version\s+(|azurerm |AzureRM )(|v|V)1\.\d+'
-v/2.x (legacy):
-  - '### AzureRM Provider Version\s+(|azurerm |AzureRM )(|v|V)2\.\d+'
-v/3.x:
-  - '### AzureRM Provider Version\s+(|azurerm |AzureRM )(|v|V)3\.\d+'
-v/4.x:
-  - '### AzureRM Provider Version\s+(|azurerm |AzureRM )(|v|V)4\.\d+'
+const githubIssueLabelsTemplate = `# NOTE: this file is generated from the Service Registrations via 'make generate' - manual changes will be lost
+# static triage labels live in labeler-issue-triage.yml
 `
 
 const azurerm = "azurerm_"
@@ -275,7 +265,7 @@ const azurerm = "azurerm_"
 type githubIssueLabelsGenerator struct{}
 
 func (g githubIssueLabelsGenerator) outputPath(rootDirectory string) string {
-	return fmt.Sprintf("%s/.github/labeler-issue-triage.yml", rootDirectory)
+	return fmt.Sprintf("%s/.github/labeler-issue-triage-generated.yml", rootDirectory)
 }
 
 type Prefix struct {
@@ -303,6 +293,7 @@ func (githubIssueLabelsGenerator) run(outputFileName string, _ map[string]struct
 			names = append(names, ds.ResourceType())
 		}
 
+		names = removeDuplicateNames(names)
 		labelToNames = appendToSliceWithinMap(labelToNames, names, label)
 	}
 	for _, service := range provider.SupportedUntypedServices() {

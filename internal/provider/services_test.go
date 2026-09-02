@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package provider
@@ -126,7 +126,7 @@ func validateResourceTypeName(resourceType string) error {
 	}
 
 	// Role Assignments should be named `azurerm_{type}_role_assignment` for consistency
-	if strings.Contains(resourceType, "role_assignment") && !strings.HasSuffix(resourceType, "role_assignment") {
+	if strings.Contains(resourceType, "role_assignment") && (!strings.HasSuffix(resourceType, "role_assignment") && !strings.HasSuffix(resourceType, "role_assignments")) {
 		return fmt.Errorf("role assignment resources should be named `azurerm_{type}_role_assignment`")
 	}
 
@@ -168,19 +168,19 @@ func TestTypedResourcesUsePointersForOptionalProperties(t *testing.T) {
 					if !ok {
 						continue
 					} else {
-						if v.Optional && field.Type.Kind() != reflect.Ptr {
+						if v.Optional && field.Type.Kind() != reflect.Pointer {
 							t.Logf("Optional field `%s` in model `%s` in resource `%s` should be a pointer!", property, modelType.Name(), resource.ResourceType())
 							fails = true
 							continue
 						}
 
-						if v.Required && field.Type.Kind() == reflect.Ptr {
+						if v.Required && field.Type.Kind() == reflect.Pointer {
 							t.Logf("Required field `%s` in model `%s` in resource `%s` should not be a pointer!", property, modelType.Name(), resource.ResourceType())
 							fails = true
 							continue
 						}
 
-						if v.Computed && !v.Required && !v.Optional && field.Type.Kind() == reflect.Ptr {
+						if v.Computed && !v.Required && !v.Optional && field.Type.Kind() == reflect.Pointer {
 							t.Logf("Computed Only field `%s` in model `%s` in resource `%s` should not be a pointer!", property, modelType.Name(), resource.ResourceType())
 						}
 
