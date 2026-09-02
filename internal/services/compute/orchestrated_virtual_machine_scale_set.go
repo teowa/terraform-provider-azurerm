@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
-	"strings"
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
@@ -92,24 +91,17 @@ func OrchestratedVirtualMachineScaleSetWindowsConfigurationSchema() *pluginsdk.S
 				},
 
 				"patch_assessment_mode": {
-					Type:     pluginsdk.TypeString,
-					Optional: true,
-					Default:  string(virtualmachinescalesets.WindowsPatchAssessmentModeImageDefault),
-					ValidateFunc: validation.StringInSlice([]string{
-						string(virtualmachinescalesets.WindowsPatchAssessmentModeAutomaticByPlatform),
-						string(virtualmachinescalesets.WindowsPatchAssessmentModeImageDefault),
-					}, false),
+					Type:         pluginsdk.TypeString,
+					Optional:     true,
+					Default:      string(virtualmachinescalesets.WindowsPatchAssessmentModeImageDefault),
+					ValidateFunc: validation.StringInSlice(virtualmachinescalesets.PossibleValuesForWindowsPatchAssessmentMode(), false),
 				},
 
 				"patch_mode": {
-					Type:     pluginsdk.TypeString,
-					Optional: true,
-					Default:  string(virtualmachinescalesets.WindowsVMGuestPatchModeAutomaticByOS),
-					ValidateFunc: validation.StringInSlice([]string{
-						string(virtualmachinescalesets.WindowsVMGuestPatchModeAutomaticByOS),
-						string(virtualmachinescalesets.WindowsVMGuestPatchModeAutomaticByPlatform),
-						string(virtualmachinescalesets.WindowsVMGuestPatchModeManual),
-					}, false),
+					Type:         pluginsdk.TypeString,
+					Optional:     true,
+					Default:      string(virtualmachinescalesets.WindowsVMGuestPatchModeAutomaticByOS),
+					ValidateFunc: validation.StringInSlice(virtualmachinescalesets.PossibleValuesForWindowsVMGuestPatchMode(), false),
 				},
 
 				"secret": windowsSecretSchema(),
@@ -166,23 +158,17 @@ func OrchestratedVirtualMachineScaleSetLinuxConfigurationSchema() *pluginsdk.Sch
 				},
 
 				"patch_assessment_mode": {
-					Type:     pluginsdk.TypeString,
-					Optional: true,
-					Default:  string(virtualmachinescalesets.LinuxPatchAssessmentModeImageDefault),
-					ValidateFunc: validation.StringInSlice([]string{
-						string(virtualmachinescalesets.LinuxPatchAssessmentModeAutomaticByPlatform),
-						string(virtualmachinescalesets.LinuxPatchAssessmentModeImageDefault),
-					}, false),
+					Type:         pluginsdk.TypeString,
+					Optional:     true,
+					Default:      string(virtualmachinescalesets.LinuxPatchAssessmentModeImageDefault),
+					ValidateFunc: validation.StringInSlice(virtualmachinescalesets.PossibleValuesForLinuxPatchAssessmentMode(), false),
 				},
 
 				"patch_mode": {
-					Type:     pluginsdk.TypeString,
-					Optional: true,
-					Default:  string(virtualmachinescalesets.LinuxVMGuestPatchModeImageDefault),
-					ValidateFunc: validation.StringInSlice([]string{
-						string(virtualmachinescalesets.LinuxVMGuestPatchModeImageDefault),
-						string(virtualmachinescalesets.LinuxVMGuestPatchModeAutomaticByPlatform),
-					}, false),
+					Type:         pluginsdk.TypeString,
+					Optional:     true,
+					Default:      string(virtualmachinescalesets.LinuxVMGuestPatchModeImageDefault),
+					ValidateFunc: validation.StringInSlice(virtualmachinescalesets.PossibleValuesForLinuxVMGuestPatchMode(), false),
 				},
 
 				"secret": linuxSecretSchema(),
@@ -399,13 +385,10 @@ func orchestratedVirtualMachineScaleSetIPConfigurationSchema() *pluginsdk.Schema
 				},
 
 				"version": {
-					Type:     pluginsdk.TypeString,
-					Optional: true,
-					Default:  string(virtualmachinescalesets.IPVersionIPvFour),
-					ValidateFunc: validation.StringInSlice([]string{
-						string(virtualmachinescalesets.IPVersionIPvFour),
-						string(virtualmachinescalesets.IPVersionIPvSix),
-					}, false),
+					Type:         pluginsdk.TypeString,
+					Optional:     true,
+					Default:      string(virtualmachinescalesets.IPVersionIPvFour),
+					ValidateFunc: validation.StringInSlice(virtualmachinescalesets.PossibleValuesForIPVersion(), false),
 				},
 			},
 		},
@@ -475,14 +458,11 @@ func orchestratedVirtualMachineScaleSetPublicIPAddressSchema() *pluginsdk.Schema
 				},
 
 				"version": {
-					Type:     pluginsdk.TypeString,
-					Optional: true,
-					ForceNew: true,
-					Default:  string(virtualmachinescalesets.IPVersionIPvFour),
-					ValidateFunc: validation.StringInSlice([]string{
-						string(virtualmachinescalesets.IPVersionIPvFour),
-						string(virtualmachinescalesets.IPVersionIPvSix),
-					}, false),
+					Type:         pluginsdk.TypeString,
+					Optional:     true,
+					ForceNew:     true,
+					Default:      string(virtualmachinescalesets.IPVersionIPvFour),
+					ValidateFunc: validation.StringInSlice(virtualmachinescalesets.PossibleValuesForIPVersion(), false),
 				},
 			},
 		},
@@ -520,13 +500,9 @@ func OrchestratedVirtualMachineScaleSetDataDiskSchema() *pluginsdk.Schema {
 		Elem: &pluginsdk.Resource{
 			Schema: map[string]*pluginsdk.Schema{
 				"caching": {
-					Type:     pluginsdk.TypeString,
-					Required: true,
-					ValidateFunc: validation.StringInSlice([]string{
-						string(virtualmachinescalesets.CachingTypesNone),
-						string(virtualmachinescalesets.CachingTypesReadOnly),
-						string(virtualmachinescalesets.CachingTypesReadWrite),
-					}, false),
+					Type:         pluginsdk.TypeString,
+					Required:     true,
+					ValidateFunc: validation.StringInSlice(virtualmachinescalesets.PossibleValuesForCachingTypes(), false),
 				},
 
 				"create_option": {
@@ -564,17 +540,9 @@ func OrchestratedVirtualMachineScaleSetDataDiskSchema() *pluginsdk.Schema {
 				},
 
 				"storage_account_type": {
-					Type:     pluginsdk.TypeString,
-					Required: true,
-					ValidateFunc: validation.StringInSlice([]string{
-						string(virtualmachinescalesets.StorageAccountTypesPremiumLRS),
-						string(virtualmachinescalesets.StorageAccountTypesPremiumVTwoLRS),
-						string(virtualmachinescalesets.StorageAccountTypesPremiumZRS),
-						string(virtualmachinescalesets.StorageAccountTypesStandardLRS),
-						string(virtualmachinescalesets.StorageAccountTypesStandardSSDLRS),
-						string(virtualmachinescalesets.StorageAccountTypesStandardSSDZRS),
-						string(virtualmachinescalesets.StorageAccountTypesUltraSSDLRS),
-					}, false),
+					Type:         pluginsdk.TypeString,
+					Required:     true,
+					ValidateFunc: validation.StringInSlice(virtualmachinescalesets.PossibleValuesForStorageAccountTypes(), false),
 				},
 
 				"write_accelerator_enabled": {
@@ -627,13 +595,9 @@ func OrchestratedVirtualMachineScaleSetOSDiskSchema() *pluginsdk.Schema {
 		Elem: &pluginsdk.Resource{
 			Schema: map[string]*pluginsdk.Schema{
 				"caching": {
-					Type:     pluginsdk.TypeString,
-					Required: true,
-					ValidateFunc: validation.StringInSlice([]string{
-						string(virtualmachinescalesets.CachingTypesNone),
-						string(virtualmachinescalesets.CachingTypesReadOnly),
-						string(virtualmachinescalesets.CachingTypesReadWrite),
-					}, false),
+					Type:         pluginsdk.TypeString,
+					Required:     true,
+					ValidateFunc: validation.StringInSlice(virtualmachinescalesets.PossibleValuesForCachingTypes(), false),
 				},
 				"storage_account_type": {
 					Type:     pluginsdk.TypeString,
@@ -659,12 +623,10 @@ func OrchestratedVirtualMachineScaleSetOSDiskSchema() *pluginsdk.Schema {
 					Elem: &pluginsdk.Resource{
 						Schema: map[string]*pluginsdk.Schema{
 							"option": {
-								Type:     pluginsdk.TypeString,
-								Required: true,
-								ForceNew: true,
-								ValidateFunc: validation.StringInSlice([]string{
-									string(virtualmachinescalesets.DiffDiskOptionsLocal),
-								}, false),
+								Type:         pluginsdk.TypeString,
+								Required:     true,
+								ForceNew:     true,
+								ValidateFunc: validation.StringInSlice(virtualmachinescalesets.PossibleValuesForDiffDiskOptions(), false),
 							},
 							"placement": {
 								Type:     pluginsdk.TypeString,
@@ -780,12 +742,6 @@ func FlattenOrchestratedVirtualMachineScaleSetOSProfile(input *virtualmachinesca
 }
 
 func validateAdminUsernameWindows(input interface{}, key string) (warnings []string, errors []error) {
-	v, ok := input.(string)
-	if !ok {
-		errors = append(errors, fmt.Errorf("expected %q to be a string", key))
-		return
-	}
-
 	// **Disallowed values:**
 	invalidUserNames := []string{
 		" ", "administrator", "admin", "user", "user1", "test", "user2", "test1", "user3", "admin1", "1", "123", "a",
@@ -793,34 +749,14 @@ func validateAdminUsernameWindows(input interface{}, key string) (warnings []str
 		"sql", "support", "support_388945a0", "sys", "test2", "test3", "user4", "user5",
 	}
 
-	for _, str := range invalidUserNames {
-		if strings.EqualFold(v, str) {
-			errors = append(errors, fmt.Errorf("%q can not be one of %v, got %q", key, invalidUserNames, v))
-			return warnings, errors
-		}
-	}
-
-	// Cannot end in "."
-	if strings.HasSuffix(input.(string), ".") {
-		errors = append(errors, fmt.Errorf("%q can not end with a '.', got %q", key, v))
-		return warnings, errors
-	}
-
-	if len(v) < 1 || len(v) > 20 {
-		errors = append(errors, fmt.Errorf("%q must be between 1 and 20 characters in length, got %q(%d characters)", key, v, len(v)))
-		return warnings, errors
-	}
-
-	return
+	return validation.All(
+		validation.StringNotInSlice(invalidUserNames, true),
+		validation.StringDoesNotMatch(regexp.MustCompile(`\.$`), "cannot end with a '.'"),
+		validation.StringLenBetween(1, 20),
+	)(input, key)
 }
 
 func validateAdminUsernameLinux(input interface{}, key string) (warnings []string, errors []error) {
-	v, ok := input.(string)
-	if !ok {
-		errors = append(errors, fmt.Errorf("expected %q to be a string", key))
-		return
-	}
-
 	// **Disallowed values:**
 	invalidUserNames := []string{
 		" ", "abrt", "adm", "admin", "audio", "backup", "bin", "cdrom", "cgred", "console", "crontab", "daemon", "dbus", "dialout", "dip",
@@ -832,19 +768,10 @@ func validateAdminUsernameLinux(input interface{}, key string) (warnings []strin
 		"www", "www-data", "wwwrun", "xok",
 	}
 
-	for _, str := range invalidUserNames {
-		if strings.EqualFold(v, str) {
-			errors = append(errors, fmt.Errorf("%q can not be one of %s, got %q", key, azure.QuotedStringSlice(invalidUserNames), v))
-			return warnings, errors
-		}
-	}
-
-	if len(v) < 1 || len(v) > 64 {
-		errors = append(errors, fmt.Errorf("%q must be between 1 and 64 characters in length, got %q(%d characters)", key, v, len(v)))
-		return warnings, errors
-	}
-
-	return
+	return validation.All(
+		validation.StringNotInSlice(invalidUserNames, true),
+		validation.StringLenBetween(1, 64),
+	)(input, key)
 }
 
 func validatePasswordComplexityWindows(input interface{}, key string) (warnings []string, errors []error) {
@@ -855,6 +782,7 @@ func validatePasswordComplexityLinux(input interface{}, key string) (warnings []
 	return validatePasswordComplexity(input, key, 6, 72)
 }
 
+// lintignore:V012,V013,V011,V001 // false positive - this validates a password; the int comparisons check length and complexity rule counts, the string comparisons check the disallowed-passwords list
 func validatePasswordComplexity(input interface{}, key string, min int, max int) (warnings []string, errors []error) {
 	password, ok := input.(string)
 	if !ok {
