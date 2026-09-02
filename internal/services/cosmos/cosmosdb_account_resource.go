@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cosmosdb/2026-03-15/openapis"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-provider-azurerm/helpers"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/azure"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
@@ -34,7 +35,6 @@ import (
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/timeouts"
-	"github.com/hashicorp/terraform-provider-azurerm/utils"
 )
 
 var CosmosDbAccountResourceName = "azurerm_cosmosdb_account"
@@ -767,7 +767,7 @@ func resourceCosmosDbAccount() *pluginsdk.Resource {
 		},
 	}
 
-	if !features.FivePointOh() {
+	if !features.SixPointOh() {
 		resource.Schema["local_authentication_disabled"] = &pluginsdk.Schema{
 			Type:          pluginsdk.TypeBool,
 			Optional:      true,
@@ -849,7 +849,7 @@ func resourceCosmosDbAccountCreate(d *pluginsdk.ResourceData, meta interface{}) 
 		existing, err := client.DatabaseAccountsGet(ctx, id)
 		if err != nil {
 			if !response.WasNotFound(existing.HttpResponse) {
-				return fmt.Errorf("checking for presence of existing %s: %s", id, err)
+				return fmt.Errorf("checking for presence of existing %s: %+v", id, err)
 			}
 		}
 
@@ -885,7 +885,7 @@ func resourceCosmosDbAccountCreate(d *pluginsdk.ResourceData, meta interface{}) 
 		Identity: expandedIdentity,
 		Properties: openapis.DatabaseAccountCreateUpdateProperties{
 			DatabaseAccountOfferType:           openapis.DatabaseAccountOfferType(d.Get("offer_type").(string)),
-			IPRules:                            common.CosmosDBIpRangeFilterToIpRules(*utils.ExpandStringSlice(d.Get("ip_range_filter").(*pluginsdk.Set).List())),
+			IPRules:                            common.CosmosDBIpRangeFilterToIpRules(*helpers.ExpandStringSlice(d.Get("ip_range_filter").(*pluginsdk.Set).List())),
 			IsVirtualNetworkFilterEnabled:      pointer.To(d.Get("is_virtual_network_filter_enabled").(bool)),
 			EnableFreeTier:                     pointer.To(d.Get("free_tier_enabled").(bool)),
 			EnableAutomaticFailover:            pointer.To(d.Get("automatic_failover_enabled").(bool)),
@@ -902,13 +902,13 @@ func resourceCosmosDbAccountCreate(d *pluginsdk.ResourceData, meta interface{}) 
 			Cors:                               common.ExpandCosmosCorsRule(d.Get("cors_rule").([]interface{})),
 			DisableKeyBasedMetadataWriteAccess: pointer.To(!d.Get("access_key_metadata_writes_enabled").(bool)),
 			NetworkAclBypass:                   expandCosmosdbAccountNetworkBypass(d.Get("network_acl_bypass_for_azure_services").(bool)),
-			NetworkAclBypassResourceIds:        utils.ExpandStringSlice(d.Get("network_acl_bypass_ids").([]interface{})),
+			NetworkAclBypassResourceIds:        helpers.ExpandStringSlice(d.Get("network_acl_bypass_ids").([]interface{})),
 			DisableLocalAuth:                   pointer.To(!d.Get("local_authentication_enabled").(bool)),
 		},
 		Tags: tags.Expand(d.Get("tags").(map[string]interface{})),
 	}
 
-	if !features.FivePointOh() {
+	if !features.SixPointOh() {
 		account.Properties.DisableLocalAuth = pointer.To(false)
 		if !pluginsdk.IsExplicitlyNullInConfig(d, "local_authentication_enabled") {
 			account.Properties.DisableLocalAuth = pointer.To(!d.Get("local_authentication_enabled").(bool))
@@ -957,7 +957,7 @@ func resourceCosmosDbAccountCreate(d *pluginsdk.ResourceData, meta interface{}) 
 	}
 
 	var key *keyvault.NestedItemID
-	if !features.FivePointOh() && setInConfig(d, "managed_hsm_key_id") {
+	if !features.SixPointOh() && setInConfig(d, "managed_hsm_key_id") {
 		keyId, err := keyvault.ParseNestedItemID(d.Get("managed_hsm_key_id").(string), keyvault.VersionTypeAny, keyvault.NestedItemTypeKey)
 		if err != nil {
 			return err
@@ -1018,7 +1018,7 @@ func resourceCosmosDbAccountUpdate(d *pluginsdk.ResourceData, meta interface{}) 
 
 	existing, err := client.DatabaseAccountsGet(ctx, *id)
 	if err != nil {
-		return fmt.Errorf("retrieving %s: %s", id, err)
+		return fmt.Errorf("retrieving %s: %+v", id, err)
 	}
 
 	if existing.Model == nil {
@@ -1032,7 +1032,7 @@ func resourceCosmosDbAccountUpdate(d *pluginsdk.ResourceData, meta interface{}) 
 
 	configLocations, err := expandAzureRmCosmosDBAccountGeoLocations(d)
 	if err != nil {
-		return fmt.Errorf("expanding `geo_location`: %w", err)
+		return fmt.Errorf("expanding `geo_location`: %+v", err)
 	}
 
 	// Normalize Locations...
@@ -1116,7 +1116,7 @@ func resourceCosmosDbAccountUpdate(d *pluginsdk.ResourceData, meta interface{}) 
 		Kind:     pointer.To(openapis.DatabaseAccountKind(d.Get("kind").(string))),
 		Properties: openapis.DatabaseAccountCreateUpdateProperties{
 			DatabaseAccountOfferType:           openapis.DatabaseAccountOfferType(d.Get("offer_type").(string)),
-			IPRules:                            common.CosmosDBIpRangeFilterToIpRules(*utils.ExpandStringSlice(d.Get("ip_range_filter").(*pluginsdk.Set).List())),
+			IPRules:                            common.CosmosDBIpRangeFilterToIpRules(*helpers.ExpandStringSlice(d.Get("ip_range_filter").(*pluginsdk.Set).List())),
 			IsVirtualNetworkFilterEnabled:      pointer.To(d.Get("is_virtual_network_filter_enabled").(bool)),
 			EnableFreeTier:                     existing.Model.Properties.EnableFreeTier,
 			EnableAutomaticFailover:            pointer.To(d.Get("automatic_failover_enabled").(bool)),
@@ -1132,7 +1132,7 @@ func resourceCosmosDbAccountUpdate(d *pluginsdk.ResourceData, meta interface{}) 
 			Cors:                               common.ExpandCosmosCorsRule(d.Get("cors_rule").([]interface{})),
 			DisableKeyBasedMetadataWriteAccess: pointer.To(!d.Get("access_key_metadata_writes_enabled").(bool)),
 			NetworkAclBypass:                   expandCosmosdbAccountNetworkBypass(d.Get("network_acl_bypass_for_azure_services").(bool)),
-			NetworkAclBypassResourceIds:        utils.ExpandStringSlice(d.Get("network_acl_bypass_ids").([]interface{})),
+			NetworkAclBypassResourceIds:        helpers.ExpandStringSlice(d.Get("network_acl_bypass_ids").([]interface{})),
 			DisableLocalAuth:                   pointer.To(!d.Get("local_authentication_enabled").(bool)),
 			BackupPolicy:                       backup,
 			EnablePartitionMerge:               pointer.To(d.Get("partition_merge_enabled").(bool)),
@@ -1141,7 +1141,7 @@ func resourceCosmosDbAccountUpdate(d *pluginsdk.ResourceData, meta interface{}) 
 		Tags: tags.Expand(d.Get("tags").(map[string]interface{})),
 	}
 
-	if !features.FivePointOh() {
+	if !features.SixPointOh() {
 		if pluginsdk.IsExplicitlyNullInConfig(d, "local_authentication_enabled") {
 			account.Properties.DisableLocalAuth = pointer.To(false)
 		}
@@ -1396,7 +1396,7 @@ func resourceCosmosDbAccountRead(d *pluginsdk.ResourceData, meta interface{}) er
 				}
 
 				d.Set("key_vault_key_id", key.VersionlessID())
-				if !features.FivePointOh() && key.IsManagedHSM() {
+				if !features.SixPointOh() && key.IsManagedHSM() {
 					d.Set("managed_hsm_key_id", key.VersionlessID())
 				}
 			}
@@ -1440,15 +1440,15 @@ func resourceCosmosDbAccountRead(d *pluginsdk.ResourceData, meta interface{}) er
 			}
 
 			d.Set("network_acl_bypass_for_azure_services", pointer.From(props.NetworkAclBypass) == openapis.NetworkAclBypassAzureServices)
-			d.Set("network_acl_bypass_ids", utils.FlattenStringSlice(props.NetworkAclBypassResourceIds))
+			d.Set("network_acl_bypass_ids", helpers.FlattenStringSlice(props.NetworkAclBypassResourceIds))
 			d.Set("local_authentication_enabled", !pointer.From(props.DisableLocalAuth))
-			if !features.FivePointOh() {
+			if !features.SixPointOh() {
 				d.Set("local_authentication_disabled", pointer.From(props.DisableLocalAuth))
 			}
 
 			policy, err := flattenCosmosdbAccountBackup(props.BackupPolicy)
 			if err != nil {
-				return fmt.Errorf("flattening `backup`: %w", err)
+				return fmt.Errorf("flattening `backup`: %+v", err)
 			}
 
 			if err = d.Set("backup", policy); err != nil {
@@ -1475,7 +1475,7 @@ func resourceCosmosDbAccountRead(d *pluginsdk.ResourceData, meta interface{}) er
 					return nil
 				}
 
-				return fmt.Errorf("listing keys for %s: %w", id, err)
+				return fmt.Errorf("listing keys for %s: %+v", id, err)
 			}
 
 			if keys.Model != nil {
@@ -1491,7 +1491,7 @@ func resourceCosmosDbAccountRead(d *pluginsdk.ResourceData, meta interface{}) er
 					return nil
 				}
 
-				return fmt.Errorf("listing read-only keys for %s: %w", id, err)
+				return fmt.Errorf("listing read-only keys for %s: %+v", id, err)
 			}
 			if readonlyKeys.Model != nil {
 				d.Set("primary_readonly_key", readonlyKeys.Model.PrimaryReadonlyMasterKey)
@@ -1506,7 +1506,7 @@ func resourceCosmosDbAccountRead(d *pluginsdk.ResourceData, meta interface{}) er
 					return nil
 				}
 
-				return fmt.Errorf("listing connection strings for %s: %w", id, err)
+				return fmt.Errorf("listing connection strings for %s: %+v", id, err)
 			}
 
 			var connStrings []string
@@ -2075,7 +2075,7 @@ func expandCosmosdbAccountRestoreParameters(input []interface{}) *openapis.Resto
 	restoreParameters.SetRestoreTimestampInUtcAsTime(restoreTimestampInUtc)
 
 	if tablesToRestore := v["tables_to_restore"].([]interface{}); len(tablesToRestore) > 0 {
-		restoreParameters.TablesToRestore = utils.ExpandStringSlice(tablesToRestore)
+		restoreParameters.TablesToRestore = helpers.ExpandStringSlice(tablesToRestore)
 	}
 
 	return &restoreParameters
@@ -2089,7 +2089,7 @@ func expandCosmosdbAccountDatabasesToRestore(input []interface{}) *[]openapis.Da
 
 		results = append(results, openapis.DatabaseRestoreResource{
 			DatabaseName:    pointer.To(v["name"].(string)),
-			CollectionNames: utils.ExpandStringSlice(v["collection_names"].(*pluginsdk.Set).List()),
+			CollectionNames: helpers.ExpandStringSlice(v["collection_names"].(*pluginsdk.Set).List()),
 		})
 	}
 	return &results
@@ -2103,7 +2103,7 @@ func expandCosmosdbAccountGremlinDatabasesToRestore(input []interface{}) *[]open
 
 		results = append(results, openapis.GremlinDatabaseRestoreResource{
 			DatabaseName: pointer.To(v["name"].(string)),
-			GraphNames:   utils.ExpandStringSlice(v["graph_names"].([]interface{})),
+			GraphNames:   helpers.ExpandStringSlice(v["graph_names"].([]interface{})),
 		})
 	}
 
@@ -2148,7 +2148,7 @@ func flattenCosmosdbAccountDatabasesToRestore(input *[]openapis.DatabaseRestoreR
 		}
 
 		results = append(results, map[string]interface{}{
-			"collection_names": utils.FlattenStringSlice(item.CollectionNames),
+			"collection_names": helpers.FlattenStringSlice(item.CollectionNames),
 			"name":             databaseName,
 		})
 	}
@@ -2163,7 +2163,7 @@ func flattenCosmosdbAccountGremlinDatabasesToRestore(input *[]openapis.GremlinDa
 
 	for _, item := range *input {
 		results = append(results, map[string]interface{}{
-			"graph_names": utils.FlattenStringSlice(item.GraphNames),
+			"graph_names": helpers.FlattenStringSlice(item.GraphNames),
 			"name":        pointer.From(item.DatabaseName),
 		})
 	}
@@ -2248,12 +2248,12 @@ func checkCapabilitiesCanBeUpdated(kind string, oldCapabilities *[]openapis.Capa
 		}
 
 		// first check if this is supported
-		if isSupported := utils.SliceContainsValue(supportedKindsForCapability.([]string), strings.ToLower(kind)); !isSupported {
+		if isSupported := helpers.SliceContainsValue(supportedKindsForCapability.([]string), strings.ToLower(kind)); !isSupported {
 			return false
 		}
 
 		// then check if it can be added via an update
-		if !utils.SliceContainsValue(canBeAddedCaps, strings.ToLower(*capability.Name)) {
+		if !helpers.SliceContainsValue(canBeAddedCaps, strings.ToLower(*capability.Name)) {
 			return false
 		}
 	}
@@ -2270,7 +2270,7 @@ func checkCapabilitiesCanBeUpdated(kind string, oldCapabilities *[]openapis.Capa
 			continue
 		}
 
-		if !utils.SliceContainsValue(canBeRemovedCaps, strings.ToLower(*capability.Name)) {
+		if !helpers.SliceContainsValue(canBeRemovedCaps, strings.ToLower(*capability.Name)) {
 			return false
 		}
 	}
@@ -2294,7 +2294,7 @@ func prepareCapabilities(capabilities interface{}) *[]openapis.Capability {
 
 func setInConfig(d *pluginsdk.ResourceData, address string) bool {
 	// remove function in 5.0
-	if features.FivePointOh() {
+	if features.SixPointOh() {
 		// No need to check RawConfig in 5.0 as `key_vault_key_id` is no longer computed
 		// so the existing `GetOk` check will suffice
 		return true

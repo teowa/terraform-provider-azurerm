@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/operationalinsights/2023-09-01/workspaces"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/operationalinsights/2025-07-01/workspaces"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/securityinsights/2022-10-01-preview/dataconnectors"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
@@ -79,11 +79,7 @@ func (r DataConnectorThreatIntelligenceTAXIIResource) Arguments() map[string]*pl
 			Type:     pluginsdk.TypeString,
 			Optional: true,
 			Default:  string(dataconnectors.PollingFrequencyOnceAnHour),
-			ValidateFunc: validation.StringInSlice([]string{
-				string(dataconnectors.PollingFrequencyOnceAMinute),
-				string(dataconnectors.PollingFrequencyOnceAnHour),
-				string(dataconnectors.PollingFrequencyOnceADay),
-			},
+			ValidateFunc: validation.StringInSlice(dataconnectors.PossibleValuesForPollingFrequency(),
 				false),
 		},
 		"lookback_date": {

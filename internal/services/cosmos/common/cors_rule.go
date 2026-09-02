@@ -9,9 +9,9 @@ import (
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cosmosdb/2026-03-15/openapis"
+	"github.com/hashicorp/terraform-provider-azurerm/helpers"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
-	"github.com/hashicorp/terraform-provider-azurerm/utils"
 )
 
 func SchemaCorsRule() *pluginsdk.Schema {
@@ -95,10 +95,10 @@ func ExpandCosmosCorsRule(input []interface{}) *[]openapis.CorsPolicy {
 	for _, attr := range input {
 		corsRuleAttr := attr.(map[string]interface{})
 		corsRule := openapis.CorsPolicy{}
-		corsRule.AllowedOrigins = strings.Join(*utils.ExpandStringSlice(corsRuleAttr["allowed_origins"].([]interface{})), ",")
-		corsRule.ExposedHeaders = pointer.To(strings.Join(*utils.ExpandStringSlice(corsRuleAttr["exposed_headers"].([]interface{})), ","))
-		corsRule.AllowedHeaders = pointer.To(strings.Join(*utils.ExpandStringSlice(corsRuleAttr["allowed_headers"].([]interface{})), ","))
-		corsRule.AllowedMethods = pointer.To(strings.Join(*utils.ExpandStringSlice(corsRuleAttr["allowed_methods"].([]interface{})), ","))
+		corsRule.AllowedOrigins = strings.Join(*helpers.ExpandStringSlice(corsRuleAttr["allowed_origins"].([]interface{})), ",")
+		corsRule.ExposedHeaders = pointer.To(strings.Join(*helpers.ExpandStringSlice(corsRuleAttr["exposed_headers"].([]interface{})), ","))
+		corsRule.AllowedHeaders = pointer.To(strings.Join(*helpers.ExpandStringSlice(corsRuleAttr["allowed_headers"].([]interface{})), ","))
+		corsRule.AllowedMethods = pointer.To(strings.Join(*helpers.ExpandStringSlice(corsRuleAttr["allowed_methods"].([]interface{})), ","))
 
 		if corsRuleAttr["max_age_in_seconds"].(int) != 0 {
 			corsRule.MaxAgeInSeconds = pointer.To(int64(corsRuleAttr["max_age_in_seconds"].(int)))
