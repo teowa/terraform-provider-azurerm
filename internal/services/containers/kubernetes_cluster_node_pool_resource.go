@@ -20,9 +20,9 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/zones"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/compute/2022-03-01/capacityreservationgroups"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/compute/2022-03-01/proximityplacementgroups"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/agentpools"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/managedclusters"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2025-10-01/snapshots"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/containerservice/2026-05-01/agentpools"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
@@ -416,6 +416,11 @@ func resourceKubernetesClusterNodePoolSchema() map[string]*pluginsdk.Schema {
 			Type:     pluginsdk.TypeBool,
 			Optional: true,
 		},
+
+		"artifact_streaming_enabled": {
+			Type:     pluginsdk.TypeBool,
+			Optional: true,
+		},
 	}
 }
 
@@ -523,6 +528,12 @@ func resourceKubernetesClusterNodePoolCreate(d *pluginsdk.ResourceData, meta int
 
 		// this must always be sent during creation, but is optional for auto-scaled clusters during update
 		Count: pointer.To(int64(count)),
+	}
+
+	if v, ok := d.GetOk("artifact_streaming_enabled"); ok {
+		profile.ArtifactStreamingProfile = &agentpools.AgentPoolArtifactStreamingProfile{
+			Enabled: pointer.To(v.(bool)),
+		}
 	}
 
 	if gpuInstanceProfile := d.Get("gpu_instance").(string); gpuInstanceProfile != "" {
@@ -754,6 +765,12 @@ func resourceKubernetesClusterNodePoolUpdate(d *pluginsdk.ResourceData, meta int
 
 	if d.HasChange("host_encryption_enabled") {
 		props.EnableEncryptionAtHost = pointer.To(d.Get("host_encryption_enabled").(bool))
+	}
+
+	if d.HasChange("artifact_streaming_enabled") {
+		props.ArtifactStreamingProfile = &agentpools.AgentPoolArtifactStreamingProfile{
+			Enabled: pointer.To(d.Get("artifact_streaming_enabled").(bool)),
+		}
 	}
 
 	if d.HasChange("kubelet_config") {
@@ -1057,6 +1074,12 @@ func resourceKubernetesClusterNodePoolRead(d *pluginsdk.ResourceData, meta inter
 		d.Set("host_encryption_enabled", props.EnableEncryptionAtHost)
 		d.Set("fips_enabled", props.EnableFIPS)
 		d.Set("ultra_ssd_enabled", props.EnableUltraSSD)
+
+		artifactStreamingEnabled := false
+		if v := props.ArtifactStreamingProfile; v != nil {
+			artifactStreamingEnabled = pointer.From(v.Enabled)
+		}
+		d.Set("artifact_streaming_enabled", artifactStreamingEnabled)
 
 		if v := props.KubeletDiskType; v != nil {
 			d.Set("kubelet_disk_type", string(*v))
