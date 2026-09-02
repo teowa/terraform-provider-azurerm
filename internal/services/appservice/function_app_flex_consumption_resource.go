@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package appservice
@@ -18,13 +18,13 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-01-01/resourceproviders"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/locks"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appservice/helpers"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appservice/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/suppress"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
-	"github.com/jackofallops/kermit/sdk/web/2022-09-01/web"
 )
 
 const (
@@ -63,6 +63,7 @@ type FunctionAppFlexConsumptionModel struct {
 	RuntimeVersion                string                                         `tfschema:"runtime_version"`
 	MaximumInstanceCount          int64                                          `tfschema:"maximum_instance_count"`
 	InstanceMemoryInMB            int64                                          `tfschema:"instance_memory_in_mb"`
+	HttpConcurrency               int64                                          `tfschema:"http_concurrency"`
 	AlwaysReady                   []FunctionAppAlwaysReady                       `tfschema:"always_ready"`
 	SiteConfig                    []helpers.SiteConfigFunctionAppFlexConsumption `tfschema:"site_config"`
 	Identity                      []identity.ModelSystemAssignedUserAssigned     `tfschema:"identity"`
@@ -122,12 +123,10 @@ func (r FunctionAppFlexConsumptionResource) Arguments() map[string]*pluginsdk.Sc
 		},
 
 		"storage_container_type": {
-			Type:     pluginsdk.TypeString,
-			Required: true,
-			ValidateFunc: validation.StringInSlice([]string{
-				string(webapps.FunctionsDeploymentStorageTypeBlobContainer),
-			}, false),
-			Description: "The type of the storage container where the function app's code is hosted. Only `blobContainer` is supported currently.",
+			Type:         pluginsdk.TypeString,
+			Required:     true,
+			ValidateFunc: validation.StringInSlice(webapps.PossibleValuesForFunctionsDeploymentStorageType(), false),
+			Description:  "The type of the storage container where the function app's code is hosted. Only `blobContainer` is supported currently.",
 		},
 
 		"storage_container_endpoint": {
@@ -137,13 +136,9 @@ func (r FunctionAppFlexConsumptionResource) Arguments() map[string]*pluginsdk.Sc
 		},
 
 		"storage_authentication_type": {
-			Type:     pluginsdk.TypeString,
-			Required: true,
-			ValidateFunc: validation.StringInSlice([]string{
-				string(webapps.AuthenticationTypeSystemAssignedIdentity),
-				string(webapps.AuthenticationTypeStorageAccountConnectionString),
-				string(webapps.AuthenticationTypeUserAssignedIdentity),
-			}, false),
+			Type:         pluginsdk.TypeString,
+			Required:     true,
+			ValidateFunc: validation.StringInSlice(webapps.PossibleValuesForAuthenticationType(), false),
 		},
 
 		"storage_access_key": {
@@ -159,16 +154,9 @@ func (r FunctionAppFlexConsumptionResource) Arguments() map[string]*pluginsdk.Sc
 		},
 
 		"runtime_name": {
-			Type:     pluginsdk.TypeString,
-			Required: true,
-			ValidateFunc: validation.StringInSlice([]string{
-				string(webapps.RuntimeNameDotnetNegativeisolated),
-				string(webapps.RuntimeNameJava),
-				string(webapps.RuntimeNameNode),
-				string(webapps.RuntimeNamePowershell),
-				string(webapps.RuntimeNamePython),
-				string(webapps.RuntimeNameCustom),
-			}, false),
+			Type:         pluginsdk.TypeString,
+			Required:     true,
+			ValidateFunc: validation.StringInSlice(webapps.PossibleValuesForRuntimeName(), false),
 		},
 
 		"runtime_version": {
@@ -187,7 +175,13 @@ func (r FunctionAppFlexConsumptionResource) Arguments() map[string]*pluginsdk.Sc
 			Type:         pluginsdk.TypeInt,
 			Optional:     true,
 			Default:      100,
-			ValidateFunc: validation.IntBetween(40, 1000),
+			ValidateFunc: validation.IntBetween(1, 1000),
+		},
+
+		"http_concurrency": {
+			Type:         pluginsdk.TypeInt,
+			Optional:     true,
+			ValidateFunc: validation.IntBetween(1, 1000),
 		},
 
 		// the name is always being lower-cased by the api: https://github.com/Azure/azure-rest-api-specs/issues/33095
@@ -237,15 +231,11 @@ func (r FunctionAppFlexConsumptionResource) Arguments() map[string]*pluginsdk.Sc
 		},
 
 		"client_certificate_mode": {
-			Type:     pluginsdk.TypeString,
-			Optional: true,
-			Default:  web.ClientCertModeOptional,
-			ValidateFunc: validation.StringInSlice([]string{
-				string(web.ClientCertModeOptional),
-				string(web.ClientCertModeRequired),
-				string(web.ClientCertModeOptionalInteractiveUser),
-			}, false),
-			Description: "The mode of the Function App's client certificates requirement for incoming requests. Possible values are `Required`, `Optional`, and `OptionalInteractiveUser` ",
+			Type:         pluginsdk.TypeString,
+			Optional:     true,
+			Default:      webapps.ClientCertModeOptional,
+			ValidateFunc: validation.StringInSlice(webapps.PossibleValuesForClientCertMode(), false),
+			Description:  "The mode of the Function App's client certificates requirement for incoming requests. Possible values are `Required`, `Optional`, and `OptionalInteractiveUser` ",
 		},
 
 		"client_certificate_exclusion_paths": {
@@ -403,13 +393,15 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 				return fmt.Errorf("the sku name is %s which is not valid for a flex consumption function app", *planSKU)
 			}
 
-			existing, err := client.Get(ctx, id)
-			if err != nil && !response.WasNotFound(existing.HttpResponse) {
-				return fmt.Errorf("checking for presence of existing %s: %+v", id, err)
-			}
+			if !metadata.Client.Features.SkipImportCheckOnCreateAndAllowOverwritingExistingResources {
+				existing, err := client.Get(ctx, id)
+				if err != nil && !response.WasNotFound(existing.HttpResponse) {
+					return fmt.Errorf("checking for presence of existing %s: %+v", id, err)
+				}
 
-			if !response.WasNotFound(existing.HttpResponse) {
-				return metadata.ResourceRequiresImport(r.ResourceType(), id)
+				if !response.WasNotFound(existing.HttpResponse) {
+					return metadata.ResourceRequiresImport(r.ResourceType(), id)
+				}
 			}
 
 			checkName, err := resourcesClient.CheckNameAvailability(ctx, commonids.NewSubscriptionID(subscriptionId), availabilityRequest)
@@ -479,6 +471,14 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 				MaximumInstanceCount: &functionAppFlexConsumption.MaximumInstanceCount,
 			}
 
+			if functionAppFlexConsumption.HttpConcurrency >= 1 {
+				scaleAndConcurrencyConfig.Triggers = &webapps.FunctionsScaleAndConcurrencyTriggers{
+					HTTP: &webapps.FunctionsScaleAndConcurrencyTriggersHTTP{
+						PerInstanceConcurrency: &functionAppFlexConsumption.HttpConcurrency,
+					},
+				}
+			}
+
 			flexFunctionAppConfig := &webapps.FunctionAppConfig{
 				Deployment:          storageDeployment,
 				Runtime:             &runtime,
@@ -504,7 +504,7 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 					HTTPSOnly:         pointer.To(functionAppFlexConsumption.HttpsOnly),
 					FunctionAppConfig: flexFunctionAppConfig,
 					ClientCertEnabled: pointer.To(functionAppFlexConsumption.ClientCertEnabled),
-					ClientCertMode:    pointer.To(webapps.ClientCertMode(functionAppFlexConsumption.ClientCertMode)),
+					ClientCertMode:    pointer.ToEnum[webapps.ClientCertMode](functionAppFlexConsumption.ClientCertMode),
 				},
 			}
 
@@ -518,13 +518,15 @@ func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {
 
 			if functionAppFlexConsumption.VirtualNetworkSubnetID != "" {
 				siteEnvelope.Properties.VirtualNetworkSubnetId = pointer.To(functionAppFlexConsumption.VirtualNetworkSubnetID)
+				locks.ByID(functionAppFlexConsumption.VirtualNetworkSubnetID)
+				defer locks.UnlockByID(functionAppFlexConsumption.VirtualNetworkSubnetID)
 			}
 
 			if functionAppFlexConsumption.ClientCertExclusionPaths != "" {
 				siteEnvelope.Properties.ClientCertExclusionPaths = pointer.To(functionAppFlexConsumption.ClientCertExclusionPaths)
 			}
 
-			if err = client.CreateOrUpdateThenPoll(ctx, id, siteEnvelope); err != nil {
+			if err = client.CreateOrUpdateCallbackThenPoll(ctx, id, siteEnvelope, metadata.SetIDCallback(&id)); err != nil {
 				return fmt.Errorf("creating %s: %+v", id, err)
 			}
 
@@ -721,6 +723,9 @@ func (r FunctionAppFlexConsumptionResource) Read() sdk.ResourceFunc {
 						state.AlwaysReady = FlattenAlwaysReadyConfiguration(faConfigScale.AlwaysReady)
 						state.InstanceMemoryInMB = pointer.From(faConfigScale.InstanceMemoryMB)
 						state.MaximumInstanceCount = pointer.From(faConfigScale.MaximumInstanceCount)
+						if faConfigScale.Triggers != nil && faConfigScale.Triggers.HTTP != nil {
+							state.HttpConcurrency = pointer.From(faConfigScale.Triggers.HTTP.PerInstanceConcurrency)
+						}
 					}
 				}
 
@@ -757,8 +762,6 @@ func (r FunctionAppFlexConsumptionResource) Delete() sdk.ResourceFunc {
 			if err != nil {
 				return err
 			}
-
-			metadata.Logger.Infof("deleting %s", *id)
 
 			delOptions := webapps.DeleteOperationOptions{
 				DeleteEmptyServerFarm: pointer.To(false),
@@ -820,6 +823,9 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 					model.Properties.VirtualNetworkSubnetId = empty
 				} else {
 					model.Properties.VirtualNetworkSubnetId = pointer.To(subnetId)
+
+					locks.ByID(subnetId)
+					defer locks.UnlockByID(subnetId)
 				}
 			}
 
@@ -828,7 +834,7 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("client_certificate_mode") {
-				model.Properties.ClientCertMode = pointer.To(webapps.ClientCertMode(state.ClientCertMode))
+				model.Properties.ClientCertMode = pointer.ToEnum[webapps.ClientCertMode](state.ClientCertMode)
 			}
 
 			if metadata.ResourceData.HasChange("client_certificate_exclusion_paths") {
@@ -910,6 +916,24 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 					return fmt.Errorf("expanding `always_ready` for %s: %+v", id, err)
 				}
 				model.Properties.FunctionAppConfig.ScaleAndConcurrency.AlwaysReady = arc
+			}
+
+			if metadata.ResourceData.HasChange("maximum_instance_count") {
+				model.Properties.FunctionAppConfig.ScaleAndConcurrency.MaximumInstanceCount = &state.MaximumInstanceCount
+			}
+
+			if metadata.ResourceData.HasChange("http_concurrency") {
+				if state.HttpConcurrency > 0 {
+					model.Properties.FunctionAppConfig.ScaleAndConcurrency.Triggers = &webapps.FunctionsScaleAndConcurrencyTriggers{
+						HTTP: &webapps.FunctionsScaleAndConcurrencyTriggersHTTP{
+							PerInstanceConcurrency: &state.HttpConcurrency,
+						},
+					}
+				} else {
+					model.Properties.FunctionAppConfig.ScaleAndConcurrency.Triggers = &webapps.FunctionsScaleAndConcurrencyTriggers{
+						HTTP: nil,
+					}
+				}
 			}
 
 			if metadata.ResourceData.HasChange("runtime_name") {
@@ -995,17 +1019,7 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 				authUpdate := helpers.ExpandAuthSettings(state.AuthSettings)
 				// (@jackofallops) - in the case of a removal of this block, we need to zero these settings
 				if authUpdate.Properties == nil {
-					authUpdate.Properties = &webapps.SiteAuthSettingsProperties{
-						Enabled:                           pointer.To(false),
-						ClientSecret:                      pointer.To(""),
-						ClientSecretSettingName:           pointer.To(""),
-						ClientSecretCertificateThumbprint: pointer.To(""),
-						GoogleClientSecret:                pointer.To(""),
-						FacebookAppSecret:                 pointer.To(""),
-						GitHubClientSecret:                pointer.To(""),
-						TwitterConsumerSecret:             pointer.To(""),
-						MicrosoftAccountClientSecret:      pointer.To(""),
-					}
+					authUpdate.Properties = helpers.DefaultAuthSettingsProperties()
 				}
 				if _, err := client.UpdateAuthSettings(ctx, *id, *authUpdate); err != nil {
 					return fmt.Errorf("updating Auth Settings for %s: %+v", id, err)
@@ -1014,6 +1028,10 @@ func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {
 
 			if metadata.ResourceData.HasChange("auth_settings_v2") {
 				authV2Update := helpers.ExpandAuthV2Settings(state.AuthV2Settings)
+				// (@toddgiguere) - in the case of a removal of this block, we need to zero these settings
+				if authV2Update.Properties == nil {
+					authV2Update.Properties = helpers.DefaultAuthV2SettingsProperties()
+				}
 				if _, err := client.UpdateAuthSettingsV2(ctx, *id, *authV2Update); err != nil {
 					return fmt.Errorf("updating AuthV2 Settings for %s: %+v", id, err)
 				}
