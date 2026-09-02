@@ -1522,7 +1522,7 @@ func resourceMsSqlDatabaseSchema() map[string]*pluginsdk.Schema {
 			Type:         pluginsdk.TypeString,
 			Required:     true,
 			ForceNew:     true,
-			ValidateFunc: validate.ServerID,
+			ValidateFunc: validation.AsGeneratedID(commonids.ParseSqlServerIDInsensitively),
 		},
 
 		"auto_pause_delay_in_minutes": {
@@ -1603,16 +1603,13 @@ func resourceMsSqlDatabaseSchema() map[string]*pluginsdk.Schema {
 		"elastic_pool_id": {
 			Type:         pluginsdk.TypeString,
 			Optional:     true,
-			ValidateFunc: validate.ElasticPoolID,
+			ValidateFunc: validation.AsGeneratedID(commonids.ParseSqlElasticPoolIDInsensitively),
 		},
 
 		"enclave_type": {
-			Type:     pluginsdk.TypeString,
-			Optional: true,
-			ValidateFunc: validation.StringInSlice([]string{
-				string(databases.AlwaysEncryptedEnclaveTypeVBS),
-				string(databases.AlwaysEncryptedEnclaveTypeDefault),
-			}, false),
+			Type:         pluginsdk.TypeString,
+			Optional:     true,
+			ValidateFunc: validation.StringInSlice(databases.PossibleValuesForAlwaysEncryptedEnclaveType(), false),
 		},
 
 		"license_type": {
