@@ -145,12 +145,13 @@ func (r ContainerAppEnvironmentCustomDomainResource) Create() sdk.ResourceFunc {
 
 			existing, err := client.Get(ctx, *id)
 			if err != nil {
-				return fmt.Errorf("reading %s: %+v", *id, err)
+				return fmt.Errorf("retrieving %s: %+v", *id, err)
 			}
 
-			// Check if this resource needs import
-			if customDomain := existing.Model.Properties.CustomDomainConfiguration; customDomain != nil && customDomain.DnsSuffix != nil {
-				return metadata.ResourceRequiresImport(r.ResourceType(), id)
+			if !metadata.Client.Features.SkipImportCheckOnCreateAndAllowOverwritingExistingResources {
+				if customDomain := existing.Model.Properties.CustomDomainConfiguration; customDomain != nil && customDomain.DnsSuffix != nil {
+					return metadata.ResourceRequiresImport(r.ResourceType(), id)
+				}
 			}
 
 			// We need to check if a log analytic is attached and must get the shared key if it does
@@ -188,11 +189,9 @@ func (r ContainerAppEnvironmentCustomDomainResource) Create() sdk.ResourceFunc {
 
 			existing.Model.Properties.CustomDomainConfiguration = customDomainConfig
 
-			if err := client.CreateOrUpdateThenPoll(ctx, *id, *existing.Model); err != nil {
+			if err := client.CreateOrUpdateCallbackThenPoll(ctx, *id, *existing.Model, metadata.SetIDCallback(id)); err != nil {
 				return fmt.Errorf("updating %s: %+v", id, err)
 			}
-
-			metadata.SetID(id)
 
 			return nil
 		},
