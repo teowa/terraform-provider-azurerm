@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/networksecurityperimeterassociations"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/networksecurityperimeterprofiles"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/networksecurityperimeters"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/publicipaddresses"
 	"github.com/hashicorp/go-azure-sdk/sdk/client/resourcemanager"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/common"
 )
@@ -29,6 +30,9 @@ type Client struct {
 	NetworkSecurityPerimeterProfilesClient     *networksecurityperimeterprofiles.NetworkSecurityPerimeterProfilesClient
 	NetworkSecurityPerimetersClient            *networksecurityperimeters.NetworkSecurityPerimetersClient
 	VMSSPublicIPAddressesClient                *vmsspublicipaddresses.VMSSPublicIPAddressesClient
+	// NOTE: overriding the `PublicIPAddresses` client from the embedded `network_2025_01_01.Client` since it's
+	// been upgraded to `2025-07-01` independently of the rest of the Network API surface.
+	PublicIPAddresses *publicipaddresses.PublicIPAddressesClient
 }
 
 func NewClient(o *common.ClientOptions) (*Client, error) {
@@ -74,6 +78,12 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 	}
 	o.Configure(VMSSPublicIPAddressesClient.Client, o.Authorizers.ResourceManager)
 
+	PublicIPAddressesClient, err := publicipaddresses.NewPublicIPAddressesClientWithBaseURI(o.Environment.ResourceManager)
+	if err != nil {
+		return nil, fmt.Errorf("building Public IP Addresses Client: %+v", err)
+	}
+	o.Configure(PublicIPAddressesClient.Client, o.Authorizers.ResourceManager)
+
 	client, err := network_2025_01_01.NewClientWithBaseURI(o.Environment.ResourceManager, func(c *resourcemanager.Client) {
 		o.Configure(c, o.Authorizers.ResourceManager)
 	})
@@ -89,6 +99,7 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 		NetworkSecurityPerimeterProfilesClient:     NetworkSecurityPerimeterProfilesClient,
 		NetworkSecurityPerimetersClient:            NetworkSecurityPerimetersClient,
 		VMSSPublicIPAddressesClient:                VMSSPublicIPAddressesClient,
+		PublicIPAddresses:                          PublicIPAddressesClient,
 		Client:                                     client,
 	}, nil
 }
