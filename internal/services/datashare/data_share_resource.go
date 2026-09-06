@@ -24,7 +24,7 @@ import (
 	"github.com/hashicorp/terraform-provider-azurerm/internal/timeouts"
 )
 
-//go:generate go run ../../tools/generator-tests resourceidentity -resource-name data_share -service-package-name datashare -properties "name" -compare-values "resource_group_name:account_id,account_name:account_id" -known-values "subscription_id:data.Subscriptions.Primary"
+//go:generate go run ../../tools/generator-tests resourceidentity -resource-name data_share -service-package-name datashare -properties "name" -compare-values "subscription_id:account_id,resource_group_name:account_id,account_name:account_id"
 
 func resourceDataShare() *pluginsdk.Resource {
 	return &pluginsdk.Resource{
@@ -61,13 +61,10 @@ func resourceDataShare() *pluginsdk.Resource {
 			},
 
 			"kind": {
-				Type:     pluginsdk.TypeString,
-				Required: true,
-				ForceNew: true,
-				ValidateFunc: validation.StringInSlice([]string{
-					string(share.ShareKindCopyBased),
-					string(share.ShareKindInPlace),
-				}, false),
+				Type:         pluginsdk.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				ValidateFunc: validation.StringInSlice(share.PossibleValuesForShareKind(), false),
 			},
 
 			"description": {
@@ -88,12 +85,9 @@ func resourceDataShare() *pluginsdk.Resource {
 						},
 
 						"recurrence": {
-							Type:     pluginsdk.TypeString,
-							Required: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								string(synchronizationsetting.RecurrenceIntervalDay),
-								string(synchronizationsetting.RecurrenceIntervalHour),
-							}, false),
+							Type:         pluginsdk.TypeString,
+							Required:     true,
+							ValidateFunc: validation.StringInSlice(synchronizationsetting.PossibleValuesForRecurrenceInterval(), false),
 						},
 
 						"start_time": {
@@ -142,7 +136,7 @@ func resourceDataShareCreateUpdate(d *pluginsdk.ResourceData, meta interface{}) 
 
 	share := share.Share{
 		Properties: &share.ShareProperties{
-			ShareKind:   pointer.To(share.ShareKind(d.Get("kind").(string))),
+			ShareKind:   pointer.ToEnum[share.ShareKind](d.Get("kind").(string)),
 			Description: pointer.To(d.Get("description").(string)),
 			Terms:       pointer.To(d.Get("terms").(string)),
 		},
@@ -283,13 +277,8 @@ func flattenAzureRmDataShareSnapshotSchedule(input []synchronizationsetting.Sche
 
 	for _, setting := range input {
 		props := setting.Properties
-		name := ""
-		if setting.Name != nil {
-			name = *setting.Name
-		}
-
 		output = append(output, map[string]interface{}{
-			"name":       name,
+			"name":       pointer.From(setting.Name),
 			"recurrence": string(props.RecurrenceInterval),
 			"start_time": props.SynchronizationTime,
 		})
