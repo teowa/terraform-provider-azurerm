@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/identity"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2025-05-01/webapps"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/locks"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appservice/helpers"
@@ -365,12 +365,11 @@ func (r WindowsWebAppSlotResource) Create() sdk.ResourceFunc {
 					ClientCertEnabled:        pointer.To(webAppSlot.ClientCertEnabled),
 					ClientCertMode:           pointer.ToEnum[webapps.ClientCertMode](webAppSlot.ClientCertMode),
 					ClientCertExclusionPaths: pointer.To(webAppSlot.ClientCertExclusionPaths),
-					VnetBackupRestoreEnabled: pointer.To(webAppSlot.VirtualNetworkBackupRestoreEnabled),
-					VnetRouteAllEnabled:      siteConfig.VnetRouteAllEnabled,
+					OutboundVnetRouting:      helpers.ExpandOutboundVnetRouting(siteConfig.VnetRouteAllEnabled, nil, pointer.To(webAppSlot.VirtualNetworkBackupRestoreEnabled)),
 				},
 			}
 
-			siteEnvelope.Properties.VnetImagePullEnabled = pointer.To(webAppSlot.VirtualNetworkImagePullEnabled)
+			siteEnvelope.Properties.OutboundVnetRouting.ImagePullTraffic = pointer.To(webAppSlot.VirtualNetworkImagePullEnabled)
 
 			if differentServicePlanToParent {
 				siteEnvelope.Properties.ServerFarmId = pointer.To(servicePlanId.ID())
@@ -641,8 +640,8 @@ func (r WindowsWebAppSlotResource) Read() sdk.ResourceFunc {
 					state.PossibleOutboundIPAddresses = pointer.From(props.PossibleOutboundIPAddresses)
 					state.PossibleOutboundIPAddressList = strings.Split(pointer.From(props.PossibleOutboundIPAddresses), ",")
 					state.PublicNetworkAccess = !strings.EqualFold(pointer.From(props.PublicNetworkAccess), helpers.PublicNetworkAccessDisabled)
-					state.VirtualNetworkBackupRestoreEnabled = pointer.From(props.VnetBackupRestoreEnabled)
-					state.VirtualNetworkImagePullEnabled = pointer.From(props.VnetImagePullEnabled)
+					state.VirtualNetworkBackupRestoreEnabled = pointer.From(helpers.FlattenVnetBackupRestoreEnabled(props.OutboundVnetRouting))
+					state.VirtualNetworkImagePullEnabled = pointer.From(helpers.FlattenVnetImagePullEnabled(props.OutboundVnetRouting))
 
 					if hostingEnv := props.HostingEnvironmentProfile; hostingEnv != nil {
 						hostingEnvId, err := commonids.ParseAppServiceEnvironmentIDInsensitively(*hostingEnv.Id)
@@ -851,7 +850,10 @@ func (r WindowsWebAppSlotResource) Update() sdk.ResourceFunc {
 				if err != nil {
 					return err
 				}
-				model.Properties.VnetRouteAllEnabled = model.Properties.SiteConfig.VnetRouteAllEnabled
+				if model.Properties.OutboundVnetRouting == nil {
+					model.Properties.OutboundVnetRouting = &webapps.OutboundVnetRouting{}
+				}
+				model.Properties.OutboundVnetRouting.ApplicationTraffic = model.Properties.SiteConfig.VnetRouteAllEnabled
 			}
 
 			if metadata.ResourceData.HasChange("public_network_access_enabled") {
@@ -866,11 +868,17 @@ func (r WindowsWebAppSlotResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("virtual_network_backup_restore_enabled") {
-				model.Properties.VnetBackupRestoreEnabled = pointer.To(state.VirtualNetworkBackupRestoreEnabled)
+				if model.Properties.OutboundVnetRouting == nil {
+					model.Properties.OutboundVnetRouting = &webapps.OutboundVnetRouting{}
+				}
+				model.Properties.OutboundVnetRouting.BackupRestoreTraffic = pointer.To(state.VirtualNetworkBackupRestoreEnabled)
 			}
 
 			if metadata.ResourceData.HasChange("virtual_network_image_pull_enabled") {
-				model.Properties.VnetImagePullEnabled = pointer.To(state.VirtualNetworkImagePullEnabled)
+				if model.Properties.OutboundVnetRouting == nil {
+					model.Properties.OutboundVnetRouting = &webapps.OutboundVnetRouting{}
+				}
+				model.Properties.OutboundVnetRouting.ImagePullTraffic = pointer.To(state.VirtualNetworkImagePullEnabled)
 			}
 
 			if metadata.ResourceData.HasChange("virtual_network_subnet_id") {

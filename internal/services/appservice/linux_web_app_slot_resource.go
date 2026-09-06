@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/identity"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2025-05-01/webapps"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/locks"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appservice/helpers"
@@ -359,16 +359,14 @@ func (r LinuxWebAppSlotResource) Create() sdk.ResourceFunc {
 				Identity: expandedIdentity,
 				Tags:     pointer.To(webAppSlot.Tags),
 				Properties: &webapps.SiteProperties{
-					ServerFarmId:             pointer.To(servicePlanId.ID()),
-					Enabled:                  pointer.To(webAppSlot.Enabled),
-					HTTPSOnly:                pointer.To(webAppSlot.HttpsOnly),
-					SiteConfig:               siteConfig,
-					ClientAffinityEnabled:    pointer.To(webAppSlot.ClientAffinityEnabled),
-					ClientCertEnabled:        pointer.To(webAppSlot.ClientCertEnabled),
-					ClientCertMode:           pointer.ToEnum[webapps.ClientCertMode](webAppSlot.ClientCertMode),
-					VnetBackupRestoreEnabled: pointer.To(webAppSlot.VirtualNetworkBackupRestoreEnabled),
-					VnetRouteAllEnabled:      siteConfig.VnetRouteAllEnabled,
-					VnetImagePullEnabled:     pointer.To(webAppSlot.VnetImagePullEnabled),
+					ServerFarmId:          pointer.To(servicePlanId.ID()),
+					Enabled:               pointer.To(webAppSlot.Enabled),
+					HTTPSOnly:             pointer.To(webAppSlot.HttpsOnly),
+					SiteConfig:            siteConfig,
+					ClientAffinityEnabled: pointer.To(webAppSlot.ClientAffinityEnabled),
+					ClientCertEnabled:     pointer.To(webAppSlot.ClientCertEnabled),
+					ClientCertMode:        pointer.ToEnum[webapps.ClientCertMode](webAppSlot.ClientCertMode),
+					OutboundVnetRouting:   helpers.ExpandOutboundVnetRouting(siteConfig.VnetRouteAllEnabled, pointer.To(webAppSlot.VnetImagePullEnabled), pointer.To(webAppSlot.VirtualNetworkBackupRestoreEnabled)),
 				},
 			}
 
@@ -619,8 +617,8 @@ func (r LinuxWebAppSlotResource) Read() sdk.ResourceFunc {
 					state.PossibleOutboundIPAddresses = pointer.From(props.PossibleOutboundIPAddresses)
 					state.PossibleOutboundIPAddressList = strings.Split(pointer.From(props.PossibleOutboundIPAddresses), ",")
 					state.PublicNetworkAccess = !strings.EqualFold(pointer.From(props.PublicNetworkAccess), helpers.PublicNetworkAccessDisabled)
-					state.VirtualNetworkBackupRestoreEnabled = pointer.From(props.VnetBackupRestoreEnabled)
-					state.VnetImagePullEnabled = pointer.From(props.VnetImagePullEnabled)
+					state.VirtualNetworkBackupRestoreEnabled = pointer.From(helpers.FlattenVnetBackupRestoreEnabled(props.OutboundVnetRouting))
+					state.VnetImagePullEnabled = pointer.From(helpers.FlattenVnetImagePullEnabled(props.OutboundVnetRouting))
 					if hostingEnv := props.HostingEnvironmentProfile; hostingEnv != nil {
 						state.HostingEnvId = pointer.From(hostingEnv.Id)
 					}
@@ -808,7 +806,10 @@ func (r LinuxWebAppSlotResource) Update() sdk.ResourceFunc {
 					return fmt.Errorf("expanding Site Config for Linux %s: %+v", id, err)
 				}
 				model.Properties.SiteConfig = siteConfig
-				model.Properties.VnetRouteAllEnabled = model.Properties.SiteConfig.VnetRouteAllEnabled
+				if model.Properties.OutboundVnetRouting == nil {
+					model.Properties.OutboundVnetRouting = &webapps.OutboundVnetRouting{}
+				}
+				model.Properties.OutboundVnetRouting.ApplicationTraffic = model.Properties.SiteConfig.VnetRouteAllEnabled
 			}
 
 			if metadata.ResourceData.HasChange("public_network_access_enabled") {
@@ -823,7 +824,10 @@ func (r LinuxWebAppSlotResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("virtual_network_backup_restore_enabled") {
-				model.Properties.VnetBackupRestoreEnabled = pointer.To(state.VirtualNetworkBackupRestoreEnabled)
+				if model.Properties.OutboundVnetRouting == nil {
+					model.Properties.OutboundVnetRouting = &webapps.OutboundVnetRouting{}
+				}
+				model.Properties.OutboundVnetRouting.BackupRestoreTraffic = pointer.To(state.VirtualNetworkBackupRestoreEnabled)
 			}
 
 			if metadata.ResourceData.HasChange("virtual_network_subnet_id") {
@@ -840,7 +844,10 @@ func (r LinuxWebAppSlotResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("vnet_image_pull_enabled") {
-				model.Properties.VnetImagePullEnabled = pointer.To(state.VnetImagePullEnabled)
+				if model.Properties.OutboundVnetRouting == nil {
+					model.Properties.OutboundVnetRouting = &webapps.OutboundVnetRouting{}
+				}
+				model.Properties.OutboundVnetRouting.ImagePullTraffic = pointer.To(state.VnetImagePullEnabled)
 			}
 
 			if err := client.CreateOrUpdateSlotThenPoll(ctx, *id, model); err != nil {

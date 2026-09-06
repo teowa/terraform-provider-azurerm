@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/identity"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-01-01/resourceproviders"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2025-05-01/webapps"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appservice/helpers"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appservice/migration"
@@ -384,19 +384,18 @@ func (r WindowsWebAppResource) Create() sdk.ResourceFunc {
 				Tags:     pointer.To(webApp.Tags),
 				Identity: expandedIdentity,
 				Properties: &webapps.SiteProperties{
-					ServerFarmId:             pointer.To(webApp.ServicePlanId),
-					Enabled:                  pointer.To(webApp.Enabled),
-					HTTPSOnly:                pointer.To(webApp.HttpsOnly),
-					SiteConfig:               siteConfig,
-					ClientAffinityEnabled:    pointer.To(webApp.ClientAffinityEnabled),
-					ClientCertEnabled:        pointer.To(webApp.ClientCertEnabled),
-					ClientCertMode:           pointer.ToEnum[webapps.ClientCertMode](webApp.ClientCertMode),
-					VnetBackupRestoreEnabled: pointer.To(webApp.VirtualNetworkBackupRestoreEnabled),
-					VnetRouteAllEnabled:      siteConfig.VnetRouteAllEnabled,
+					ServerFarmId:          pointer.To(webApp.ServicePlanId),
+					Enabled:               pointer.To(webApp.Enabled),
+					HTTPSOnly:             pointer.To(webApp.HttpsOnly),
+					SiteConfig:            siteConfig,
+					ClientAffinityEnabled: pointer.To(webApp.ClientAffinityEnabled),
+					ClientCertEnabled:     pointer.To(webApp.ClientCertEnabled),
+					ClientCertMode:        pointer.ToEnum[webapps.ClientCertMode](webApp.ClientCertMode),
+					OutboundVnetRouting:   helpers.ExpandOutboundVnetRouting(siteConfig.VnetRouteAllEnabled, nil, pointer.To(webApp.VirtualNetworkBackupRestoreEnabled)),
 				},
 			}
 
-			siteEnvelope.Properties.VnetImagePullEnabled = pointer.To(webApp.VirtualNetworkImagePullEnabled)
+			siteEnvelope.Properties.OutboundVnetRouting.ImagePullTraffic = pointer.To(webApp.VirtualNetworkImagePullEnabled)
 
 			pna := helpers.PublicNetworkAccessEnabled
 			if !webApp.PublicNetworkAccess {
@@ -666,8 +665,8 @@ func (r WindowsWebAppResource) Read() sdk.ResourceFunc {
 					state.PossibleOutboundIPAddresses = pointer.From(props.PossibleOutboundIPAddresses)
 					state.PossibleOutboundIPAddressList = strings.Split(pointer.From(props.PossibleOutboundIPAddresses), ",")
 					state.PublicNetworkAccess = !strings.EqualFold(pointer.From(props.PublicNetworkAccess), helpers.PublicNetworkAccessDisabled)
-					state.VirtualNetworkBackupRestoreEnabled = pointer.From(props.VnetBackupRestoreEnabled)
-					state.VirtualNetworkImagePullEnabled = pointer.From(props.VnetImagePullEnabled)
+					state.VirtualNetworkBackupRestoreEnabled = pointer.From(helpers.FlattenVnetBackupRestoreEnabled(props.OutboundVnetRouting))
+					state.VirtualNetworkImagePullEnabled = pointer.From(helpers.FlattenVnetImagePullEnabled(props.OutboundVnetRouting))
 
 					serverFarmId, err := commonids.ParseAppServicePlanIDInsensitively(pointer.From(props.ServerFarmId))
 					if err != nil {
@@ -859,11 +858,17 @@ func (r WindowsWebAppResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("virtual_network_backup_restore_enabled") {
-				model.Properties.VnetBackupRestoreEnabled = pointer.To(state.VirtualNetworkBackupRestoreEnabled)
+				if model.Properties.OutboundVnetRouting == nil {
+					model.Properties.OutboundVnetRouting = &webapps.OutboundVnetRouting{}
+				}
+				model.Properties.OutboundVnetRouting.BackupRestoreTraffic = pointer.To(state.VirtualNetworkBackupRestoreEnabled)
 			}
 
 			if metadata.ResourceData.HasChange("virtual_network_image_pull_enabled") {
-				model.Properties.VnetImagePullEnabled = pointer.To(state.VirtualNetworkImagePullEnabled)
+				if model.Properties.OutboundVnetRouting == nil {
+					model.Properties.OutboundVnetRouting = &webapps.OutboundVnetRouting{}
+				}
+				model.Properties.OutboundVnetRouting.ImagePullTraffic = pointer.To(state.VirtualNetworkImagePullEnabled)
 			}
 
 			if metadata.ResourceData.HasChange("virtual_network_subnet_id") {
@@ -899,7 +904,10 @@ func (r WindowsWebAppResource) Update() sdk.ResourceFunc {
 				if err != nil {
 					return err
 				}
-				model.Properties.VnetRouteAllEnabled = existing.Model.Properties.SiteConfig.VnetRouteAllEnabled
+				if model.Properties.OutboundVnetRouting == nil {
+					model.Properties.OutboundVnetRouting = &webapps.OutboundVnetRouting{}
+				}
+				model.Properties.OutboundVnetRouting.ApplicationTraffic = existing.Model.Properties.SiteConfig.VnetRouteAllEnabled
 			}
 
 			if metadata.ResourceData.HasChange("public_network_access_enabled") {

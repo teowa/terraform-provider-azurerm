@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/identity"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2025-05-01/webapps"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appservice/helpers"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appservice/validate"
@@ -320,7 +320,7 @@ func (d WindowsFunctionAppDataSource) Read() sdk.ResourceFunc {
 					functionApp.DailyMemoryTimeQuota = pointer.From(props.DailyMemoryTimeQuota)
 					functionApp.CustomDomainVerificationId = pointer.From(props.CustomDomainVerificationId)
 					functionApp.DefaultHostname = pointer.From(props.DefaultHostName)
-					functionApp.VirtualNetworkBackupRestoreEnabled = pointer.From(props.VnetBackupRestoreEnabled)
+					functionApp.VirtualNetworkBackupRestoreEnabled = pointer.From(helpers.FlattenVnetBackupRestoreEnabled(props.OutboundVnetRouting))
 					functionApp.VirtualNetworkSubnetId = pointer.From(props.VirtualNetworkSubnetId)
 					functionApp.PublicNetworkAccess = !strings.EqualFold(pointer.From(props.PublicNetworkAccess), helpers.PublicNetworkAccessDisabled)
 

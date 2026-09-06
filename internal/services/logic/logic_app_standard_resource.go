@@ -19,7 +19,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/keyvault"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-01-01/resourceproviders"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2025-05-01/webapps"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appservice/helpers"
@@ -486,14 +486,16 @@ func (r LogicAppResource) Create() sdk.ResourceFunc {
 				Kind:     pointer.To(kind),
 				Location: location.Normalize(data.Location),
 				Properties: &webapps.SiteProperties{
-					ServerFarmId:            pointer.To(data.AppServicePlanId),
-					Enabled:                 pointer.To(data.Enabled),
-					ClientAffinityEnabled:   pointer.To(data.ClientAffinityEnabled),
-					ClientCertEnabled:       pointer.To(data.ClientCertificateMode != ""),
-					HTTPSOnly:               pointer.To(data.HTTPSOnly),
-					SiteConfig:              siteConfig,
-					VnetContentShareEnabled: pointer.To(data.VNETContentShareEnabled),
-					PublicNetworkAccess:     pointer.To(data.PublicNetworkAccess),
+					ServerFarmId:          pointer.To(data.AppServicePlanId),
+					Enabled:               pointer.To(data.Enabled),
+					ClientAffinityEnabled: pointer.To(data.ClientAffinityEnabled),
+					ClientCertEnabled:     pointer.To(data.ClientCertificateMode != ""),
+					HTTPSOnly:             pointer.To(data.HTTPSOnly),
+					SiteConfig:            siteConfig,
+					OutboundVnetRouting: &webapps.OutboundVnetRouting{
+						ContentShareTraffic: pointer.To(data.VNETContentShareEnabled),
+					},
+					PublicNetworkAccess: pointer.To(data.PublicNetworkAccess),
 				},
 				Tags: pointer.To(data.Tags),
 			}
@@ -597,7 +599,7 @@ func (r LogicAppResource) Read() sdk.ResourceFunc {
 					state.ClientAffinityEnabled = pointer.From(props.ClientAffinityEnabled)
 					state.CustomDomainVerificationId = pointer.From(props.CustomDomainVerificationId)
 					state.VirtualNetworkSubnetId = pointer.From(props.VirtualNetworkSubnetId)
-					state.VNETContentShareEnabled = pointer.From(props.VnetContentShareEnabled)
+					state.VNETContentShareEnabled = pointer.From(helpers.FlattenVnetContentShareEnabled(props.OutboundVnetRouting))
 					state.PublicNetworkAccess = pointer.From(props.PublicNetworkAccess)
 					if kvRefId := pointer.From(props.KeyVaultReferenceIdentity); !strings.EqualFold(kvRefId, "SystemAssigned") {
 						state.KeyvaultReferenceIdentityId = kvRefId
@@ -826,7 +828,10 @@ func (r LogicAppResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("vnet_content_share_enabled") {
-				siteEnvelope.VnetContentShareEnabled = pointer.To(data.VNETContentShareEnabled)
+				if siteEnvelope.OutboundVnetRouting == nil {
+					siteEnvelope.OutboundVnetRouting = &webapps.OutboundVnetRouting{}
+				}
+				siteEnvelope.OutboundVnetRouting.ContentShareTraffic = pointer.To(data.VNETContentShareEnabled)
 			}
 
 			if metadata.ResourceData.HasChange("virtual_network_subnet_id") {
