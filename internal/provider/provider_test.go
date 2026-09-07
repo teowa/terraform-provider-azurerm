@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package provider
@@ -97,6 +97,9 @@ func TestResourcesSupportCustomTimeouts(t *testing.T) {
 					"azurerm_key_vault_key":         true,
 					"azurerm_key_vault_secret":      true,
 					"azurerm_key_vault_certificate": true,
+					// The `azurerm_resource_provider_registration` resource has a longer read timeout due to extensive polling being required to work around
+					// API inconsistency issues
+					"azurerm_resource_provider_registration": true,
 				}
 				if !exceptionResources[resourceName] {
 					t.Fatalf("Read timeouts shouldn't be more than 5 minutes, this indicates a bug which needs to be fixed")
@@ -125,104 +128,7 @@ func TestProvider_counts(t *testing.T) {
 	log.Printf("Total:        %d", len(provider.ResourcesMap)+len(provider.DataSourcesMap))
 }
 
-func TestAccProvider_resourceProviders_legacy(t *testing.T) {
-	if os.Getenv("TF_ACC") == "" {
-		t.Skip("TF_ACC not set")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	logging.SetOutput(t)
-
-	provider := TestAzureProvider()
-
-	if diags := provider.Configure(ctx, terraform.NewResourceConfigRaw(nil)); diags != nil && diags.HasError() {
-		t.Fatalf("provider failed to configure: %v", diags)
-	}
-
-	expectedResourceProviders := resourceproviders.Legacy()
-	registeredResourceProviders := provider.Meta().(*clients.Client).Account.RegisteredResourceProviders
-
-	if !reflect.DeepEqual(registeredResourceProviders, expectedResourceProviders) {
-		t.Fatalf("unexpected value for RegisteredResourceProviders: %#v", registeredResourceProviders)
-	}
-}
-
-// TODO: Remove this test in v5.0
-func TestAccProvider_resourceProviders_deprecatedSkip(t *testing.T) {
-	if os.Getenv("TF_ACC") == "" {
-		t.Skip("TF_ACC not set")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	logging.SetOutput(t)
-
-	provider := TestAzureProvider()
-	config := map[string]interface{}{
-		"skip_provider_registration": "true",
-	}
-
-	if diags := provider.Configure(ctx, terraform.NewResourceConfigRaw(config)); diags != nil && diags.HasError() {
-		t.Fatalf("provider failed to configure: %v", diags)
-	}
-
-	expectedResourceProviders := make(resourceproviders.ResourceProviders)
-	registeredResourceProviders := provider.Meta().(*clients.Client).Account.RegisteredResourceProviders
-
-	if !reflect.DeepEqual(registeredResourceProviders, expectedResourceProviders) {
-		t.Fatalf("unexpected value for RegisteredResourceProviders: %#v", registeredResourceProviders)
-	}
-}
-
-func TestAccProvider_resourceProviders_legacyWithAdditional(t *testing.T) {
-	if !features.FourPointOhBeta() {
-		t.Skip("skipping 4.0 specific test")
-	}
-
-	if os.Getenv("TF_ACC") == "" {
-		t.Skip("TF_ACC not set")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	logging.SetOutput(t)
-
-	provider := TestAzureProvider()
-	config := map[string]interface{}{
-		"resource_providers_to_register": []interface{}{
-			"Microsoft.ApiManagement",
-			"Microsoft.ContainerService",
-			"Microsoft.KeyVault",
-			"Microsoft.Kubernetes",
-		},
-	}
-
-	if diags := provider.Configure(ctx, terraform.NewResourceConfigRaw(config)); diags != nil && diags.HasError() {
-		t.Fatalf("provider failed to configure: %v", diags)
-	}
-
-	expectedResourceProviders := resourceproviders.Legacy().Merge(resourceproviders.ResourceProviders{
-		"Microsoft.ApiManagement":    {},
-		"Microsoft.ContainerService": {},
-		"Microsoft.KeyVault":         {},
-		"Microsoft.Kubernetes":       {},
-	})
-	registeredResourceProviders := provider.Meta().(*clients.Client).Account.RegisteredResourceProviders
-
-	if !reflect.DeepEqual(registeredResourceProviders, expectedResourceProviders) {
-		t.Fatalf("unexpected value for RegisteredResourceProviders: %#v", registeredResourceProviders)
-	}
-}
-
 func TestAccProvider_resourceProviders_core(t *testing.T) {
-	if !features.FourPointOhBeta() {
-		t.Skip("skipping 4.0 specific test")
-	}
-
 	if os.Getenv("TF_ACC") == "" {
 		t.Skip("TF_ACC not set")
 	}
@@ -250,10 +156,6 @@ func TestAccProvider_resourceProviders_core(t *testing.T) {
 }
 
 func TestAccProvider_resourceProviders_coreWithAdditional(t *testing.T) {
-	if !features.FourPointOhBeta() {
-		t.Skip("skipping 4.0 specific test")
-	}
-
 	if os.Getenv("TF_ACC") == "" {
 		t.Skip("TF_ACC not set")
 	}
@@ -288,10 +190,6 @@ func TestAccProvider_resourceProviders_coreWithAdditional(t *testing.T) {
 }
 
 func TestAccProvider_resourceProviders_explicit(t *testing.T) {
-	if !features.FourPointOhBeta() {
-		t.Skip("skipping 4.0 specific test")
-	}
-
 	if os.Getenv("TF_ACC") == "" {
 		t.Skip("TF_ACC not set")
 	}
@@ -327,59 +225,126 @@ func TestAccProvider_resourceProviders_explicit(t *testing.T) {
 	}
 }
 
-func TestAccProvider_cliAuth(t *testing.T) {
-	// TODO: remove this test in v4.0
-	if features.FourPointOhBeta() {
-		t.Skip("skipping 3.x specific test")
-	}
-
+func TestAccProvider_enhancedValidation(t *testing.T) {
 	if os.Getenv("TF_ACC") == "" {
 		t.Skip("TF_ACC not set")
 	}
 
-	logging.SetOutput(t)
-
-	provider := TestAzureProvider()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	// Support only Azure CLI authentication
-	provider.ConfigureContextFunc = func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
-		envName := d.Get("environment").(string)
-		env, err := environments.FromName(envName)
-		if err != nil {
-			t.Fatalf("configuring environment %q: %v", envName, err)
-		}
+	logging.SetOutput(t)
 
-		authConfig := &auth.Credentials{
-			Environment:                       *env,
-			EnableAuthenticatingUsingAzureCLI: true,
-		}
-
-		return buildClient(ctx, provider, d, authConfig)
+	cases := []struct {
+		name     string
+		setupEnv func(*testing.T)
+		config   map[string]any
+		expect   features.EnhancedValidationFeatures
+	}{
+		{
+			name: "default",
+			expect: features.EnhancedValidationFeatures{
+				Locations:         false,
+				ResourceProviders: false,
+				PreflightEnabled:  false,
+				LocationFallback:  nil,
+			},
+		},
+		{
+			name: "Env vars enabled",
+			setupEnv: func(t *testing.T) {
+				t.Setenv("ARM_PROVIDER_ENHANCED_VALIDATION_RESOURCE_PROVIDERS", "true")
+				t.Setenv("ARM_PROVIDER_ENHANCED_VALIDATION_LOCATIONS", "true")
+				t.Setenv("ARM_PROVIDER_ENHANCED_VALIDATION_PREFLIGHT_ENABLED", "true")
+			},
+			expect: features.EnhancedValidationFeatures{
+				Locations:         true,
+				ResourceProviders: true,
+				PreflightEnabled:  true,
+				LocationFallback:  nil,
+			},
+		},
+		{
+			name: "Env vars disabled",
+			setupEnv: func(t *testing.T) {
+				t.Setenv("ARM_PROVIDER_ENHANCED_VALIDATION_RESOURCE_PROVIDERS", "false")
+				t.Setenv("ARM_PROVIDER_ENHANCED_VALIDATION_LOCATIONS", "false")
+				t.Setenv("ARM_PROVIDER_ENHANCED_VALIDATION_PREFLIGHT_ENABLED", "false")
+			},
+			expect: features.EnhancedValidationFeatures{
+				Locations:         false,
+				ResourceProviders: false,
+				PreflightEnabled:  false,
+				LocationFallback:  nil,
+			},
+		},
+		{
+			name: "Provider config disabled",
+			config: map[string]any{
+				"features": []any{
+					map[string]any{
+						"enhanced_validation": []any{
+							map[string]any{
+								"locations":                   false,
+								"resource_providers":          false,
+								"preflight_enabled":           false,
+								"preflight_location_fallback": "",
+							},
+						},
+					},
+				},
+			},
+			expect: features.EnhancedValidationFeatures{
+				Locations:         false,
+				ResourceProviders: false,
+				PreflightEnabled:  false,
+				LocationFallback:  nil,
+			},
+		},
+		{
+			name: "Provider config enabled",
+			config: map[string]any{
+				"features": []any{
+					map[string]any{
+						"enhanced_validation": []any{
+							map[string]any{
+								"locations":                   true,
+								"resource_providers":          true,
+								"preflight_enabled":           true,
+								"preflight_location_fallback": "",
+							},
+						},
+					},
+				},
+			},
+			expect: features.EnhancedValidationFeatures{
+				Locations:         true,
+				ResourceProviders: true,
+				PreflightEnabled:  true,
+				LocationFallback:  nil,
+			},
+		},
 	}
 
-	d := provider.Configure(ctx, terraform.NewResourceConfigRaw(nil))
-	if d != nil && d.HasError() {
-		t.Fatalf("err: %+v", d)
-	}
-
-	if errs := testCheckProvider(provider); len(errs) > 0 {
-		for _, err := range errs {
-			t.Error(err)
-		}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.setupEnv != nil {
+				tt.setupEnv(t)
+			}
+			provider := TestAzureProvider()
+			if diags := provider.Configure(ctx, terraform.NewResourceConfigRaw(tt.config)); diags != nil && diags.HasError() {
+				t.Fatalf("provider failed to configure: %v", diags)
+			}
+			if v := provider.Meta().(*clients.Client).Features.EnhancedValidation; !reflect.DeepEqual(v, tt.expect) {
+				t.Fatalf("unexpected value for `Features.EnhancedValidation`: %#v", v)
+			}
+		})
 	}
 }
 
-// TODO: remove TestAccProvider_cliAuth and rename this test to TestAccProvider_cliAuth in v4.0
-func TestAccProvider_cliAuthWithSubscriptionIdHint(t *testing.T) {
+func TestAccProvider_cliAuth(t *testing.T) {
 	if os.Getenv("TF_ACC") == "" {
 		t.Skip("TF_ACC not set")
-	}
-
-	// TODO: remove this condition in v4.0
-	if os.Getenv("ARM_SUBSCRIPTION_ID") == "" {
-		t.Skip("ARM_SUBSCRIPTION_ID not set")
 	}
 
 	logging.SetOutput(t)
@@ -402,7 +367,7 @@ func TestAccProvider_cliAuthWithSubscriptionIdHint(t *testing.T) {
 			AzureCliSubscriptionIDHint:        d.Get("subscription_id").(string),
 		}
 
-		return buildClient(ctx, provider, d, authConfig)
+		return buildClient(ctx, provider, d, authConfig, "")
 	}
 
 	d := provider.Configure(ctx, terraform.NewResourceConfigRaw(nil))
@@ -474,7 +439,7 @@ func TestAccProvider_clientCertificateAuth(t *testing.T) {
 			EnableAuthenticatingUsingClientCertificate: true,
 		}
 
-		return buildClient(ctx, provider, d, authConfig)
+		return buildClient(ctx, provider, d, authConfig, "")
 	}
 
 	d := provider.Configure(ctx, terraform.NewResourceConfigRaw(nil))
@@ -547,7 +512,7 @@ func testAccProvider_clientSecretAuthFromEnvironment(t *testing.T) {
 			EnableAuthenticatingUsingClientSecret: true,
 		}
 
-		return buildClient(ctx, provider, d, authConfig)
+		return buildClient(ctx, provider, d, authConfig, "")
 	}
 
 	d := provider.Configure(ctx, terraform.NewResourceConfigRaw(nil))
@@ -615,7 +580,7 @@ func testAccProvider_clientSecretAuthFromFiles(t *testing.T) {
 			EnableAuthenticatingUsingClientSecret: true,
 		}
 
-		return buildClient(ctx, provider, d, authConfig)
+		return buildClient(ctx, provider, d, authConfig, "")
 	}
 
 	d := provider.Configure(ctx, terraform.NewResourceConfigRaw(nil))
@@ -675,7 +640,7 @@ func TestAccProvider_genericOidcAuth(t *testing.T) {
 			OIDCAssertionToken:            *oidcToken,
 		}
 
-		return buildClient(ctx, provider, d, authConfig)
+		return buildClient(ctx, provider, d, authConfig, "")
 	}
 
 	d := provider.Configure(ctx, terraform.NewResourceConfigRaw(nil))
@@ -729,12 +694,75 @@ func TestAccProvider_githubOidcAuth(t *testing.T) {
 			Environment:                         *env,
 			TenantID:                            *tenantId,
 			ClientID:                            *clientId,
-			GitHubOIDCTokenRequestToken:         d.Get("oidc_request_token").(string),
-			GitHubOIDCTokenRequestURL:           d.Get("oidc_request_url").(string),
+			OIDCTokenRequestToken:               d.Get("oidc_request_token").(string),
+			OIDCTokenRequestURL:                 d.Get("oidc_request_url").(string),
 			EnableAuthenticationUsingGitHubOIDC: true,
 		}
 
-		return buildClient(ctx, provider, d, authConfig)
+		return buildClient(ctx, provider, d, authConfig, "")
+	}
+
+	d := provider.Configure(ctx, terraform.NewResourceConfigRaw(nil))
+	if d != nil && d.HasError() {
+		t.Fatalf("err: %+v", d)
+	}
+
+	if errs := testCheckProvider(provider); len(errs) > 0 {
+		for _, err := range errs {
+			t.Error(err)
+		}
+	}
+}
+
+func TestAccProvider_adoOidcAuth(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip("TF_ACC not set")
+	}
+	if os.Getenv("SYSTEM_ACCESSTOKEN") == "" {
+		t.Skip("SYSTEM_ACCESSTOKEN not set")
+	}
+	if os.Getenv("SYSTEM_OIDCREQUESTURI") == "" {
+		t.Skip("SYSTEM_OIDCREQUESTURI not set")
+	}
+	if os.Getenv("ARM_ADO_PIPELINE_SERVICE_CONNECTION_ID") == "" {
+		t.Skip("ARM_ADO_PIPELINE_SERVICE_CONNECTION_ID")
+	}
+
+	logging.SetOutput(t)
+
+	provider := TestAzureProvider()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	// Support only ADO OIDC authentication
+	provider.ConfigureContextFunc = func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+		envName := d.Get("environment").(string)
+		env, err := environments.FromName(envName)
+		if err != nil {
+			t.Fatalf("configuring environment %q: %v", envName, err)
+		}
+
+		clientId, err := getClientId(d)
+		if err != nil {
+			return nil, diag.FromErr(err)
+		}
+
+		tenantId, err := getTenantId(d)
+		if err != nil {
+			return nil, diag.FromErr(err)
+		}
+
+		authConfig := &auth.Credentials{
+			Environment:                              *env,
+			TenantID:                                 *tenantId,
+			ClientID:                                 *clientId,
+			OIDCTokenRequestToken:                    d.Get("oidc_request_token").(string),
+			OIDCTokenRequestURL:                      d.Get("oidc_request_url").(string),
+			ADOPipelineServiceConnectionID:           d.Get("ado_pipeline_service_connection_id").(string),
+			EnableAuthenticationUsingADOPipelineOIDC: true,
+		}
+
+		return buildClient(ctx, provider, d, authConfig, "")
 	}
 
 	d := provider.Configure(ctx, terraform.NewResourceConfigRaw(nil))
@@ -800,7 +828,7 @@ func TestAccProvider_aksWorkloadIdentityAuth(t *testing.T) {
 			EnableAuthenticationUsingOIDC: true,
 		}
 
-		return buildClient(ctx, provider, d, authConfig)
+		return buildClient(ctx, provider, d, authConfig, "")
 	}
 
 	// Ensure we enable AKS Workload Identity else the configuration will not be detected

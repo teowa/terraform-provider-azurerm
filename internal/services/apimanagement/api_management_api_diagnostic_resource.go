@@ -1,9 +1,10 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package apimanagement
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -67,42 +68,34 @@ func resourceApiManagementApiDiagnostic() *pluginsdk.Resource {
 			"sampling_percentage": {
 				Type:         pluginsdk.TypeFloat,
 				Optional:     true,
-				Computed:     true,
+				Computed:     true, // azignore:AZS007 - pre-existing violation
 				ValidateFunc: validation.FloatBetween(0.0, 100.0),
 			},
 
 			"always_log_errors": {
 				Type:     pluginsdk.TypeBool,
 				Optional: true,
-				Computed: true,
+				Computed: true, // azignore:AZS007 - pre-existing violation
 			},
 
 			"verbosity": {
-				Type:     pluginsdk.TypeString,
-				Optional: true,
-				Computed: true,
-				ValidateFunc: validation.StringInSlice([]string{
-					string(apidiagnostic.VerbosityVerbose),
-					string(apidiagnostic.VerbosityInformation),
-					string(apidiagnostic.VerbosityError),
-				}, false),
+				Type:         pluginsdk.TypeString,
+				Optional:     true,
+				Computed:     true, // azignore:AZS007 - pre-existing violation
+				ValidateFunc: validation.StringInSlice(apidiagnostic.PossibleValuesForVerbosity(), false),
 			},
 
 			"log_client_ip": {
 				Type:     pluginsdk.TypeBool,
 				Optional: true,
-				Computed: true,
+				Computed: true, // azignore:AZS007 - pre-existing violation
 			},
 
 			"http_correlation_protocol": {
-				Type:     pluginsdk.TypeString,
-				Optional: true,
-				Computed: true,
-				ValidateFunc: validation.StringInSlice([]string{
-					string(apidiagnostic.HTTPCorrelationProtocolNone),
-					string(apidiagnostic.HTTPCorrelationProtocolLegacy),
-					string(apidiagnostic.HTTPCorrelationProtocolWThreeC),
-				}, false),
+				Type:         pluginsdk.TypeString,
+				Optional:     true,
+				Computed:     true, // azignore:AZS007 - pre-existing violation
+				ValidateFunc: validation.StringInSlice(apidiagnostic.PossibleValuesForHTTPCorrelationProtocol(), false),
 			},
 
 			"frontend_request": resourceApiManagementApiDiagnosticAdditionalContentSchema(),
@@ -114,14 +107,21 @@ func resourceApiManagementApiDiagnostic() *pluginsdk.Resource {
 			"backend_response": resourceApiManagementApiDiagnosticAdditionalContentSchema(),
 
 			"operation_name_format": {
-				Type:     pluginsdk.TypeString,
-				Optional: true,
-				Default:  string(apidiagnostic.OperationNameFormatName),
-				ValidateFunc: validation.StringInSlice([]string{
-					string(apidiagnostic.OperationNameFormatName),
-					string(apidiagnostic.OperationNameFormatURL),
-				}, false),
+				Type:         pluginsdk.TypeString,
+				Optional:     true,
+				Default:      string(apidiagnostic.OperationNameFormatName),
+				ValidateFunc: validation.StringInSlice(apidiagnostic.PossibleValuesForOperationNameFormat(), false),
 			},
+		},
+
+		CustomizeDiff: func(ctx context.Context, d *pluginsdk.ResourceDiff, i interface{}) error {
+			if _, n := d.GetChange("operation_name_format"); n != "" {
+				if d.Get("identifier") != "applicationinsights" {
+					return fmt.Errorf("`operation_name_format` cannot be set when `identifier` is not `applicationinsights`")
+				}
+			}
+
+			return nil
 		},
 	}
 }
@@ -132,7 +132,7 @@ func resourceApiManagementApiDiagnosticAdditionalContentSchema() *pluginsdk.Sche
 		Type:     pluginsdk.TypeList,
 		MaxItems: 1,
 		Optional: true,
-		Computed: true,
+		Computed: true, // azignore:AZS007 - pre-existing violation
 		Elem: &pluginsdk.Resource{
 			Schema: map[string]*pluginsdk.Schema{
 				"body_bytes": {
@@ -173,15 +173,17 @@ func resourceApiManagementApiDiagnosticCreateUpdate(d *pluginsdk.ResourceData, m
 	id := apidiagnostic.NewApiDiagnosticID(subscriptionId, d.Get("resource_group_name").(string), d.Get("api_management_name").(string), d.Get("api_name").(string), d.Get("identifier").(string))
 
 	if d.IsNewResource() {
-		existing, err := client.Get(ctx, id)
-		if err != nil {
-			if !response.WasNotFound(existing.HttpResponse) {
-				return fmt.Errorf("checking for presence of existing Diagnostic %s: %s", id, err)
+		if !meta.(*clients.Client).Features.SkipImportCheckOnCreateAndAllowOverwritingExistingResources {
+			existing, err := client.Get(ctx, id)
+			if err != nil {
+				if !response.WasNotFound(existing.HttpResponse) {
+					return fmt.Errorf("checking for presence of existing Diagnostic %s: %s", id, err)
+				}
 			}
-		}
 
-		if !response.WasNotFound(existing.HttpResponse) {
-			return tf.ImportAsExistsError("azurerm_api_management_api_diagnostic", id.ID())
+			if !response.WasNotFound(existing.HttpResponse) {
+				return tf.ImportAsExistsError("azurerm_api_management_api_diagnostic", id.ID())
+			}
 		}
 	}
 
@@ -191,8 +193,10 @@ func resourceApiManagementApiDiagnosticCreateUpdate(d *pluginsdk.ResourceData, m
 		},
 	}
 
-	if d.Get("identifier") == "applicationinsights" {
-		parameters.Properties.OperationNameFormat = pointer.To(apidiagnostic.OperationNameFormat(d.Get("operation_name_format").(string)))
+	if operationNameFormat, ok := d.GetOk("operation_name_format"); ok {
+		if d.Get("identifier") == "applicationinsights" {
+			parameters.Properties.OperationNameFormat = pointer.ToEnum[apidiagnostic.OperationNameFormat](operationNameFormat.(string))
+		}
 	}
 
 	samplingPercentage := d.GetRawConfig().AsValueMap()["sampling_percentage"]
@@ -210,7 +214,7 @@ func resourceApiManagementApiDiagnosticCreateUpdate(d *pluginsdk.ResourceData, m
 	}
 
 	if verbosity, ok := d.GetOk("verbosity"); ok {
-		parameters.Properties.Verbosity = pointer.To(apidiagnostic.Verbosity(verbosity.(string)))
+		parameters.Properties.Verbosity = pointer.ToEnum[apidiagnostic.Verbosity](verbosity.(string))
 	}
 
 	//lint:ignore SA1019 SDKv2 migration  - staticcheck's own linter directives are currently being ignored under golanci-lint
@@ -219,7 +223,7 @@ func resourceApiManagementApiDiagnosticCreateUpdate(d *pluginsdk.ResourceData, m
 	}
 
 	if httpCorrelationProtocol, ok := d.GetOk("http_correlation_protocol"); ok {
-		parameters.Properties.HTTPCorrelationProtocol = pointer.To(apidiagnostic.HTTPCorrelationProtocol(httpCorrelationProtocol.(string)))
+		parameters.Properties.HTTPCorrelationProtocol = pointer.ToEnum[apidiagnostic.HTTPCorrelationProtocol](httpCorrelationProtocol.(string))
 	}
 
 	frontendRequest, frontendRequestSet := d.GetOk("frontend_request")
@@ -406,12 +410,9 @@ func schemaApiManagementDataMaskingEntityList() *pluginsdk.Schema {
 		Elem: &pluginsdk.Resource{
 			Schema: map[string]*pluginsdk.Schema{
 				"mode": {
-					Type:     pluginsdk.TypeString,
-					Required: true,
-					ValidateFunc: validation.StringInSlice([]string{
-						string(apidiagnostic.DataMaskingModeHide),
-						string(apidiagnostic.DataMaskingModeMask),
-					}, false),
+					Type:         pluginsdk.TypeString,
+					Required:     true,
+					ValidateFunc: validation.StringInSlice(apidiagnostic.PossibleValuesForDataMaskingMode(), false),
 				},
 
 				"value": {
@@ -445,7 +446,7 @@ func expandApiManagementApiDiagnosticDataMaskingEntityList(input []interface{}) 
 	for _, v := range input {
 		entity := v.(map[string]interface{})
 		result = append(result, apidiagnostic.DataMaskingEntity{
-			Mode:  pointer.To(apidiagnostic.DataMaskingMode(entity["mode"].(string))),
+			Mode:  pointer.ToEnum[apidiagnostic.DataMaskingMode](entity["mode"].(string)),
 			Value: pointer.To(entity["value"].(string)),
 		})
 	}

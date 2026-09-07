@@ -320,7 +320,7 @@ The deprecated field `cmk_enabled` will be removed since it no longer exists in 
 
 ---
 
--> **NOTE:** This guide is a Work In Progress and as such Fields, Resources and Data Sources may be added to this guide until version 3.0 of the AzureRM Provider is released.
+-> **Note:** This guide is a Work In Progress and as such Fields, Resources and Data Sources may be added to this guide until version 3.0 of the AzureRM Provider is released.
 
 ### Resource: `azurerm_api_management_custom_domain`
 
@@ -1471,7 +1471,6 @@ The deprecated field `radius_server` will be removed in favour of the `radius` p
 The deprecated field `data_disk.disk_iops_read_write` will be removed in favour of the `data_disk.ultra_ssd_disk_iops_read_write` property.
 
 The deprecated field `data_disk.disk_mbps_read_write` will be removed in favour of the `data_disk.ultra_ssd_disk_mbps_read_write` property.
-
 
 ## Case Sensitivity Changes
 
