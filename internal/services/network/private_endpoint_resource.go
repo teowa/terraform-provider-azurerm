@@ -22,8 +22,8 @@ import (
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cosmosdb/2024-08-15/cosmosdb"
 	mariadbServers "github.com/hashicorp/go-azure-sdk/resource-manager/mariadb/2018-06-01/servers"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/mysql/2017-12-01/servers"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/privatednszonegroups"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/privateendpoints"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/privatednszonegroups"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/privateendpoints"
 	postgresqlServers "github.com/hashicorp/go-azure-sdk/resource-manager/postgresql/2017-12-01/servers"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/privatedns/2024-06-01/privatezones"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/redis/2024-03-01/redis"
@@ -319,8 +319,8 @@ func resourcePrivateEndpoint() *pluginsdk.Resource {
 }
 
 func resourcePrivateEndpointCreate(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.PrivateEndpoints
-	dnsClient := meta.(*clients.Client).Network.PrivateDnsZoneGroups
+	client := meta.(*clients.Client).Network.PrivateEndpointsClient
+	dnsClient := meta.(*clients.Client).Network.PrivateDnsZoneGroupsClient
 	subscriptionId := meta.(*clients.Client).Account.SubscriptionId
 	ctx, cancel := timeouts.ForCreate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
@@ -497,8 +497,8 @@ func getCosmosDbResIdInPrivateServiceConnections(p *privateendpoints.PrivateEndp
 }
 
 func resourcePrivateEndpointUpdate(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.PrivateEndpoints
-	dnsClient := meta.(*clients.Client).Network.PrivateDnsZoneGroups
+	client := meta.(*clients.Client).Network.PrivateEndpointsClient
+	dnsClient := meta.(*clients.Client).Network.PrivateDnsZoneGroupsClient
 	ctx, cancel := timeouts.ForUpdate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
@@ -643,7 +643,7 @@ func resourcePrivateEndpointUpdate(d *pluginsdk.ResourceData, meta interface{}) 
 }
 
 func resourcePrivateEndpointRead(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.PrivateEndpoints
+	client := meta.(*clients.Client).Network.PrivateEndpointsClient
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
@@ -667,7 +667,7 @@ func resourcePrivateEndpointRead(d *pluginsdk.ResourceData, meta interface{}) er
 
 func resourcePrivateEndpointFlatten(ctx context.Context, metaClient *clients.Client, d *pluginsdk.ResourceData, id *privateendpoints.PrivateEndpointId, model *privateendpoints.PrivateEndpoint, fetchCompleteData bool) error {
 	nicsClient := metaClient.Network.NetworkInterfaces
-	dnsClient := metaClient.Network.PrivateDnsZoneGroups
+	dnsClient := metaClient.Network.PrivateDnsZoneGroupsClient
 
 	d.Set("name", id.PrivateEndpointName)
 	d.Set("resource_group_name", id.ResourceGroupName)
@@ -751,8 +751,8 @@ func resourcePrivateEndpointFlatten(ctx context.Context, metaClient *clients.Cli
 }
 
 func resourcePrivateEndpointDelete(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.PrivateEndpoints
-	dnsZoneGroupsClient := meta.(*clients.Client).Network.PrivateDnsZoneGroups
+	client := meta.(*clients.Client).Network.PrivateEndpointsClient
+	dnsZoneGroupsClient := meta.(*clients.Client).Network.PrivateDnsZoneGroupsClient
 	ctx, cancel := timeouts.ForDelete(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 

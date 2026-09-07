@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/applicationsecuritygroups"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/privateendpoints"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/privateendpoints"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/locks"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/network/parse"
@@ -64,7 +64,7 @@ func (p PrivateEndpointApplicationSecurityGroupAssociationResource) Create() sdk
 				return err
 			}
 
-			privateEndpointClient := metadata.Client.Network.PrivateEndpoints
+			privateEndpointClient := metadata.Client.Network.PrivateEndpointsClient
 			privateEndpointId, err := privateendpoints.ParsePrivateEndpointID(state.PrivateEndpointId)
 			if err != nil {
 				return err
@@ -163,7 +163,7 @@ func (p PrivateEndpointApplicationSecurityGroupAssociationResource) Read() sdk.R
 				return err
 			}
 
-			privateEndpointClient := metadata.Client.Network.PrivateEndpoints
+			privateEndpointClient := metadata.Client.Network.PrivateEndpointsClient
 
 			privateEndpointId, err := privateendpoints.ParsePrivateEndpointID(resourceId.PrivateEndpointId.ID())
 			if err != nil {
@@ -240,7 +240,7 @@ func (p PrivateEndpointApplicationSecurityGroupAssociationResource) Delete() sdk
 				return err
 			}
 
-			privateEndpointClient := metadata.Client.Network.PrivateEndpoints
+			privateEndpointClient := metadata.Client.Network.PrivateEndpointsClient
 
 			privateEndpointId, err := privateendpoints.ParsePrivateEndpointID(state.PrivateEndpointId)
 			if err != nil {
