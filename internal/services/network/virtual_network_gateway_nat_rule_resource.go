@@ -124,7 +124,7 @@ func resourceVirtualNetworkGatewayNatRule() *pluginsdk.Resource {
 
 func resourceVirtualNetworkGatewayNatRuleCreate(d *pluginsdk.ResourceData, meta interface{}) error {
 	subscriptionId := meta.(*clients.Client).Account.SubscriptionId
-	client := meta.(*clients.Client).Network.VirtualNetworkGateways
+	client := meta.(*clients.Client).Network.VirtualNetworkGatewaysClient
 	ctx, cancel := timeouts.ForCreate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
@@ -170,7 +170,7 @@ func resourceVirtualNetworkGatewayNatRuleCreate(d *pluginsdk.ResourceData, meta 
 }
 
 func resourceVirtualNetworkGatewayNatRuleRead(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.VirtualNetworkGateways
+	client := meta.(*clients.Client).Network.VirtualNetworkGatewaysClient
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
@@ -214,7 +214,7 @@ func resourceVirtualNetworkGatewayNatRuleRead(d *pluginsdk.ResourceData, meta in
 }
 
 func resourceVirtualNetworkGatewayNatRuleUpdate(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.VirtualNetworkGateways
+	client := meta.(*clients.Client).Network.VirtualNetworkGatewaysClient
 	ctx, cancel := timeouts.ForUpdate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
@@ -245,7 +245,7 @@ func resourceVirtualNetworkGatewayNatRuleUpdate(d *pluginsdk.ResourceData, meta 
 }
 
 func resourceVirtualNetworkGatewayNatRuleDelete(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.VirtualNetworkGateways
+	client := meta.(*clients.Client).Network.VirtualNetworkGatewaysClient
 	ctx, cancel := timeouts.ForDelete(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 

@@ -247,7 +247,7 @@ func dataSourceVirtualNetworkGateway() *pluginsdk.Resource {
 }
 
 func dataSourceVirtualNetworkGatewayRead(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.VirtualNetworkGateways
+	client := meta.(*clients.Client).Network.VirtualNetworkGatewaysClient
 	subscriptionId := meta.(*clients.Client).Account.SubscriptionId
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()

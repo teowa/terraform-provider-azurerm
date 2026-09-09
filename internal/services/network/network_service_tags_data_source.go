@@ -68,7 +68,7 @@ func dataSourceNetworkServiceTags() *pluginsdk.Resource {
 }
 
 func dataSourceNetworkServiceTagsRead(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.ServiceTags
+	client := meta.(*clients.Client).Network.ServiceTagsClient
 	subscriptionId := meta.(*clients.Client).Account.SubscriptionId
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()

@@ -484,7 +484,7 @@ func (t VirtualNetworkGatewayResource) Exists(ctx context.Context, clients *clie
 		return nil, err
 	}
 
-	resp, err := clients.Network.VirtualNetworkGateways.Get(ctx, *id)
+	resp, err := clients.Network.VirtualNetworkGatewaysClient.Get(ctx, *id)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving %s: %+v", state.ID, err)
 	}

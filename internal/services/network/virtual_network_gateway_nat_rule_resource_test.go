@@ -113,7 +113,7 @@ func (r VirtualNetworkGatewayNatRuleResource) Exists(ctx context.Context, client
 		return nil, err
 	}
 
-	resp, err := clients.Network.VirtualNetworkGateways.VirtualNetworkGatewayNatRulesGet(ctx, *id)
+	resp, err := clients.Network.VirtualNetworkGatewaysClient.VirtualNetworkGatewayNatRulesGet(ctx, *id)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving %s: %+v", id, err)
 	}

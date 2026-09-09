@@ -669,7 +669,7 @@ func expressRouteGatewaySkuIsAvailabilityZone(sku string) bool {
 }
 
 func resourceVirtualNetworkGatewayCreate(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.VirtualNetworkGateways
+	client := meta.(*clients.Client).Network.VirtualNetworkGatewaysClient
 	ctx, cancel := timeouts.ForCreate(meta.(*clients.Client).StopContext, d)
 	subscriptionId := meta.(*clients.Client).Account.SubscriptionId
 	defer cancel()
@@ -712,7 +712,7 @@ func resourceVirtualNetworkGatewayCreate(d *pluginsdk.ResourceData, meta interfa
 }
 
 func resourceVirtualNetworkGatewayRead(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.VirtualNetworkGateways
+	client := meta.(*clients.Client).Network.VirtualNetworkGatewaysClient
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
@@ -809,7 +809,7 @@ func resourceVirtualNetworkGatewayRead(d *pluginsdk.ResourceData, meta interface
 }
 
 func resourceVirtualNetworkGatewayUpdate(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.VirtualNetworkGateways
+	client := meta.(*clients.Client).Network.VirtualNetworkGatewaysClient
 	ctx, cancel := timeouts.ForUpdate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
@@ -915,7 +915,7 @@ func resourceVirtualNetworkGatewayUpdate(d *pluginsdk.ResourceData, meta interfa
 }
 
 func resourceVirtualNetworkGatewayDelete(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.VirtualNetworkGateways
+	client := meta.(*clients.Client).Network.VirtualNetworkGatewaysClient
 	ctx, cancel := timeouts.ForDelete(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
