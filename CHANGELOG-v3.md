@@ -1,3 +1,25 @@
+## 3.117.1 (February 28, 2025)
+
+SPECIAL NOTES: This 3.x.x patch release is a special, one-off, back-port of an API upgrade for the `azurerm_kubernetes_cluster_trusted_access_role_binding` resource to enable users still on 3.x to continue using this resource.
+
+BUG FIXES:
+
+* dependencies: `azurerm_kubernetes_cluster_trusted_access_role_binding` - upgrade API to `2024-05-01` ([#28910](https://github.com/hashicorp/terraform-provider-azurerm/pull/28910)) 
+
+## 3.117.0 (November 7, 2024)
+
+SPECIAL NOTES: This 3.x release is a special, one-off, back-port of functionality for `azurerm_storage_account` to enable users to deploy this resource in environments which block / are restrictive of Data Plane access, thus preventing the resource being created and/or managed.  This functionality is back-ported from the `v4.9.0` release. Users migrating from this release to the 4.x line, should upgrade directly to `v4.9.0` or later, as these features are not compatible with earlier releases of 4.x.
+
+FEATURES:
+
+* **New Resource:** `azurerm_storage_account_queue_properties` ([#27819](https://github.com/hashicorp/terraform-provider-azurerm/pull/27819))
+* **New Resource:** `azurerm_storage_account_static_website`  ([#27819](https://github.com/hashicorp/terraform-provider-azurerm/pull/27819))
+* New Provider Feature - storage `data_plane_available` feature flag ([#27819](https://github.com/hashicorp/terraform-provider-azurerm/pull/27819))
+
+ENHANCEMENTS:
+
+* `azurerm_storage_account` - can now be created and managed if Data Plane endpoints are blocked by a firewall ([#27819](https://github.com/hashicorp/terraform-provider-azurerm/pull/27819)) 
+
 ## 3.116.0 (August 16, 2024)
 
 DEPRECATIONS:
@@ -1374,7 +1396,7 @@ BUG FIXES:
 
 UPGRADE NOTES:
 
-* Key Vaults are now loaded using [the `ListBySubscription` API within the Key Vault Resource Provider](https://learn.microsoft.com/en-us/rest/api/keyvault/keyvault/vaults/list-by-subscription?view=rest-keyvault-keyvault-2022-07-01&tabs=HTTP) rather than [the Resources API](https://learn.microsoft.com/en-us/rest/api/keyvault/keyvault/vaults/list?view=rest-keyvault-keyvault-2022-07-01&tabs=HTTP). This change means that the Provider now caches the list of Key Vaults available within a Subscription, rather than loading these piecemeal to workaround stale data returned from the Resources API ([#24019](https://github.com/hashicorp/terraform-provider-azurerm/issues/24019))
+* Key Vaults are now loaded using [the `ListBySubscription` API within the Key Vault Resource Provider](https://learn.microsoft.com/rest/api/keyvault/keyvault/vaults/list-by-subscription?view=rest-keyvault-keyvault-2022-07-01&tabs=HTTP) rather than [the Resources API](https://learn.microsoft.com/rest/api/keyvault/keyvault/vaults/list?view=rest-keyvault-keyvault-2022-07-01&tabs=HTTP). This change means that the Provider now caches the list of Key Vaults available within a Subscription, rather than loading these piecemeal to workaround stale data returned from the Resources API ([#24019](https://github.com/hashicorp/terraform-provider-azurerm/issues/24019))
 
 FEATURES:
 

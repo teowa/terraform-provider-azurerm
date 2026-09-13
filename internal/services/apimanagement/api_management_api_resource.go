@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package apimanagement
@@ -15,8 +15,10 @@ import (
 	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/apimanagement/2022-08-01/api"
+	"github.com/hashicorp/go-azure-sdk/sdk/client/pollers"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/services/apimanagement/custompollers"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/apimanagement/migration"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/apimanagement/schemaz"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/apimanagement/validate"
@@ -26,7 +28,7 @@ import (
 )
 
 func resourceApiManagementApi() *pluginsdk.Resource {
-	resource := &pluginsdk.Resource{
+	return &pluginsdk.Resource{
 		Create: resourceApiManagementApiCreate,
 		Read:   resourceApiManagementApiRead,
 		Update: resourceApiManagementApiUpdate,
@@ -58,29 +60,24 @@ func resourceApiManagementApi() *pluginsdk.Resource {
 			"display_name": {
 				Type:         pluginsdk.TypeString,
 				Optional:     true,
-				Computed:     true,
+				Computed:     true, // azignore:AZS007 - pre-existing violation
 				ValidateFunc: validation.StringIsNotEmpty,
 			},
 
 			"path": {
 				Type:         pluginsdk.TypeString,
 				Optional:     true,
-				Computed:     true,
+				Computed:     true, // azignore:AZS007 - pre-existing violation
 				ValidateFunc: validate.ApiManagementApiPath,
 			},
 
 			"protocols": {
 				Type:     pluginsdk.TypeSet,
 				Optional: true,
-				Computed: true,
+				Computed: true, // azignore:AZS007 - pre-existing violation
 				Elem: &pluginsdk.Schema{
-					Type: pluginsdk.TypeString,
-					ValidateFunc: validation.StringInSlice([]string{
-						string(api.ProtocolHTTP),
-						string(api.ProtocolHTTPS),
-						string(api.ProtocolWs),
-						string(api.ProtocolWss),
-					}, false),
+					Type:         pluginsdk.TypeString,
+					ValidateFunc: validation.StringInSlice(api.PossibleValuesForProtocol(), false),
 				},
 			},
 
@@ -101,13 +98,9 @@ func resourceApiManagementApi() *pluginsdk.Resource {
 			"api_type": {
 				Type:     pluginsdk.TypeString,
 				Optional: true,
-				Computed: true,
-				ValidateFunc: validation.StringInSlice([]string{
-					string(api.ApiTypeGraphql),
-					string(api.ApiTypeHTTP),
-					string(api.ApiTypeSoap),
-					string(api.ApiTypeWebsocket),
-				}, false),
+				// Note: O+C because the API sets a default api_type (http) when not specified
+				Computed:     true,
+				ValidateFunc: validation.StringInSlice(api.PossibleValuesForApiType(), false),
 			},
 
 			"contact": {
@@ -120,7 +113,7 @@ func resourceApiManagementApi() *pluginsdk.Resource {
 						"email": {
 							Type:         pluginsdk.TypeString,
 							Optional:     true,
-							ValidateFunc: validate.EmailAddress,
+							ValidateFunc: validation.IsEmailAddress,
 						},
 						"name": {
 							Type:         pluginsdk.TypeString,
@@ -218,12 +211,14 @@ func resourceApiManagementApi() *pluginsdk.Resource {
 			"service_url": {
 				Type:     pluginsdk.TypeString,
 				Optional: true,
+				// Note: O+C because Azure returns a computed service_url when not specified
 				Computed: true,
 			},
 
 			"subscription_key_parameter_names": {
 				Type:     pluginsdk.TypeList,
 				Optional: true,
+				// Note: O+C because the API returns default subscription key parameter names when not specified
 				Computed: true,
 				MaxItems: 1,
 				Elem: &pluginsdk.Resource{
@@ -257,13 +252,14 @@ func resourceApiManagementApi() *pluginsdk.Resource {
 			"source_api_id": {
 				Type:         pluginsdk.TypeString,
 				Optional:     true,
-				ValidateFunc: validate.ApiID,
+				ValidateFunc: validation.AsGeneratedID(api.ParseApiIDInsensitively),
 			},
 
 			"oauth2_authorization": {
-				Type:     pluginsdk.TypeList,
-				Optional: true,
-				MaxItems: 1,
+				Type:          pluginsdk.TypeList,
+				Optional:      true,
+				MaxItems:      1,
+				ConflictsWith: []string{"openid_authentication"},
 				Elem: &pluginsdk.Resource{
 					Schema: map[string]*pluginsdk.Schema{
 						"authorization_server_name": {
@@ -281,9 +277,10 @@ func resourceApiManagementApi() *pluginsdk.Resource {
 			},
 
 			"openid_authentication": {
-				Type:     pluginsdk.TypeList,
-				Optional: true,
-				MaxItems: 1,
+				Type:          pluginsdk.TypeList,
+				Optional:      true,
+				MaxItems:      1,
+				ConflictsWith: []string{"oauth2_authorization"},
 				Elem: &pluginsdk.Resource{
 					Schema: map[string]*pluginsdk.Schema{
 						"openid_provider_name": {
@@ -295,11 +292,8 @@ func resourceApiManagementApi() *pluginsdk.Resource {
 							Type:     pluginsdk.TypeSet,
 							Optional: true,
 							Elem: &pluginsdk.Schema{
-								Type: pluginsdk.TypeString,
-								ValidateFunc: validation.StringInSlice([]string{
-									string(api.BearerTokenSendingMethodsAuthorizationHeader),
-									string(api.BearerTokenSendingMethodsQuery),
-								}, false),
+								Type:         pluginsdk.TypeString,
+								ValidateFunc: validation.StringInSlice(api.PossibleValuesForBearerTokenSendingMethods(), false),
 							},
 						},
 					},
@@ -320,6 +314,7 @@ func resourceApiManagementApi() *pluginsdk.Resource {
 			"version": {
 				Type:     pluginsdk.TypeString,
 				Computed: true,
+				// Note: O+C because the API assigns a version identifier when not explicitly set
 				Optional: true,
 			},
 
@@ -332,6 +327,7 @@ func resourceApiManagementApi() *pluginsdk.Resource {
 			"version_set_id": {
 				Type:     pluginsdk.TypeString,
 				Computed: true,
+				// Note: O+C because the API assigns a version set ID when not explicitly set
 				Optional: true,
 			},
 		},
@@ -347,12 +343,14 @@ func resourceApiManagementApi() *pluginsdk.Resource {
 				if values["source_api_id"].IsNull() && (values["display_name"].IsNull() || protocols == nil || len(*protocols) == 0) {
 					return errors.New("`display_name`, `protocols` are required when `source_api_id` is not set")
 				}
+
+				if d.Get("api_type").(string) == string(api.ApiTypeWebsocket) && d.Get("service_url").(string) == "" {
+					return errors.New("`service_url` is required when `api_type` is `websocket`")
+				}
 				return nil
 			}),
 		),
 	}
-
-	return resource
 }
 
 func resourceApiManagementApiCreate(d *pluginsdk.ResourceData, meta interface{}) error {
@@ -372,14 +370,17 @@ func resourceApiManagementApiCreate(d *pluginsdk.ResourceData, meta interface{})
 	sourceApiId := d.Get("source_api_id").(string)
 
 	id := api.NewApiID(subscriptionId, d.Get("resource_group_name").(string), d.Get("api_management_name").(string), apiId)
-	existing, err := client.Get(ctx, id)
-	if err != nil {
-		if !response.WasNotFound(existing.HttpResponse) {
-			return fmt.Errorf("checking for presence of an existing %s: %+v", id, err)
+
+	if !meta.(*clients.Client).Features.SkipImportCheckOnCreateAndAllowOverwritingExistingResources {
+		existing, err := client.Get(ctx, id)
+		if err != nil {
+			if !response.WasNotFound(existing.HttpResponse) {
+				return fmt.Errorf("checking for presence of an existing %s: %+v", id, err)
+			}
 		}
-	}
-	if !response.WasNotFound(existing.HttpResponse) {
-		return tf.ImportAsExistsError("azurerm_api_management_api", id.ID())
+		if !response.WasNotFound(existing.HttpResponse) {
+			return tf.ImportAsExistsError("azurerm_api_management_api", id.ID())
+		}
 	}
 
 	apiType := api.ApiTypeHTTP
@@ -393,13 +394,20 @@ func resourceApiManagementApiCreate(d *pluginsdk.ResourceData, meta interface{})
 	if importVs, ok := d.GetOk("import"); ok {
 		if apiParams := expandApiManagementApiImport(importVs.([]interface{}), apiType, soapApiType,
 			path, d.Get("service_url").(string), version, versionSetId); apiParams != nil {
-			if err := client.CreateOrUpdateThenPoll(ctx, id, *apiParams, api.CreateOrUpdateOperationOptions{}); err != nil {
-				return fmt.Errorf("creating %s: %+v", id, err)
+			result, err := client.CreateOrUpdate(ctx, id, *apiParams, api.CreateOrUpdateOperationOptions{})
+			if err != nil {
+				return fmt.Errorf("creating with import of %s: %+v", id, err)
+			}
+
+			if pollerType := custompollers.NewAPIManagementAPIPoller(client, id, result.HttpResponse); pollerType != nil {
+				poller := pollers.NewPoller(pollerType, 5*time.Second, pollers.DefaultNumberOfDroppedConnectionsToAllow)
+				if err := poller.PollUntilDone(ctx); err != nil {
+					return fmt.Errorf("polling import %s: %+v", id, err)
+				}
 			}
 		}
 	}
 
-	description := d.Get("description").(string)
 	serviceUrl := d.Get("service_url").(string)
 	subscriptionRequired := d.Get("subscription_required").(bool)
 
@@ -408,12 +416,10 @@ func resourceApiManagementApiCreate(d *pluginsdk.ResourceData, meta interface{})
 	authenticationSettings := &api.AuthenticationSettingsContract{}
 
 	oAuth2AuthorizationSettingsRaw := d.Get("oauth2_authorization").([]interface{})
-	oAuth2AuthorizationSettings := expandApiManagementOAuth2AuthenticationSettingsContract(oAuth2AuthorizationSettingsRaw)
-	authenticationSettings.OAuth2 = oAuth2AuthorizationSettings
+	authenticationSettings.OAuth2 = expandApiManagementOAuth2AuthenticationSettingsContract(oAuth2AuthorizationSettingsRaw)
 
 	openIDAuthorizationSettingsRaw := d.Get("openid_authentication").([]interface{})
-	openIDAuthorizationSettings := expandApiManagementOpenIDAuthenticationSettingsContract(openIDAuthorizationSettingsRaw)
-	authenticationSettings.Openid = openIDAuthorizationSettings
+	authenticationSettings.Openid = expandApiManagementOpenIDAuthenticationSettingsContract(openIDAuthorizationSettingsRaw)
 
 	contactInfoRaw := d.Get("contact").([]interface{})
 	contactInfo := expandApiManagementApiContact(contactInfoRaw)
@@ -425,10 +431,8 @@ func resourceApiManagementApiCreate(d *pluginsdk.ResourceData, meta interface{})
 		Properties: &api.ApiCreateOrUpdateProperties{
 			Type:                          pointer.To(apiType),
 			ApiType:                       pointer.To(soapApiType),
-			Description:                   pointer.To(description),
 			Path:                          path,
 			Protocols:                     protocols,
-			ServiceURL:                    pointer.To(serviceUrl),
 			SubscriptionKeyParameterNames: subscriptionKeyParameterNames,
 			SubscriptionRequired:          &subscriptionRequired,
 			AuthenticationSettings:        authenticationSettings,
@@ -439,9 +443,18 @@ func resourceApiManagementApiCreate(d *pluginsdk.ResourceData, meta interface{})
 		},
 	}
 
+	if serviceUrl != "" {
+		params.Properties.ServiceURL = pointer.To(serviceUrl)
+	}
+
 	if sourceApiId != "" {
 		params.Properties.SourceApiId = pointer.To(sourceApiId)
 	}
+
+	if description, ok := d.GetOk("description"); ok {
+		params.Properties.Description = pointer.To(description.(string))
+	}
+
 	if displayName != "" {
 		params.Properties.DisplayName = pointer.To(displayName)
 	}
@@ -458,11 +471,20 @@ func resourceApiManagementApiCreate(d *pluginsdk.ResourceData, meta interface{})
 		params.Properties.TermsOfServiceURL = pointer.To(v.(string))
 	}
 
-	if err := client.CreateOrUpdateThenPoll(ctx, id, params, api.CreateOrUpdateOperationOptions{IfMatch: pointer.To("*")}); err != nil {
+	result, err := client.CreateOrUpdate(ctx, id, params, api.CreateOrUpdateOperationOptions{IfMatch: pointer.To("*")})
+	if err != nil {
 		return fmt.Errorf("creating/updating %s: %+v", id, err)
 	}
 
 	d.SetId(id.ID())
+
+	if pollerType := custompollers.NewAPIManagementAPIPoller(client, id, result.HttpResponse); pollerType != nil {
+		poller := pollers.NewPoller(pollerType, 5*time.Second, pollers.DefaultNumberOfDroppedConnectionsToAllow)
+		if err := poller.PollUntilDone(ctx); err != nil {
+			return fmt.Errorf("polling creating/updating %s: %+v", id, err)
+		}
+	}
+
 	return resourceApiManagementApiRead(d, meta)
 }
 
@@ -497,8 +519,16 @@ func resourceApiManagementApiUpdate(d *pluginsdk.ResourceData, meta interface{})
 		if vs, hasImport := d.GetOk("import"); hasImport {
 			if apiParams := expandApiManagementApiImport(vs.([]interface{}), apiType, soapApiType,
 				path, serviceUrl, version, versionSetId); apiParams != nil {
-				if err := client.CreateOrUpdateThenPoll(ctx, *id, *apiParams, api.CreateOrUpdateOperationOptions{}); err != nil {
-					return fmt.Errorf("creating/updating %s: %+v", *id, err)
+				result, err := client.CreateOrUpdate(ctx, *id, *apiParams, api.CreateOrUpdateOperationOptions{})
+				if err != nil {
+					return fmt.Errorf("creating with import of %s: %+v", id, err)
+				}
+
+				if pollerType := custompollers.NewAPIManagementAPIPoller(client, *id, result.HttpResponse); pollerType != nil {
+					poller := pollers.NewPoller(pollerType, 5*time.Second, pollers.DefaultNumberOfDroppedConnectionsToAllow)
+					if err := poller.PollUntilDone(ctx); err != nil {
+						return fmt.Errorf("polling import %s: %+v", id, err)
+					}
 				}
 			}
 		}
@@ -526,7 +556,6 @@ func resourceApiManagementApiUpdate(d *pluginsdk.ResourceData, meta interface{})
 		ApiRevisionDescription:        existing.ApiRevisionDescription,
 		SubscriptionRequired:          existing.SubscriptionRequired,
 		SubscriptionKeyParameterNames: existing.SubscriptionKeyParameterNames,
-		AuthenticationSettings:        existing.AuthenticationSettings,
 		Contact:                       existing.Contact,
 		License:                       existing.License,
 		SourceApiId:                   existing.SourceApiId,
@@ -536,6 +565,26 @@ func resourceApiManagementApiUpdate(d *pluginsdk.ResourceData, meta interface{})
 		TermsOfServiceURL:             existing.TermsOfServiceURL,
 		Type:                          existing.Type,
 		ApiType:                       pointer.To(soapApiType),
+	}
+
+	// For the setting of `AuthenticationSettingsContract`, the PUT payload restrictions are as follows:
+	//   1. Cannot have both 'oAuth2' and 'openid' set
+	//   2. Cannot use `OAuth2AuthenticationSettings` in combination with `OAuth2` nor `openid`
+	//   3. Cannot use `OpenidAuthenticationSettings` in combination with `Openid` nor `OAuth2`
+	// If specifying `oauth2_authorization`/`openid_authentication` when creating a resource and then updating the resource, the error #2/#3 mentioned above will occur.
+	// This is because starting from the 2022-08-01 version, the Get API additionally returns a collection of `oauth2_authorization`/`openid_authentication` authentication settings, which property name is `OAuth2AuthenticationSettings`/`OpenidAuthenticationSetting`.
+	// Given the API behavior, the update here should only read the specified property `oauth2_authorization`/`openid_authentication` to exclude `OAuth2AuthenticationSettings`/`OpenidAuthenticationSetting` to ensure the update works properly.
+	if v := existing.AuthenticationSettings; v != nil {
+		authenticationSettings := &api.AuthenticationSettingsContract{}
+		if v.OAuth2 != nil {
+			authenticationSettings.OAuth2 = v.OAuth2
+			prop.AuthenticationSettings = authenticationSettings
+		}
+
+		if v.Openid != nil {
+			authenticationSettings.Openid = v.Openid
+			prop.AuthenticationSettings = authenticationSettings
+		}
 	}
 
 	if d.HasChange("path") {
@@ -575,21 +624,17 @@ func resourceApiManagementApiUpdate(d *pluginsdk.ResourceData, meta interface{})
 		prop.SubscriptionKeyParameterNames = expandApiManagementApiSubscriptionKeyParamNames(subscriptionKeyParameterNamesRaw)
 	}
 
-	authenticationSettings := existing.AuthenticationSettings
-	if authenticationSettings == nil {
-		authenticationSettings = &api.AuthenticationSettingsContract{}
-	}
 	if d.HasChange("oauth2_authorization") {
+		authenticationSettings := &api.AuthenticationSettingsContract{}
 		oAuth2AuthorizationSettingsRaw := d.Get("oauth2_authorization").([]interface{})
-		oAuth2AuthorizationSettings := expandApiManagementOAuth2AuthenticationSettingsContract(oAuth2AuthorizationSettingsRaw)
-		authenticationSettings.OAuth2 = oAuth2AuthorizationSettings
+		authenticationSettings.OAuth2 = expandApiManagementOAuth2AuthenticationSettingsContract(oAuth2AuthorizationSettingsRaw)
 		prop.AuthenticationSettings = authenticationSettings
 	}
 
 	if d.HasChange("openid_authentication") {
+		authenticationSettings := &api.AuthenticationSettingsContract{}
 		openIDAuthorizationSettingsRaw := d.Get("openid_authentication").([]interface{})
-		openIDAuthorizationSettings := expandApiManagementOpenIDAuthenticationSettingsContract(openIDAuthorizationSettingsRaw)
-		authenticationSettings.Openid = openIDAuthorizationSettings
+		authenticationSettings.Openid = expandApiManagementOpenIDAuthenticationSettingsContract(openIDAuthorizationSettingsRaw)
 		prop.AuthenticationSettings = authenticationSettings
 	}
 
@@ -625,8 +670,16 @@ func resourceApiManagementApiUpdate(d *pluginsdk.ResourceData, meta interface{})
 		Properties: prop,
 	}
 
-	if err := client.CreateOrUpdateThenPoll(ctx, *id, params, api.CreateOrUpdateOperationOptions{IfMatch: pointer.To("*")}); err != nil {
-		return fmt.Errorf("creating/updating %s: %+v", *id, err)
+	result, err := client.CreateOrUpdate(ctx, *id, params, api.CreateOrUpdateOperationOptions{IfMatch: pointer.To("*")})
+	if err != nil {
+		return fmt.Errorf("creating/updating %s: %+v", id, err)
+	}
+
+	if pollerType := custompollers.NewAPIManagementAPIPoller(client, *id, result.HttpResponse); pollerType != nil {
+		poller := pollers.NewPoller(pollerType, 5*time.Second, pollers.DefaultNumberOfDroppedConnectionsToAllow)
+		if err := poller.PollUntilDone(ctx); err != nil {
+			return fmt.Errorf("polling creating/updating %s: %+v", id, err)
+		}
 	}
 
 	return resourceApiManagementApiRead(d, meta)
@@ -751,7 +804,7 @@ func expandApiManagementApiImport(importVs []interface{}, apiType api.ApiType, s
 		Properties: &api.ApiCreateOrUpdateProperties{
 			Type:    pointer.To(apiType),
 			ApiType: pointer.To(soapApiType),
-			Format:  pointer.To(api.ContentFormat(contentFormat)),
+			Format:  pointer.ToEnum[api.ContentFormat](contentFormat),
 			Value:   pointer.To(contentValue),
 			Path:    path,
 		},

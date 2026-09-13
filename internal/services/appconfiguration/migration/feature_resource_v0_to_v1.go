@@ -1,10 +1,11 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package migration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -32,12 +33,12 @@ func (FeatureResourceV0ToV1) UpgradeFunc() pluginsdk.StateUpgraderFunc {
 		oldId := rawState["id"].(string)
 		fixedId := oldId
 
-		if strings.HasSuffix(fixedId, "/Label/\000") {
-			fixedId = strings.TrimSuffix(fixedId, "/Label/\000") + "/Label/%00"
+		if before, ok := strings.CutSuffix(fixedId, "/Label/\000"); ok {
+			fixedId = before + "/Label/%00"
 		}
 
-		if strings.HasSuffix(fixedId, "/Label/") {
-			fixedId = strings.TrimSuffix(fixedId, "/Label/") + "/Label/%00"
+		if before, ok := strings.CutSuffix(fixedId, "/Label/"); ok {
+			fixedId = before + "/Label/%00"
 		}
 
 		parsedOldId, err := parse.FeatureId(fixedId)
@@ -52,7 +53,7 @@ func (FeatureResourceV0ToV1) UpgradeFunc() pluginsdk.StateUpgraderFunc {
 
 		domainSuffix, ok := meta.(*clients.Client).Account.Environment.AppConfiguration.DomainSuffix()
 		if !ok {
-			return rawState, fmt.Errorf("App Configuration is not supported in this Environment")
+			return rawState, errors.New("app configuration is not supported in this Environment")
 		}
 
 		configurationStoreEndpoint := fmt.Sprintf("https://%s.%s", configurationStoreId.ConfigurationStoreName, *domainSuffix)
