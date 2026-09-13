@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/identity"
+	"github.com/hashicorp/go-azure-helpers/resourcemanager/keyvault"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/automation/2019-06-01/agentregistrationinformation"
@@ -20,19 +21,16 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/features"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/automation/validate"
-	keyVaultParse "github.com/hashicorp/terraform-provider-azurerm/internal/services/keyvault/parse"
-	keyVaultValidate "github.com/hashicorp/terraform-provider-azurerm/internal/services/keyvault/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/timeouts"
 )
 
-//go:generate go run ../../tools/generator-tests resourceidentity -resource-name automation_account -service-package-name automation -properties "name,resource_group_name" -known-values "subscription_id:data.Subscriptions.Primary"
+//go:generate go run ../../tools/generator-tests resourceidentity
 
 func resourceAutomationAccount() *pluginsdk.Resource {
-	r := &pluginsdk.Resource{
+	return &pluginsdk.Resource{
 		Create:   resourceAutomationAccountCreate,
 		Read:     resourceAutomationAccountRead,
 		Update:   resourceAutomationAccountUpdate,
@@ -80,7 +78,7 @@ func resourceAutomationAccount() *pluginsdk.Resource {
 						"key_vault_key_id": {
 							Type:         pluginsdk.TypeString,
 							Required:     true,
-							ValidateFunc: keyVaultValidate.NestedItemIdWithOptionalVersion,
+							ValidateFunc: keyvault.ValidateNestedItemID(keyvault.VersionTypeAny, keyvault.NestedItemTypeKey),
 						},
 					},
 				},
@@ -145,23 +143,6 @@ func resourceAutomationAccount() *pluginsdk.Resource {
 			SchemaFunc: pluginsdk.GenerateIdentitySchema(&automationaccount.AutomationAccountId{}),
 		},
 	}
-
-	if !features.FivePointOh() {
-		r.Schema["encryption"].Elem.(*schema.Resource).Schema["key_source"] = &pluginsdk.Schema{
-			Type:       pluginsdk.TypeString,
-			Optional:   true,
-			Deprecated: "`encryption.key_source` has been deprecated and will be removed in v5.0 of the AzureRM Provider. To disable encryption, omit the `encryption` block",
-			ValidateFunc: validation.StringInSlice(
-				[]string{
-					string(automationaccount.EncryptionKeySourceTypeMicrosoftPointAutomation),
-					string(automationaccount.EncryptionKeySourceTypeMicrosoftPointKeyvault),
-				},
-				false,
-			),
-		}
-	}
-
-	return r
 }
 
 func resourceAutomationAccountCreate(d *pluginsdk.ResourceData, meta interface{}) error {
@@ -171,15 +152,18 @@ func resourceAutomationAccountCreate(d *pluginsdk.ResourceData, meta interface{}
 	defer cancel()
 
 	id := automationaccount.NewAutomationAccountID(subscriptionId, d.Get("resource_group_name").(string), d.Get("name").(string))
-	existing, err := client.Get(ctx, id)
-	if err != nil {
-		if !response.WasNotFound(existing.HttpResponse) {
-			return fmt.Errorf("checking for presence of existing %s: %+v", id, err)
-		}
-	}
 
-	if !response.WasNotFound(existing.HttpResponse) {
-		return tf.ImportAsExistsError("azurerm_automation_account", id.ID())
+	if !meta.(*clients.Client).Features.SkipImportCheckOnCreateAndAllowOverwritingExistingResources {
+		existing, err := client.Get(ctx, id)
+		if err != nil {
+			if !response.WasNotFound(existing.HttpResponse) {
+				return fmt.Errorf("checking for presence of existing %s: %+v", id, err)
+			}
+		}
+
+		if !response.WasNotFound(existing.HttpResponse) {
+			return tf.ImportAsExistsError("azurerm_automation_account", id.ID())
+		}
 	}
 
 	identityVal, err := identity.ExpandSystemAndUserAssignedMap(d.Get("identity").([]interface{}))
@@ -413,14 +397,14 @@ func expandEncryption(input []interface{}) (*automationaccount.EncryptionPropert
 	}
 
 	if keyIdStr := v["key_vault_key_id"].(string); keyIdStr != "" {
-		keyId, err := keyVaultParse.ParseOptionallyVersionedNestedItemID(keyIdStr)
+		keyId, err := keyvault.ParseNestedItemID(keyIdStr, keyvault.VersionTypeAny, keyvault.NestedItemTypeKey)
 		if err != nil {
 			return nil, err
 		}
 		prop.KeyVaultProperties = &automationaccount.KeyVaultProperties{
 			KeyName:     pointer.To(keyId.Name),
 			KeyVersion:  pointer.To(keyId.Version),
-			KeyvaultUri: pointer.To(keyId.KeyVaultBaseUrl),
+			KeyvaultUri: pointer.To(keyId.KeyVaultBaseURL),
 		}
 	}
 	return prop, nil
@@ -435,7 +419,7 @@ func flattenEncryption(encryption *automationaccount.EncryptionProperties) []int
 	userAssignedIdentityId := ""
 
 	if keyProp := encryption.KeyVaultProperties; keyProp != nil {
-		keyId, err := keyVaultParse.NewNestedItemID(*keyProp.KeyvaultUri, keyVaultParse.NestedItemTypeKey, *keyProp.KeyName, *keyProp.KeyVersion)
+		keyId, err := keyvault.NewNestedItemID(pointer.From(keyProp.KeyvaultUri), keyvault.NestedItemTypeKey, pointer.From(keyProp.KeyName), pointer.From(keyProp.KeyVersion))
 		if err == nil {
 			keyVaultKeyId = keyId.ID()
 		}
@@ -450,18 +434,12 @@ func flattenEncryption(encryption *automationaccount.EncryptionProperties) []int
 			}
 		}
 	}
-	flattened := []interface{}{
+	return []interface{}{
 		map[string]interface{}{
 			"key_vault_key_id":          keyVaultKeyId,
 			"user_assigned_identity_id": userAssignedIdentityId,
 		},
 	}
-
-	if !features.FivePointOh() {
-		flattened[0].(map[string]interface{})["key_source"] = ""
-	}
-
-	return flattened
 }
 
 func flattenPrivateEndpointConnections(input *[]automationaccount.PrivateEndpointConnection) []interface{} {
