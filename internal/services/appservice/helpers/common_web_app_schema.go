@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2026-07-15/webapps"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
@@ -19,6 +19,16 @@ type HandlerMappings struct {
 	Extension           string `tfschema:"extension"`
 	ScriptProcessorPath string `tfschema:"script_processor_path"`
 	Arguments           string `tfschema:"arguments"`
+}
+
+// EnsureOutboundVnetRouting returns the OutboundVnetRouting block on the supplied SiteProperties,
+// initializing it if required, so individual traffic flags can be updated without clobbering
+// values already returned by the API for other traffic types.
+func EnsureOutboundVnetRouting(props *webapps.SiteProperties) *webapps.OutboundVnetRouting {
+	if props.OutboundVnetRouting == nil {
+		props.OutboundVnetRouting = &webapps.OutboundVnetRouting{}
+	}
+	return props.OutboundVnetRouting
 }
 
 func HandlerMappingSchema() *pluginsdk.Schema {

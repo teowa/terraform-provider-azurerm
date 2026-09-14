@@ -22,7 +22,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/resourceids"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-01-01/resourceproviders"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2026-07-15/webapps"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appservice/helpers"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appservice/migration"
@@ -536,16 +536,18 @@ func (r LinuxFunctionAppResource) Create() sdk.ResourceFunc {
 				Kind:     pointer.To("functionapp,linux"),
 				Identity: expandedIdentity,
 				Properties: &webapps.SiteProperties{
-					ServerFarmId:             pointer.To(functionApp.ServicePlanId),
-					Enabled:                  pointer.To(functionApp.Enabled),
-					HTTPSOnly:                pointer.To(functionApp.HttpsOnly),
-					SiteConfig:               siteConfig,
-					ClientCertEnabled:        pointer.To(functionApp.ClientCertEnabled),
-					ClientCertMode:           pointer.ToEnum[webapps.ClientCertMode](functionApp.ClientCertMode),
-					DailyMemoryTimeQuota:     pointer.To(functionApp.DailyMemoryTimeQuota), // TODO - Investigate, setting appears silently ignored on Linux Function Apps?
-					VnetBackupRestoreEnabled: pointer.To(functionApp.VirtualNetworkBackupRestoreEnabled),
-					VnetImagePullEnabled:     pointer.To(functionApp.VnetImagePullEnabled),
-					VnetRouteAllEnabled:      siteConfig.VnetRouteAllEnabled,
+					ServerFarmId:         pointer.To(functionApp.ServicePlanId),
+					Enabled:              pointer.To(functionApp.Enabled),
+					HTTPSOnly:            pointer.To(functionApp.HttpsOnly),
+					SiteConfig:           siteConfig,
+					ClientCertEnabled:    pointer.To(functionApp.ClientCertEnabled),
+					ClientCertMode:       pointer.ToEnum[webapps.ClientCertMode](functionApp.ClientCertMode),
+					DailyMemoryTimeQuota: pointer.To(functionApp.DailyMemoryTimeQuota), // TODO - Investigate, setting appears silently ignored on Linux Function Apps?
+					OutboundVnetRouting: &webapps.OutboundVnetRouting{
+						BackupRestoreTraffic: pointer.To(functionApp.VirtualNetworkBackupRestoreEnabled),
+						ImagePullTraffic:     pointer.To(functionApp.VnetImagePullEnabled),
+						AllTraffic:           siteConfig.VnetRouteAllEnabled,
+					},
 				},
 			}
 
@@ -783,8 +785,9 @@ func (r LinuxFunctionAppResource) Read() sdk.ResourceFunc {
 					state.CustomDomainVerificationId = pointer.From(props.CustomDomainVerificationId)
 					state.DefaultHostname = pointer.From(props.DefaultHostName)
 					state.PublicNetworkAccess = !strings.EqualFold(pointer.From(props.PublicNetworkAccess), helpers.PublicNetworkAccessDisabled)
-					state.VirtualNetworkBackupRestoreEnabled = pointer.From(props.VnetBackupRestoreEnabled)
-					state.VnetImagePullEnabled = pointer.From(props.VnetImagePullEnabled)
+					outboundVnetRouting := pointer.From(props.OutboundVnetRouting)
+					state.VirtualNetworkBackupRestoreEnabled = pointer.From(outboundVnetRouting.BackupRestoreTraffic)
+					state.VnetImagePullEnabled = pointer.From(outboundVnetRouting.ImagePullTraffic)
 
 					servicePlanId, err := commonids.ParseAppServicePlanIDInsensitively(*props.ServerFarmId)
 					if err != nil {
@@ -937,7 +940,7 @@ func (r LinuxFunctionAppResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("virtual_network_backup_restore_enabled") {
-				model.Properties.VnetBackupRestoreEnabled = pointer.To(state.VirtualNetworkBackupRestoreEnabled)
+				helpers.EnsureOutboundVnetRouting(model.Properties).BackupRestoreTraffic = pointer.To(state.VirtualNetworkBackupRestoreEnabled)
 			}
 
 			if metadata.ResourceData.HasChange("virtual_network_subnet_id") {
@@ -954,7 +957,7 @@ func (r LinuxFunctionAppResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("vnet_image_pull_enabled") {
-				model.Properties.VnetImagePullEnabled = pointer.To(state.VnetImagePullEnabled)
+				helpers.EnsureOutboundVnetRouting(model.Properties).ImagePullTraffic = pointer.To(state.VnetImagePullEnabled)
 			}
 
 			if metadata.ResourceData.HasChange("client_certificate_enabled") {
@@ -1051,7 +1054,7 @@ func (r LinuxFunctionAppResource) Update() sdk.ResourceFunc {
 
 			if metadata.ResourceData.HasChange("site_config") {
 				model.Properties.SiteConfig = siteConfig
-				model.Properties.VnetRouteAllEnabled = siteConfig.VnetRouteAllEnabled
+				helpers.EnsureOutboundVnetRouting(model.Properties).AllTraffic = siteConfig.VnetRouteAllEnabled
 			}
 
 			if metadata.ResourceData.HasChange("site_config.0.application_stack") {
