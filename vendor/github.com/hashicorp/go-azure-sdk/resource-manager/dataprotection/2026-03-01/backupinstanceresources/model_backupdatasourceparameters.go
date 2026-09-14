@@ -1,4 +1,4 @@
-package backupvaultresources
+package backupinstanceresources
 
 import (
 	"encoding/json"
@@ -65,10 +65,26 @@ func UnmarshalBackupDatasourceParametersImplementation(input []byte) (BackupData
 		return out, nil
 	}
 
+	if strings.EqualFold(value, "AdlsBlobBackupDatasourceParametersForAutoProtection") {
+		var out AdlsBlobBackupDatasourceParametersForAutoProtection
+		if err := json.Unmarshal(input, &out); err != nil {
+			return nil, fmt.Errorf("unmarshaling into AdlsBlobBackupDatasourceParametersForAutoProtection: %+v", err)
+		}
+		return out, nil
+	}
+
 	if strings.EqualFold(value, "BlobBackupDatasourceParameters") {
 		var out BlobBackupDatasourceParameters
 		if err := json.Unmarshal(input, &out); err != nil {
 			return nil, fmt.Errorf("unmarshaling into BlobBackupDatasourceParameters: %+v", err)
+		}
+		return out, nil
+	}
+
+	if strings.EqualFold(value, "BlobBackupDatasourceParametersForAutoProtection") {
+		var out BlobBackupDatasourceParametersForAutoProtection
+		if err := json.Unmarshal(input, &out); err != nil {
+			return nil, fmt.Errorf("unmarshaling into BlobBackupDatasourceParametersForAutoProtection: %+v", err)
 		}
 		return out, nil
 	}

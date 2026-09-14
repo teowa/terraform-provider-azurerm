@@ -15,5 +15,5 @@ type BackupVault struct {
 	ResourceMoveState               *ResourceMoveState   `json:"resourceMoveState,omitempty"`
 	SecureScore                     *SecureScoreLevel    `json:"secureScore,omitempty"`
 	SecuritySettings                *SecuritySettings    `json:"securitySettings,omitempty"`
-	StorageSettings                 []StorageSetting     `json:"storageSettings"`
+	StorageSettings                 *[]StorageSetting    `json:"storageSettings,omitempty"`
 }
