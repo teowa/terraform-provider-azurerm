@@ -19,7 +19,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/keyvault"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-01-01/resourceproviders"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2026-07-15/webapps"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appservice/helpers"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appservice/migration"
@@ -544,10 +544,12 @@ func (r WindowsFunctionAppResource) Create() sdk.ResourceFunc {
 					ClientCertEnabled:         pointer.To(functionApp.ClientCertEnabled),
 					ClientCertMode:            pointer.ToEnum[webapps.ClientCertMode](functionApp.ClientCertMode),
 					DailyMemoryTimeQuota:      pointer.To(functionApp.DailyMemoryTimeQuota),
-					VnetBackupRestoreEnabled:  pointer.To(functionApp.VirtualNetworkBackupRestoreEnabled),
-					VnetImagePullEnabled:      pointer.To(functionApp.VnetImagePullEnabled),
-					VnetRouteAllEnabled:       siteConfig.VnetRouteAllEnabled,
 					EndToEndEncryptionEnabled: pointer.To(functionApp.EndToEndTLSEncryptionEnabled),
+					OutboundVnetRouting: &webapps.OutboundVnetRouting{
+						BackupRestoreTraffic: pointer.To(functionApp.VirtualNetworkBackupRestoreEnabled),
+						ImagePullTraffic:     pointer.To(functionApp.VnetImagePullEnabled),
+						AllTraffic:           siteConfig.VnetRouteAllEnabled,
+					},
 				},
 			}
 
@@ -768,9 +770,11 @@ func (r WindowsFunctionAppResource) Read() sdk.ResourceFunc {
 					state.CustomDomainVerificationId = pointer.From(props.CustomDomainVerificationId)
 					state.DefaultHostname = pointer.From(props.DefaultHostName)
 					state.PublicNetworkAccess = !strings.EqualFold(pointer.From(props.PublicNetworkAccess), helpers.PublicNetworkAccessDisabled)
-					state.VirtualNetworkBackupRestoreEnabled = pointer.From(props.VnetBackupRestoreEnabled)
-					state.VnetImagePullEnabled = pointer.From(props.VnetImagePullEnabled)
 					state.EndToEndTLSEncryptionEnabled = pointer.From(props.EndToEndEncryptionEnabled)
+					if outboundVnetRouting := props.OutboundVnetRouting; outboundVnetRouting != nil {
+						state.VirtualNetworkBackupRestoreEnabled = pointer.From(outboundVnetRouting.BackupRestoreTraffic)
+						state.VnetImagePullEnabled = pointer.From(outboundVnetRouting.ImagePullTraffic)
+					}
 
 					servicePlanId, err := commonids.ParseAppServicePlanIDInsensitively(pointer.From(props.ServerFarmId))
 					if err != nil {
@@ -955,7 +959,10 @@ func (r WindowsFunctionAppResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("vnet_image_pull_enabled") {
-				model.Properties.VnetImagePullEnabled = pointer.To(state.VnetImagePullEnabled)
+				if model.Properties.OutboundVnetRouting == nil {
+					model.Properties.OutboundVnetRouting = &webapps.OutboundVnetRouting{}
+				}
+				model.Properties.OutboundVnetRouting.ImagePullTraffic = pointer.To(state.VnetImagePullEnabled)
 			}
 
 			if metadata.ResourceData.HasChange("client_certificate_enabled") {
@@ -987,7 +994,10 @@ func (r WindowsFunctionAppResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("virtual_network_backup_restore_enabled") {
-				model.Properties.VnetBackupRestoreEnabled = pointer.To(state.VirtualNetworkBackupRestoreEnabled)
+				if model.Properties.OutboundVnetRouting == nil {
+					model.Properties.OutboundVnetRouting = &webapps.OutboundVnetRouting{}
+				}
+				model.Properties.OutboundVnetRouting.BackupRestoreTraffic = pointer.To(state.VirtualNetworkBackupRestoreEnabled)
 			}
 
 			if metadata.ResourceData.HasChange("virtual_network_subnet_id") {
@@ -1073,7 +1083,10 @@ func (r WindowsFunctionAppResource) Update() sdk.ResourceFunc {
 
 			if metadata.ResourceData.HasChange("site_config") {
 				model.Properties.SiteConfig = siteConfig
-				model.Properties.VnetRouteAllEnabled = model.Properties.SiteConfig.VnetRouteAllEnabled
+				if model.Properties.OutboundVnetRouting == nil {
+					model.Properties.OutboundVnetRouting = &webapps.OutboundVnetRouting{}
+				}
+				model.Properties.OutboundVnetRouting.AllTraffic = model.Properties.SiteConfig.VnetRouteAllEnabled
 			}
 
 			model.Properties.SiteConfig.AppSettings = helpers.MergeUserAppSettings(siteConfig.AppSettings, state.AppSettings)
