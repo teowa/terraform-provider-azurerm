@@ -1,7 +1,7 @@
 
-## `github.com/hashicorp/go-azure-sdk/resource-manager/newrelic/2024-03-01/monitors` Documentation
+## `github.com/hashicorp/go-azure-sdk/resource-manager/newrelic/2024-10-01/monitors` Documentation
 
-The `monitors` SDK allows for interaction with Azure Resource Manager `newrelic` (API Version `2024-03-01`).
+The `monitors` SDK allows for interaction with Azure Resource Manager `newrelic` (API Version `2024-10-01`).
 
 This readme covers example usages, but further information on [using this SDK can be found in the project root](https://github.com/hashicorp/go-azure-sdk/tree/main/docs).
 
@@ -9,7 +9,7 @@ This readme covers example usages, but further information on [using this SDK ca
 
 ```go
 import "github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
-import "github.com/hashicorp/go-azure-sdk/resource-manager/newrelic/2024-03-01/monitors"
+import "github.com/hashicorp/go-azure-sdk/resource-manager/newrelic/2024-10-01/monitors"
 ```
 
 
@@ -199,6 +199,22 @@ if err != nil {
 }
 for _, item := range items {
 	// do something
+}
+```
+
+
+### Example Usage: `MonitorsClient.RefreshIngestionKey`
+
+```go
+ctx := context.TODO()
+id := monitors.NewMonitorID("12345678-1234-9876-4563-123456789012", "example-resource-group", "monitorName")
+
+read, err := client.RefreshIngestionKey(ctx, id)
+if err != nil {
+	// handle the error
+}
+if model := read.Model; model != nil {
+	// do something with the model/response object
 }
 ```
 

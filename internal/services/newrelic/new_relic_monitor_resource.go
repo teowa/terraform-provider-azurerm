@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/identity"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/newrelic/2024-03-01/monitors"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/newrelic/2024-10-01/monitors"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/suppress"
@@ -269,7 +269,11 @@ func (r NewRelicMonitorResource) Create() sdk.ResourceFunc {
 			}
 			// Currently the API does not accept `None` type: https://github.com/Azure/azure-rest-api-specs/issues/29257
 			if identityValue.Type != identity.TypeNone {
-				properties.Identity = identityValue
+				properties.Identity = &identity.SystemAndUserAssignedMap{
+					Type:        identityValue.Type,
+					PrincipalId: identityValue.PrincipalId,
+					TenantId:    identityValue.TenantId,
+				}
 			}
 
 			if err := client.CreateOrUpdateCallbackThenPoll(ctx, id, *properties, metadata.SetIDCallback(&id)); err != nil {
@@ -316,7 +320,15 @@ func (r NewRelicMonitorResource) Read() sdk.ResourceFunc {
 			if model := resp.Model; model != nil {
 				state.Location = location.Normalize(model.Location)
 
-				if err := metadata.ResourceData.Set("identity", identity.FlattenSystemAssigned(model.Identity)); err != nil {
+				var systemAssignedIdentity *identity.SystemAssigned
+				if model.Identity != nil {
+					systemAssignedIdentity = &identity.SystemAssigned{
+						Type:        model.Identity.Type,
+						PrincipalId: model.Identity.PrincipalId,
+						TenantId:    model.Identity.TenantId,
+					}
+				}
+				if err := metadata.ResourceData.Set("identity", identity.FlattenSystemAssigned(systemAssignedIdentity)); err != nil {
 					return fmt.Errorf("setting `identity`: %+v", err)
 				}
 
