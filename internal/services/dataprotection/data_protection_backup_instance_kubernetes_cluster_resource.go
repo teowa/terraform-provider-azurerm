@@ -32,7 +32,12 @@ type BackupInstanceKubernatesClusterModel struct {
 	KubernetesClusterId        string                       `tfschema:"kubernetes_cluster_id"`
 	SnapshotResourceGroupName  string                       `tfschema:"snapshot_resource_group_name"`
 	BackupDatasourceParameters []BackupDatasourceParameters `tfschema:"backup_datasource_parameters"`
+	IdentityDetails            []IdentityDetails            `tfschema:"identity_details"`
 	ProtectionState            string                       `tfschema:"protection_state"`
+}
+
+type IdentityDetails struct {
+	UseSystemAssignedIdentity bool `tfschema:"use_system_assigned_identity"`
 }
 
 type BackupDatasourceParameters struct {
@@ -163,6 +168,23 @@ func (r DataProtectionBackupInstanceKubernatesClusterResource) Arguments() map[s
 				},
 			},
 		},
+
+		"identity_details": {
+			Type:     pluginsdk.TypeList,
+			Optional: true,
+			ForceNew: true,
+			MaxItems: 1,
+			Elem: &pluginsdk.Resource{
+				Schema: map[string]*pluginsdk.Schema{
+					"use_system_assigned_identity": {
+						Type:     pluginsdk.TypeBool,
+						Optional: true,
+						ForceNew: true,
+						Default:  false,
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -251,6 +273,7 @@ func (r DataProtectionBackupInstanceKubernatesClusterResource) Create() sdk.Reso
 							BackupDatasourceParametersList: expandBackupDatasourceParameters(model.BackupDatasourceParameters),
 						},
 					},
+					IdentityDetails: expandBackupInstanceKubernetesClusterIdentityDetails(model.IdentityDetails),
 				},
 			}
 
@@ -300,6 +323,7 @@ func (r DataProtectionBackupInstanceKubernatesClusterResource) Read() sdk.Resour
 					state.BackupPolicyId = properties.PolicyInfo.PolicyId
 					state.KubernetesClusterId = properties.DataSourceInfo.ResourceID
 					state.ProtectionState = pointer.FromEnum(properties.CurrentProtectionState)
+					state.IdentityDetails = flattenBackupInstanceKubernetesClusterIdentityDetails(properties.IdentityDetails)
 
 					if policyParameters := properties.PolicyInfo.PolicyParameters; policyParameters != nil {
 						if dataStorePara := policyParameters.DataStoreParametersList; dataStorePara != nil {
@@ -365,6 +389,28 @@ func expandBackupDatasourceParameters(input []BackupDatasourceParameters) *[]bac
 		SnapshotVolumes:              input[0].VolumeSnapshotEnabled,
 	})
 	return &results
+}
+
+func expandBackupInstanceKubernetesClusterIdentityDetails(input []IdentityDetails) *backupinstanceresources.IdentityDetails {
+	if len(input) == 0 {
+		return nil
+	}
+
+	return &backupinstanceresources.IdentityDetails{
+		UseSystemAssignedIdentity: pointer.To(input[0].UseSystemAssignedIdentity),
+	}
+}
+
+func flattenBackupInstanceKubernetesClusterIdentityDetails(input *backupinstanceresources.IdentityDetails) []IdentityDetails {
+	if input == nil {
+		return nil
+	}
+
+	return []IdentityDetails{
+		{
+			UseSystemAssignedIdentity: pointer.From(input.UseSystemAssignedIdentity),
+		},
+	}
 }
 
 func flattenBackupDatasourceParameters(input []backupinstanceresources.BackupDatasourceParameters) *[]BackupDatasourceParameters {

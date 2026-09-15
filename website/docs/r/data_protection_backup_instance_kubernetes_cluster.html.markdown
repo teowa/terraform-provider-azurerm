@@ -183,6 +183,10 @@ resource "azurerm_data_protection_backup_instance_kubernetes_cluster" "example" 
     volume_snapshot_enabled          = true
   }
 
+  identity_details {
+    use_system_assigned_identity = true
+  }
+
   depends_on = [
     azurerm_role_assignment.test_extension_and_storage_account_permission,
     azurerm_role_assignment.test_vault_msi_read_on_cluster,
@@ -213,6 +217,8 @@ The following arguments are supported:
 
 * `backup_datasource_parameters` - (Optional) A `backup_datasource_parameters` block as defined below. Changing this forces a new resource to be created.
 
+* `identity_details` - (Optional) An `identity_details` block as defined below. Changing this forces a new resource to be created.
+
 ---
 
 A `backup_datasource_parameters` block supports the following:
@@ -230,6 +236,12 @@ A `backup_datasource_parameters` block supports the following:
 * `label_selectors` - (Optional) Specifies the resources with such label selectors to be included during backup. Changing this forces a new resource to be created.
 
 * `volume_snapshot_enabled` - (Optional) Whether to take volume snapshots during backup. Default to `false`. Changing this forces a new resource to be created.
+
+---
+
+An `identity_details` block supports the following:
+
+* `use_system_assigned_identity` - (Optional) Whether the Backup Instance is protected by a System-Assigned Managed Identity. Default to `false`. Changing this forces a new resource to be created.
 
 ## Attributes Reference
 

@@ -309,6 +309,10 @@ resource "azurerm_data_protection_backup_instance_kubernetes_cluster" "test" {
     volume_snapshot_enabled          = false
   }
 
+  identity_details {
+    use_system_assigned_identity = true
+  }
+
   depends_on = [
     azurerm_role_assignment.test_extension_and_storage_account_permission,
     azurerm_role_assignment.test_vault_msi_read_on_cluster,
