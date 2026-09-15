@@ -127,6 +127,11 @@ func resourceArmSignalRServiceCreate(d *pluginsdk.ResourceData, meta interface{}
 		publicNetworkAcc = "Disabled"
 	}
 
+	regionEndpointEnabled := "Enabled"
+	if !d.Get("region_endpoint_enabled").(bool) {
+		regionEndpointEnabled = "Disabled"
+	}
+
 	tlsClientCertEnabled := d.Get("tls_client_cert_enabled").(bool)
 
 	if expandSignalRServiceSku(sku).Name == "Free_F1" {
@@ -154,6 +159,7 @@ func resourceArmSignalRServiceCreate(d *pluginsdk.ResourceData, meta interface{}
 			LiveTraceConfiguration:   expandSignalRLiveTraceConfig(d.Get("live_trace").([]interface{})),
 			ResourceLogConfiguration: resourceLogsData,
 			PublicNetworkAccess:      pointer.To(publicNetworkAcc),
+			RegionEndpointEnabled:    pointer.To(regionEndpointEnabled),
 			DisableAadAuth:           pointer.To(!d.Get("aad_auth_enabled").(bool)),
 			DisableLocalAuth:         pointer.To(!d.Get("local_auth_enabled").(bool)),
 			Tls: &signalr.SignalRTlsSettings{
@@ -260,6 +266,12 @@ func resourceArmSignalRServiceFlatten(d *pluginsdk.ResourceData, id *signalr.Sig
 				publicNetworkAccessEnabled = strings.EqualFold(*props.PublicNetworkAccess, "Enabled")
 			}
 			d.Set("public_network_access_enabled", publicNetworkAccessEnabled)
+
+			regionEndpointEnabled := true
+			if props.RegionEndpointEnabled != nil {
+				regionEndpointEnabled = strings.EqualFold(*props.RegionEndpointEnabled, "Enabled")
+			}
+			d.Set("region_endpoint_enabled", regionEndpointEnabled)
 
 			tlsClientCertEnabled := false
 			if props.Tls != nil && props.Tls.ClientCertEnabled != nil {
@@ -400,6 +412,14 @@ func resourceArmSignalRServiceUpdate(d *pluginsdk.ResourceData, meta interface{}
 				return fmt.Errorf("SKU Free_F1 does not support disabling public network access")
 			}
 			resourceType.Properties.PublicNetworkAccess = pointer.To(publicNetworkAcc)
+		}
+
+		if d.HasChange("region_endpoint_enabled") {
+			regionEndpointEnabled := "Enabled"
+			if !d.Get("region_endpoint_enabled").(bool) {
+				regionEndpointEnabled = "Disabled"
+			}
+			resourceType.Properties.RegionEndpointEnabled = pointer.To(regionEndpointEnabled)
 		}
 
 		if d.HasChange("local_auth_enabled") {
@@ -914,6 +934,12 @@ func resourceArmSignalRServiceSchema() map[string]*pluginsdk.Schema {
 		},
 
 		"public_network_access_enabled": {
+			Type:     pluginsdk.TypeBool,
+			Optional: true,
+			Default:  true,
+		},
+
+		"region_endpoint_enabled": {
 			Type:     pluginsdk.TypeBool,
 			Optional: true,
 			Default:  true,

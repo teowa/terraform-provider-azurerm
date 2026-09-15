@@ -200,6 +200,16 @@ resource "azurerm_signalr_service_network_acl" "test" {
     id                   = azurerm_private_endpoint.test.id
     denied_request_types = ["ClientConnection"]
   }
+
+  ip_rule {
+    action = "Allow"
+    value  = "10.0.1.0/24"
+  }
+
+  ip_rule {
+    action = "Deny"
+    value  = "10.0.2.0/24"
+  }
 }
 `, r.template(data), data.RandomInteger, data.RandomInteger, data.RandomInteger)
 }

@@ -119,6 +119,26 @@ func resourceArmSignalRServiceNetworkACL() *pluginsdk.Resource {
 					},
 				},
 			},
+
+			"ip_rule": {
+				Type:     pluginsdk.TypeList,
+				Optional: true,
+				Elem: &pluginsdk.Resource{
+					Schema: map[string]*pluginsdk.Schema{
+						"action": {
+							Type:         pluginsdk.TypeString,
+							Required:     true,
+							ValidateFunc: validation.StringInSlice(signalr.PossibleValuesForACLAction(), false),
+						},
+
+						"value": {
+							Type:         pluginsdk.TypeString,
+							Required:     true,
+							ValidateFunc: validation.StringIsNotEmpty,
+						},
+					},
+				},
+			},
 		},
 	}
 }
@@ -154,6 +174,10 @@ func resourceSignalRServiceNetworkACLCreateUpdate(d *pluginsdk.ResourceData, met
 
 		if v, ok := d.GetOk("private_endpoint"); ok {
 			networkACL.PrivateEndpoints = expandSignalRServicePrivateEndpoint(v.(*pluginsdk.Set).List(), props.PrivateEndpointConnections)
+		}
+
+		if v, ok := d.GetOk("ip_rule"); ok {
+			networkACL.IPRules = expandSignalRServiceIPRules(v.([]interface{}))
 		}
 
 		if defaultAction == signalr.ACLActionAllow && len(*networkACL.PublicNetwork.Allow) != 0 {
@@ -229,6 +253,10 @@ func resourceSignalRServiceNetworkACLRead(d *pluginsdk.ResourceData, meta interf
 			if err := d.Set("private_endpoint", flattenSignalRServicePrivateEndpoint(props.NetworkACLs.PrivateEndpoints, props.PrivateEndpointConnections)); err != nil {
 				return fmt.Errorf("setting `private_endpoint`: %+v", err)
 			}
+
+			if err := d.Set("ip_rule", flattenSignalRServiceIPRules(props.NetworkACLs.IPRules)); err != nil {
+				return fmt.Errorf("setting `ip_rule`: %+v", err)
+			}
 		}
 	}
 
@@ -269,6 +297,7 @@ func resourceSignalRServiceNetworkACLDelete(d *pluginsdk.ResourceData, meta inte
 		PublicNetwork: &signalr.NetworkACL{
 			Allow: &defaultRequestTypes,
 		},
+		IPRules: &[]signalr.IPRule{},
 	}
 
 	if model.Properties != nil && model.Properties.NetworkACLs != nil && model.Properties.NetworkACLs.PrivateEndpoints != nil {
@@ -436,6 +465,42 @@ func flattenSignalRServicePrivateEndpoint(input *[]signalr.PrivateEndpointACL, p
 				break
 			}
 		}
+	}
+
+	return results
+}
+
+func expandSignalRServiceIPRules(input []interface{}) *[]signalr.IPRule {
+	results := make([]signalr.IPRule, 0)
+
+	for _, item := range input {
+		v := item.(map[string]interface{})
+
+		results = append(results, signalr.IPRule{
+			Action: pointer.ToEnum[signalr.ACLAction](v["action"].(string)),
+			Value:  pointer.To(v["value"].(string)),
+		})
+	}
+
+	return &results
+}
+
+func flattenSignalRServiceIPRules(input *[]signalr.IPRule) []interface{} {
+	results := make([]interface{}, 0)
+	if input == nil {
+		return results
+	}
+
+	for _, item := range *input {
+		action := ""
+		if item.Action != nil {
+			action = string(*item.Action)
+		}
+
+		results = append(results, map[string]interface{}{
+			"action": action,
+			"value":  pointer.From(item.Value),
+		})
 	}
 
 	return results

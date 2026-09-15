@@ -86,6 +86,8 @@ The following arguments are supported:
 
 * `private_endpoint` - (Optional) A `private_endpoint` block as defined below.
 
+* `ip_rule` - (Optional) One or more `ip_rule` blocks as defined below.
+
 ---
 
 A `public_network` block supports the following:
@@ -115,6 +117,14 @@ A `private_endpoint` block supports the following:
 ~> **Note:** When `default_action` is `Deny`, `denied_request_types`cannot be set.
 
 ~> **Note:** `allowed_request_types` - (Optional) and `denied_request_types` cannot be set together.
+
+---
+
+An `ip_rule` block supports the following:
+
+* `action` - (Required) The action to take for the IP rule. Possible values are `Allow` and `Deny`.
+
+* `value` - (Required) The IP address, CIDR range, or service tag that the IP rule applies to.
 
 ## Attributes Reference
 

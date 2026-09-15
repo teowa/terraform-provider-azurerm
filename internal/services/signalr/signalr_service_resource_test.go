@@ -632,6 +632,7 @@ resource "azurerm_signalr_service" "test" {
   }
 
   public_network_access_enabled            = true
+  region_endpoint_enabled                  = false
   local_auth_enabled                       = false
   aad_auth_enabled                         = false
   tls_client_cert_enabled                  = false

@@ -73,6 +73,10 @@ The following arguments are supported:
 
 ~> **Note:** `public_network_access_enabled` cannot be set to `false` in `Free` sku tier.
 
+* `region_endpoint_enabled` - (Optional) Whether to enable the regional endpoint? Defaults to `true`.
+
+~> **Note:** When `region_endpoint_enabled` is set to `false`, new connections will not be routed to this endpoint, however existing connections will not be affected.
+
 * `local_auth_enabled` - (Optional) Whether to enable local auth? Defaults to `true`.
 
 * `aad_auth_enabled` - (Optional) Whether to enable AAD auth? Defaults to `true`.
