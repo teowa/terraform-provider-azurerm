@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2026-07-15/webapps"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
@@ -1497,6 +1497,73 @@ func DisabledLogsConfig() *webapps.SiteLogsConfig {
 			},
 		},
 	}
+}
+
+// ExpandOutboundVnetRouting builds the `OutboundVnetRouting` block from the individual `vnet_route_all_enabled`,
+// `virtual_network_backup_restore_enabled` and `vnet_image_pull_enabled` properties that were previously exposed
+// directly on `SiteProperties` prior to `2026-07-15`.
+func ExpandOutboundVnetRouting(routeAllEnabled, backupRestoreEnabled, imagePullEnabled *bool) *webapps.OutboundVnetRouting {
+	if routeAllEnabled == nil && backupRestoreEnabled == nil && imagePullEnabled == nil {
+		return nil
+	}
+
+	return &webapps.OutboundVnetRouting{
+		AllTraffic:           routeAllEnabled,
+		BackupRestoreTraffic: backupRestoreEnabled,
+		ImagePullTraffic:     imagePullEnabled,
+	}
+}
+
+// FlattenOutboundVnetRoutingRouteAll returns the `vnet_route_all_enabled` equivalent value from `OutboundVnetRouting`.
+func FlattenOutboundVnetRoutingRouteAll(input *webapps.OutboundVnetRouting) *bool {
+	if input == nil {
+		return nil
+	}
+	return input.AllTraffic
+}
+
+// FlattenOutboundVnetRoutingBackupRestore returns the `virtual_network_backup_restore_enabled` equivalent value from
+// `OutboundVnetRouting`.
+func FlattenOutboundVnetRoutingBackupRestore(input *webapps.OutboundVnetRouting) *bool {
+	if input == nil {
+		return nil
+	}
+	return input.BackupRestoreTraffic
+}
+
+// FlattenOutboundVnetRoutingImagePull returns the `vnet_image_pull_enabled` equivalent value from `OutboundVnetRouting`.
+func FlattenOutboundVnetRoutingImagePull(input *webapps.OutboundVnetRouting) *bool {
+	if input == nil {
+		return nil
+	}
+	return input.ImagePullTraffic
+}
+
+// SetOutboundVnetRoutingRouteAll sets the `vnet_route_all_enabled` equivalent value on `OutboundVnetRouting`,
+// initializing the block if required.
+func SetOutboundVnetRoutingRouteAll(props *webapps.SiteProperties, value *bool) {
+	if props.OutboundVnetRouting == nil {
+		props.OutboundVnetRouting = &webapps.OutboundVnetRouting{}
+	}
+	props.OutboundVnetRouting.AllTraffic = value
+}
+
+// SetOutboundVnetRoutingBackupRestore sets the `virtual_network_backup_restore_enabled` equivalent value on
+// `OutboundVnetRouting`, initializing the block if required.
+func SetOutboundVnetRoutingBackupRestore(props *webapps.SiteProperties, value *bool) {
+	if props.OutboundVnetRouting == nil {
+		props.OutboundVnetRouting = &webapps.OutboundVnetRouting{}
+	}
+	props.OutboundVnetRouting.BackupRestoreTraffic = value
+}
+
+// SetOutboundVnetRoutingImagePull sets the `vnet_image_pull_enabled` equivalent value on `OutboundVnetRouting`,
+// initializing the block if required.
+func SetOutboundVnetRoutingImagePull(props *webapps.SiteProperties, value *bool) {
+	if props.OutboundVnetRouting == nil {
+		props.OutboundVnetRouting = &webapps.OutboundVnetRouting{}
+	}
+	props.OutboundVnetRouting.ImagePullTraffic = value
 }
 
 func IsFreeOrSharedServicePlan(inputSKU string) bool {

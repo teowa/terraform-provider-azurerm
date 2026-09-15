@@ -19,7 +19,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/keyvault"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-01-01/resourceproviders"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2023-12-01/webapps"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/web/2026-07-15/webapps"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/locks"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appservice/helpers"
@@ -557,9 +557,7 @@ func (r WindowsFunctionAppSlotResource) Create() sdk.ResourceFunc {
 					ClientCertEnabled:         pointer.To(functionAppSlot.ClientCertEnabled),
 					ClientCertMode:            pointer.ToEnum[webapps.ClientCertMode](functionAppSlot.ClientCertMode),
 					DailyMemoryTimeQuota:      pointer.To(functionAppSlot.DailyMemoryTimeQuota),
-					VnetBackupRestoreEnabled:  pointer.To(functionAppSlot.VirtualNetworkBackupRestoreEnabled),
-					VnetImagePullEnabled:      pointer.To(functionAppSlot.VnetImagePullEnabled),
-					VnetRouteAllEnabled:       siteConfig.VnetRouteAllEnabled,
+					OutboundVnetRouting:       helpers.ExpandOutboundVnetRouting(siteConfig.VnetRouteAllEnabled, pointer.To(functionAppSlot.VirtualNetworkBackupRestoreEnabled), pointer.To(functionAppSlot.VnetImagePullEnabled)),
 					EndToEndEncryptionEnabled: pointer.To(functionAppSlot.EndToEndTLSEncryptionEnabled),
 				},
 			}
@@ -778,8 +776,8 @@ func (r WindowsFunctionAppSlotResource) Read() sdk.ResourceFunc {
 					state.CustomDomainVerificationId = pointer.From(props.CustomDomainVerificationId)
 					state.DefaultHostname = pointer.From(props.DefaultHostName)
 					state.PublicNetworkAccess = !strings.EqualFold(pointer.From(props.PublicNetworkAccess), helpers.PublicNetworkAccessDisabled)
-					state.VirtualNetworkBackupRestoreEnabled = pointer.From(props.VnetBackupRestoreEnabled)
-					state.VnetImagePullEnabled = pointer.From(props.VnetImagePullEnabled)
+					state.VirtualNetworkBackupRestoreEnabled = pointer.From(helpers.FlattenOutboundVnetRoutingBackupRestore(props.OutboundVnetRouting))
+					state.VnetImagePullEnabled = pointer.From(helpers.FlattenOutboundVnetRoutingImagePull(props.OutboundVnetRouting))
 					state.EndToEndTLSEncryptionEnabled = pointer.From(props.EndToEndEncryptionEnabled)
 
 					if hostingEnv := props.HostingEnvironmentProfile; hostingEnv != nil {
@@ -957,7 +955,7 @@ func (r WindowsFunctionAppSlotResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("virtual_network_backup_restore_enabled") {
-				model.Properties.VnetBackupRestoreEnabled = pointer.To(state.VirtualNetworkBackupRestoreEnabled)
+				helpers.SetOutboundVnetRoutingBackupRestore(model.Properties, pointer.To(state.VirtualNetworkBackupRestoreEnabled))
 			}
 
 			if metadata.ResourceData.HasChange("virtual_network_subnet_id") {
@@ -974,7 +972,7 @@ func (r WindowsFunctionAppSlotResource) Update() sdk.ResourceFunc {
 			}
 
 			if metadata.ResourceData.HasChange("vnet_image_pull_enabled") {
-				model.Properties.VnetImagePullEnabled = pointer.To(state.VnetImagePullEnabled)
+				helpers.SetOutboundVnetRoutingImagePull(model.Properties, pointer.To(state.VnetImagePullEnabled))
 			}
 
 			if metadata.ResourceData.HasChange("end_to_end_tls_encryption_enabled") {
@@ -1026,7 +1024,7 @@ func (r WindowsFunctionAppSlotResource) Update() sdk.ResourceFunc {
 					return fmt.Errorf("expanding Site Config for Windows %s: %+v", id, err)
 				}
 				model.Properties.SiteConfig = siteConfig
-				model.Properties.VnetRouteAllEnabled = model.Properties.SiteConfig.VnetRouteAllEnabled
+				helpers.SetOutboundVnetRoutingRouteAll(model.Properties, model.Properties.SiteConfig.VnetRouteAllEnabled)
 			}
 
 			model.Properties.SiteConfig.AppSettings = helpers.MergeUserAppSettings(siteConfig.AppSettings, state.AppSettings)
