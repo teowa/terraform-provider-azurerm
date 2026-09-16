@@ -23,6 +23,34 @@ type ListByRuleCompleteResult struct {
 	Items              []DataCollectionRuleAssociationProxyOnlyResource
 }
 
+type ListByRuleOperationOptions struct {
+	Top *int64
+}
+
+func DefaultListByRuleOperationOptions() ListByRuleOperationOptions {
+	return ListByRuleOperationOptions{}
+}
+
+func (o ListByRuleOperationOptions) ToHeaders() *client.Headers {
+	out := client.Headers{}
+
+	return &out
+}
+
+func (o ListByRuleOperationOptions) ToOData() *odata.Query {
+	out := odata.Query{}
+
+	return &out
+}
+
+func (o ListByRuleOperationOptions) ToQuery() *client.QueryParams {
+	out := client.QueryParams{}
+	if o.Top != nil {
+		out.Append("$top", fmt.Sprintf("%v", *o.Top))
+	}
+	return &out
+}
+
 type ListByRuleCustomPager struct {
 	NextLink *odata.Link `json:"nextLink"`
 }
@@ -36,15 +64,16 @@ func (p *ListByRuleCustomPager) NextPageLink() *odata.Link {
 }
 
 // ListByRule ...
-func (c DataCollectionRuleAssociationsClient) ListByRule(ctx context.Context, id DataCollectionRuleId) (result ListByRuleOperationResponse, err error) {
+func (c DataCollectionRuleAssociationsClient) ListByRule(ctx context.Context, id DataCollectionRuleId, options ListByRuleOperationOptions) (result ListByRuleOperationResponse, err error) {
 	opts := client.RequestOptions{
 		ContentType: "application/json; charset=utf-8",
 		ExpectedStatusCodes: []int{
 			http.StatusOK,
 		},
-		HttpMethod: http.MethodGet,
-		Pager:      &ListByRuleCustomPager{},
-		Path:       fmt.Sprintf("%s/associations", id.ID()),
+		HttpMethod:    http.MethodGet,
+		OptionsObject: options,
+		Pager:         &ListByRuleCustomPager{},
+		Path:          fmt.Sprintf("%s/associations", id.ID()),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
@@ -75,15 +104,15 @@ func (c DataCollectionRuleAssociationsClient) ListByRule(ctx context.Context, id
 }
 
 // ListByRuleComplete retrieves all the results into a single object
-func (c DataCollectionRuleAssociationsClient) ListByRuleComplete(ctx context.Context, id DataCollectionRuleId) (ListByRuleCompleteResult, error) {
-	return c.ListByRuleCompleteMatchingPredicate(ctx, id, DataCollectionRuleAssociationProxyOnlyResourceOperationPredicate{})
+func (c DataCollectionRuleAssociationsClient) ListByRuleComplete(ctx context.Context, id DataCollectionRuleId, options ListByRuleOperationOptions) (ListByRuleCompleteResult, error) {
+	return c.ListByRuleCompleteMatchingPredicate(ctx, id, options, DataCollectionRuleAssociationProxyOnlyResourceOperationPredicate{})
 }
 
 // ListByRuleCompleteMatchingPredicate retrieves all the results and then applies the predicate
-func (c DataCollectionRuleAssociationsClient) ListByRuleCompleteMatchingPredicate(ctx context.Context, id DataCollectionRuleId, predicate DataCollectionRuleAssociationProxyOnlyResourceOperationPredicate) (result ListByRuleCompleteResult, err error) {
+func (c DataCollectionRuleAssociationsClient) ListByRuleCompleteMatchingPredicate(ctx context.Context, id DataCollectionRuleId, options ListByRuleOperationOptions, predicate DataCollectionRuleAssociationProxyOnlyResourceOperationPredicate) (result ListByRuleCompleteResult, err error) {
 	items := make([]DataCollectionRuleAssociationProxyOnlyResource, 0)
 
-	resp, err := c.ListByRule(ctx, id)
+	resp, err := c.ListByRule(ctx, id, options)
 	if err != nil {
 		result.LatestHttpResponse = resp.HttpResponse
 		err = fmt.Errorf("loading results: %+v", err)

@@ -1,7 +1,7 @@
 
-## `github.com/hashicorp/go-azure-sdk/resource-manager/insights/2023-03-11/datacollectionruleassociations` Documentation
+## `github.com/hashicorp/go-azure-sdk/resource-manager/insights/2024-03-11/datacollectionruleassociations` Documentation
 
-The `datacollectionruleassociations` SDK allows for interaction with Azure Resource Manager `insights` (API Version `2023-03-11`).
+The `datacollectionruleassociations` SDK allows for interaction with Azure Resource Manager `insights` (API Version `2024-03-11`).
 
 This readme covers example usages, but further information on [using this SDK can be found in the project root](https://github.com/hashicorp/go-azure-sdk/tree/main/docs).
 
@@ -9,7 +9,7 @@ This readme covers example usages, but further information on [using this SDK ca
 
 ```go
 import "github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
-import "github.com/hashicorp/go-azure-sdk/resource-manager/insights/2023-03-11/datacollectionruleassociations"
+import "github.com/hashicorp/go-azure-sdk/resource-manager/insights/2024-03-11/datacollectionruleassociations"
 ```
 
 
@@ -114,8 +114,8 @@ for _, item := range items {
 ctx := context.TODO()
 id := datacollectionruleassociations.NewDataCollectionRuleID("12345678-1234-9876-4563-123456789012", "example-resource-group", "dataCollectionRuleName")
 
-// alternatively `client.ListByRule(ctx, id)` can be used to do batched pagination
-items, err := client.ListByRuleComplete(ctx, id)
+// alternatively `client.ListByRule(ctx, id, datacollectionruleassociations.DefaultListByRuleOperationOptions())` can be used to do batched pagination
+items, err := client.ListByRuleComplete(ctx, id, datacollectionruleassociations.DefaultListByRuleOperationOptions())
 if err != nil {
 	// handle the error
 }
