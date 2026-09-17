@@ -137,6 +137,7 @@ resource "azurerm_qumulo_file_system" "test" {
   subnet_id           = azurerm_subnet.test.id
   email               = "test@test.com"
   zone                = "1"
+  performance_tier    = "Premium"
   tags = {
     environment = "terraform-acctests"
     some_key    = "some-value"
@@ -178,6 +179,7 @@ resource "azurerm_qumulo_file_system" "test" {
   subnet_id           = azurerm_subnet.test.id
   email               = "test@test.com"
   zone                = "1"
+  performance_tier    = "Premium"
   tags = {
     environment = "terraform-acctests"
     some_key    = "some-value"

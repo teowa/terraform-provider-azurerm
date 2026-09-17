@@ -77,6 +77,8 @@ The following arguments are supported:
 
 * `offer_id` - (Optional) Specifies the marketplace offer ID. Defaults to `qumulo-saas-mpp`. Changing this forces a new resource to be created.
 
+* `performance_tier` - (Optional) The pre-provisioned performance tier of the Azure Native Qumulo Scalable File System.
+
 * `plan_id` - (Optional) Specifies the marketplace plan ID. Defaults to `azure-native-qumulo-v3`. Changing this forces a new resource to be created.
 
 * `publisher_id` - (Optional) Specifies the marketplace publisher ID. Defaults to `qumulo1584033880660`. Changing this forces a new resource to be created.

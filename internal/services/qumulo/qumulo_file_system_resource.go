@@ -35,6 +35,7 @@ type FileSystemResourceSchema struct {
 	Location          string            `tfschema:"location"`
 	Name              string            `tfschema:"name"`
 	OfferId           string            `tfschema:"offer_id"`
+	PerformanceTier   string            `tfschema:"performance_tier"`
 	PlanId            string            `tfschema:"plan_id"`
 	PublisherId       string            `tfschema:"publisher_id"`
 	ResourceGroupName string            `tfschema:"resource_group_name"`
@@ -110,6 +111,13 @@ func (r FileSystemResource) Arguments() map[string]*pluginsdk.Schema {
 			ValidateFunc: validation.StringIsNotEmpty,
 		},
 
+		"performance_tier": {
+			Type:         pluginsdk.TypeString,
+			Optional:     true,
+			Computed:     true,
+			ValidateFunc: validation.StringIsNotEmpty,
+		},
+
 		"plan_id": {
 			Type:         pluginsdk.TypeString,
 			Optional:     true,
@@ -182,6 +190,10 @@ func (r FileSystemResource) Create() sdk.ResourceFunc {
 				},
 			}
 
+			if config.PerformanceTier != "" {
+				payload.Properties.PerformanceTier = pointer.To(config.PerformanceTier)
+			}
+
 			if err := client.CreateOrUpdateCallbackThenPoll(ctx, id, payload, metadata.SetIDCallback(&id)); err != nil {
 				return fmt.Errorf("creating %s: %+v", id, err)
 			}
@@ -230,6 +242,7 @@ func (r FileSystemResource) Read() sdk.ResourceFunc {
 
 				props := model.Properties
 				state.OfferId = props.MarketplaceDetails.OfferId
+				state.PerformanceTier = pointer.From(props.PerformanceTier)
 				state.PlanId = props.MarketplaceDetails.PlanId
 				state.PublisherId = pointer.From(props.MarketplaceDetails.PublisherId)
 				state.StorageSku = props.StorageSku
@@ -287,6 +300,13 @@ func (r FileSystemResource) Update() sdk.ResourceFunc {
 
 			if metadata.ResourceData.HasChange("tags") {
 				payload.Tags = pointer.To(config.Tags)
+			}
+
+			if metadata.ResourceData.HasChange("performance_tier") {
+				if payload.Properties == nil {
+					payload.Properties = &filesystems.LiftrBaseStorageFileSystemResourceUpdateProperties{}
+				}
+				payload.Properties.PerformanceTier = pointer.To(config.PerformanceTier)
 			}
 
 			if _, err := client.Update(ctx, *id, payload); err != nil {
