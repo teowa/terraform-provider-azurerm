@@ -20,10 +20,10 @@ import (
 	"github.com/hashicorp/go-azure-sdk/resource-manager/insights/2021-07-01-preview/privatelinkscopesapis"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/insights/2022-10-01/autoscalesettings"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/insights/2023-01-01/actiongroupsapis"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/insights/2023-03-11/datacollectionendpoints"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/insights/2023-03-11/datacollectionruleassociations"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/insights/2023-03-11/datacollectionrules"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/insights/2023-03-15-preview/scheduledqueryrules"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/insights/2024-03-11/datacollectionendpoints"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/insights/2024-03-11/datacollectionruleassociations"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/insights/2024-03-11/datacollectionrules"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/monitor/2023-04-03/azuremonitorworkspaces"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/common"
 )
