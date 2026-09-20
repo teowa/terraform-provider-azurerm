@@ -1,3 +1,6 @@
+// Copyright IBM Corp. 2014, 2026
+// SPDX-License-Identifier: MPL-2.0
+
 package network
 
 import (
@@ -69,7 +72,7 @@ func (r RouteTableListResource) List(ctx context.Context, request list.ListReque
 
 			id, err := routetables.ParseRouteTableID(pointer.From(table.Id))
 			if err != nil {
-				sdk.SetListIteratorErrorDiagnostic(result, push, "parsing Route Table ID", err)
+				sdk.SetErrorDiagnosticAndPushListResult(result, push, "parsing Route Table ID", err)
 				return
 			}
 
@@ -77,11 +80,19 @@ func (r RouteTableListResource) List(ctx context.Context, request list.ListReque
 			rd.SetId(id.ID())
 
 			if err := resourceRouteTableFlatten(rd, id, &table); err != nil {
-				sdk.SetListIteratorErrorDiagnostic(result, push, fmt.Sprintf("encoding `%s` resource data", routeTableResourceName), err)
+				sdk.SetErrorDiagnosticAndPushListResult(result, push, fmt.Sprintf("encoding `%s` resource data", routeTableResourceName), err)
 				return
 			}
 
-			sdk.EncodeListResult(ctx, rd, result, push)
+			sdk.EncodeListResult(ctx, rd, &result)
+			if result.Diagnostics.HasError() {
+				push(result)
+				return
+			}
+
+			if !push(result) {
+				return
+			}
 		}
 	}
 }
