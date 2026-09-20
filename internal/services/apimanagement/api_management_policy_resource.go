@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package apimanagement
@@ -55,8 +55,9 @@ func resourceApiManagementPolicy() *pluginsdk.Resource {
 			},
 
 			"xml_content": {
-				Type:             pluginsdk.TypeString,
-				Optional:         true,
+				Type:     pluginsdk.TypeString,
+				Optional: true,
+				// Note: O+C because when `xml_link` is provided the API downloads it into `xml_content`
 				Computed:         true,
 				ConflictsWith:    []string{"xml_link"},
 				ExactlyOneOf:     []string{"xml_link", "xml_content"},
@@ -117,12 +118,11 @@ func resourceApiManagementPolicyCreateUpdate(d *pluginsdk.ResourceData, meta int
 	}
 
 	if parameters.Properties == nil {
-		return errors.New("Either `xml_content` or `xml_link` must be set")
+		return errors.New("either `xml_content` or `xml_link` must be set")
 	}
 
 	policyServiceId := policy.NewServiceID(apiMgmtId.SubscriptionId, resourceGroup, serviceName)
-	_, err = client.CreateOrUpdate(ctx, policyServiceId, parameters, policy.CreateOrUpdateOperationOptions{})
-	if err != nil {
+	if _, err = client.CreateOrUpdate(ctx, policyServiceId, parameters, policy.CreateOrUpdateOperationOptions{}); err != nil {
 		return fmt.Errorf("creating %s: %+v", policyServiceId, err)
 	}
 
