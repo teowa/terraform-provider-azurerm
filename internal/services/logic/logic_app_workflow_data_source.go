@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package logic
@@ -105,10 +105,10 @@ func dataSourceLogicAppWorkflowRead(d *pluginsdk.ResourceData, meta interface{})
 	resp, err := client.Get(ctx, id)
 	if err != nil {
 		if response.WasNotFound(resp.HttpResponse) {
-			return fmt.Errorf("Logic App Workflow %s was not found", id)
+			return fmt.Errorf("the Logic App Workflow %s was not found", id)
 		}
 
-		return fmt.Errorf("[ERROR] Error making Read request on Logic App Workflow %s: %+v", id, err)
+		return fmt.Errorf("making Read request on Logic App Workflow %s: %+v", id, err)
 	}
 
 	d.SetId(id.ID())
@@ -123,8 +123,7 @@ func dataSourceLogicAppWorkflowRead(d *pluginsdk.ResourceData, meta interface{})
 		d.Set("identity", identity)
 
 		if props := model.Properties; props != nil {
-			parameters := flattenLogicAppDataSourceWorkflowParameters(props.Parameters)
-			if err := d.Set("parameters", parameters); err != nil {
+			if err := d.Set("parameters", flattenLogicAppDataSourceWorkflowParameters(props.Parameters)); err != nil {
 				return fmt.Errorf("setting `parameters`: %+v", err)
 			}
 
