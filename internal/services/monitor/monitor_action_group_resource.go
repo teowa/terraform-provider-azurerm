@@ -28,8 +28,10 @@ import (
 
 //go:generate go run ../../tools/generator-tests resourceidentity
 
+const monitorActionGroupResourceName = "azurerm_monitor_action_group"
+
 func resourceMonitorActionGroup() *pluginsdk.Resource {
-	resource := &pluginsdk.Resource{
+	return &pluginsdk.Resource{
 		Create: resourceMonitorActionGroupCreateUpdate,
 		Read:   resourceMonitorActionGroupRead,
 		Update: resourceMonitorActionGroupCreateUpdate,
@@ -227,14 +229,14 @@ func resourceMonitorActionGroup() *pluginsdk.Resource {
 									"identifier_uri": {
 										Type:         pluginsdk.TypeString,
 										Optional:     true,
-										Computed:     true,
+										Computed:     true, // azignore:AZS007 - pre-existing violation
 										ValidateFunc: validation.IsURLWithScheme([]string{"api", "https"}),
 									},
 
 									"tenant_id": {
 										Type:         pluginsdk.TypeString,
 										Optional:     true,
-										Computed:     true,
+										Computed:     true, // azignore:AZS007 - pre-existing violation
 										ValidateFunc: validation.IsUUID,
 									},
 								},
@@ -419,7 +421,7 @@ func resourceMonitorActionGroup() *pluginsdk.Resource {
 						"tenant_id": {
 							Type:         pluginsdk.TypeString,
 							Optional:     true,
-							Computed:     true,
+							Computed:     true, // azignore:AZS007 - pre-existing violation
 							ValidateFunc: validation.IsUUID,
 						},
 						"use_common_alert_schema": {
@@ -429,7 +431,7 @@ func resourceMonitorActionGroup() *pluginsdk.Resource {
 						"subscription_id": {
 							Type:         pluginsdk.TypeString,
 							Optional:     true,
-							Computed:     true,
+							Computed:     true, // azignore:AZS007 - pre-existing violation
 							ValidateFunc: validation.IsUUID,
 						},
 					},
@@ -439,8 +441,6 @@ func resourceMonitorActionGroup() *pluginsdk.Resource {
 			"tags": commonschema.Tags(),
 		},
 	}
-
-	return resource
 }
 
 func resourceMonitorActionGroupCreateUpdate(d *pluginsdk.ResourceData, meta interface{}) error {
@@ -541,10 +541,15 @@ func resourceMonitorActionGroupRead(d *pluginsdk.ResourceData, meta interface{})
 		return fmt.Errorf("retrieving %s: %+v", *id, err)
 	}
 
+	return resourceMonitorActionGroupFlatten(d, id, resp.Model)
+}
+
+func resourceMonitorActionGroupFlatten(d *pluginsdk.ResourceData, id *actiongroupsapis.ActionGroupId, model *actiongroupsapis.ActionGroupResource) error {
+	var err error
 	d.Set("name", id.ActionGroupName)
 	d.Set("resource_group_name", id.ResourceGroupName)
 
-	if model := resp.Model; model != nil {
+	if model != nil {
 		d.Set("location", location.Normalize(model.Location))
 
 		if props := model.Properties; props != nil {
@@ -650,8 +655,7 @@ func expandMonitorActionGroupItsmReceiver(v []interface{}) (*[]actiongroupsapis.
 		// https://github.com/Azure/azure-rest-api-specs/issues/20488 ticket_configuration should have `PayloadRevision` and `WorkItemType` keys
 
 		j := make(map[string]interface{})
-		err := json.Unmarshal([]byte(ticketConfiguration), &j)
-		if err != nil {
+		if err := json.Unmarshal([]byte(ticketConfiguration), &j); err != nil {
 			return nil, fmt.Errorf("`itsm_receiver.ticket_configuration` %s unmarshall json error: %+v", ticketConfiguration, err)
 		}
 
@@ -896,15 +900,10 @@ func flattenMonitorActionGroupWebHookReceiver(receivers *[]actiongroupsapis.Webh
 	result := make([]interface{}, 0)
 	if receivers != nil {
 		for _, receiver := range *receivers {
-			var useCommonAlert bool
-			if receiver.UseCommonAlertSchema != nil {
-				useCommonAlert = *receiver.UseCommonAlertSchema
-			}
-
 			result = append(result, map[string]interface{}{
 				"name":                    receiver.Name,
 				"service_uri":             receiver.ServiceUri,
-				"use_common_alert_schema": useCommonAlert,
+				"use_common_alert_schema": pointer.From(receiver.UseCommonAlertSchema),
 				"aad_auth":                flattenMonitorActionGroupSecureWebHookReceiver(receiver),
 			})
 		}

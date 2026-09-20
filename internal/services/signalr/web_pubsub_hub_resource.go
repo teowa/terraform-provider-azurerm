@@ -313,11 +313,6 @@ func flattenEventHandler(input *[]webpubsub.EventHandler) []interface{} {
 	}
 
 	for _, item := range *input {
-		userEventPatten := ""
-		if item.UserEventPattern != nil {
-			userEventPatten = *item.UserEventPattern
-		}
-
 		sysEvents := make([]interface{}, 0)
 		if item.SystemEvents != nil {
 			sysEvents = helpers.FlattenStringSlice(item.SystemEvents)
@@ -330,7 +325,7 @@ func flattenEventHandler(input *[]webpubsub.EventHandler) []interface{} {
 
 		eventHandlerBlock = append(eventHandlerBlock, map[string]interface{}{
 			"url_template":       item.UrlTemplate,
-			"user_event_pattern": userEventPatten,
+			"user_event_pattern": pointer.From(item.UserEventPattern),
 			"system_events":      sysEvents,
 			"auth":               authBlock,
 		})
@@ -398,8 +393,8 @@ func flattenEventListener(listener *[]webpubsub.EventListener) []interface{} {
 				listenerBlock["system_event_name_filter"] = helpers.FlattenStringSlice(eventNameFilter.SystemEvents)
 			}
 			if eventNameFilter.UserEventPattern != nil && *eventNameFilter.UserEventPattern != "" {
-				v := strings.Split(*eventNameFilter.UserEventPattern, ",")
-				for _, s := range v {
+				v := strings.SplitSeq(*eventNameFilter.UserEventPattern, ",")
+				for s := range v {
 					userNameFilterList = append(userNameFilterList, s)
 				}
 				listenerBlock["user_event_name_filter"] = userNameFilterList
@@ -419,19 +414,16 @@ func flattenEventListener(listener *[]webpubsub.EventListener) []interface{} {
 
 func expandAuth(input []interface{}) *webpubsub.UpstreamAuthSettings {
 	if len(input) == 0 || input[0] == nil {
-		authType := webpubsub.UpstreamAuthTypeNone
 		return &webpubsub.UpstreamAuthSettings{
-			Type: &authType,
+			Type: pointer.To(webpubsub.UpstreamAuthTypeNone),
 		}
 	}
 
 	authRaw := input[0].(map[string]interface{})
-	authId := authRaw["managed_identity_id"].(string)
-	authType := webpubsub.UpstreamAuthTypeManagedIdentity
 	return &webpubsub.UpstreamAuthSettings{
-		Type: &authType,
+		Type: pointer.To(webpubsub.UpstreamAuthTypeManagedIdentity),
 		ManagedIdentity: &webpubsub.ManagedIdentitySettings{
-			Resource: &authId,
+			Resource: pointer.To(authRaw["managed_identity_id"].(string)),
 		},
 	}
 }

@@ -16,9 +16,9 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/netapp/2026-01-01/capacitypools"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/netapp/2026-01-01/snapshotpolicies"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/netapp/2026-01-01/volumes"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/netapp/2026-05-01/capacitypools"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/netapp/2026-05-01/snapshotpolicies"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/netapp/2026-05-01/volumes"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
@@ -356,8 +356,7 @@ func resourceNetAppSnapshotPolicyDelete(d *pluginsdk.ResourceData, meta interfac
 	}
 
 	// Try to delete the snapshot policy using DeleteThenPoll
-	err = client.DeleteThenPoll(ctx, *id)
-	if err != nil {
+	if err = client.DeleteThenPoll(ctx, *id); err != nil {
 		// Check if error is about snapshot policy being in use
 		if strings.Contains(err.Error(), "SnapshotPolicy is used") {
 			// Get all volumes in the account that might be using this snapshot policy
@@ -586,7 +585,7 @@ func flattenNetAppVolumeSnapshotPolicyWeeklySchedule(input *snapshotpolicies.Wee
 
 	weekDays := make([]interface{}, 0)
 	if input.Day != nil {
-		for _, day := range strings.Split(*input.Day, ",") {
+		for day := range strings.SplitSeq(*input.Day, ",") {
 			weekDays = append(weekDays, day)
 		}
 	}
@@ -608,7 +607,7 @@ func flattenNetAppVolumeSnapshotPolicyMonthlySchedule(input *snapshotpolicies.Mo
 
 	daysOfMonth := make([]interface{}, 0)
 	if input.DaysOfMonth != nil {
-		for _, day := range strings.Split(*input.DaysOfMonth, ",") {
+		for day := range strings.SplitSeq(*input.DaysOfMonth, ",") {
 			intDay, _ := strconv.Atoi(day)
 			daysOfMonth = append(daysOfMonth, intDay)
 		}
