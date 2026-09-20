@@ -1,13 +1,13 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package compute
 
 import (
 	"fmt"
-	"log"
 	"time"
 
+	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/marketplaceordering/2015-06-01/agreements"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
@@ -43,6 +43,11 @@ func dataSourceMarketplaceAgreement() *pluginsdk.Resource {
 				ValidateFunc: validation.StringIsNotEmpty,
 			},
 
+			"accepted": {
+				Type:     pluginsdk.TypeBool,
+				Computed: true,
+			},
+
 			"license_text_link": {
 				Type:     pluginsdk.TypeString,
 				Computed: true,
@@ -65,8 +70,6 @@ func dataSourceMarketplaceAgreementRead(d *pluginsdk.ResourceData, meta interfac
 	// The Resource ID for this is the Plan ID, however we have to retrieve information about the signed plan
 	id := agreements.NewPlanID(subscriptionId, d.Get("publisher").(string), d.Get("offer").(string), d.Get("plan").(string))
 
-	log.Printf("[DEBUG] retrieving %s", id)
-
 	getId := agreements.NewOfferPlanID(id.SubscriptionId, id.PublisherId, id.OfferId, id.PlanId)
 	term, err := client.MarketplaceAgreementsGet(ctx, getId)
 	if err != nil {
@@ -82,6 +85,7 @@ func dataSourceMarketplaceAgreementRead(d *pluginsdk.ResourceData, meta interfac
 		if props := model.Properties; props != nil {
 			d.Set("license_text_link", props.LicenseTextLink)
 			d.Set("privacy_policy_link", props.PrivacyPolicyLink)
+			d.Set("accepted", pointer.From(props.Accepted))
 		}
 	}
 	return nil

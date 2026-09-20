@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package migration
@@ -9,7 +9,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/hashicorp/go-azure-sdk/resource-manager/appconfiguration/2023-03-01/configurationstores"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/appconfiguration/2024-05-01/configurationstores"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/appconfiguration/parse"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
@@ -34,12 +34,12 @@ func (KeyResourceV1ToV2) UpgradeFunc() pluginsdk.StateUpgraderFunc {
 			fixedId = fixedId[:index2]
 		}
 
-		if strings.HasSuffix(fixedId, "/Label/\000") {
-			fixedId = strings.TrimSuffix(fixedId, "/Label/\000") + "/Label/%00"
+		if before, ok := strings.CutSuffix(fixedId, "/Label/\000"); ok {
+			fixedId = before + "/Label/%00"
 		}
 
-		if strings.HasSuffix(fixedId, "/Label/") {
-			fixedId = strings.TrimSuffix(fixedId, "/Label/") + "/Label/%00"
+		if before, ok := strings.CutSuffix(fixedId, "/Label/"); ok {
+			fixedId = before + "/Label/%00"
 		}
 
 		parsedOldId, err := parse.KeyId(fixedId)
@@ -49,12 +49,12 @@ func (KeyResourceV1ToV2) UpgradeFunc() pluginsdk.StateUpgraderFunc {
 
 		configurationStoreId, err := configurationstores.ParseConfigurationStoreIDInsensitively(parsedOldId.ConfigurationStoreId)
 		if err != nil {
-			return rawState, fmt.Errorf("parseing Configuration Store ID %q: %+v", configurationStoreId, err)
+			return rawState, fmt.Errorf("parsing Configuration Store ID %q: %+v", configurationStoreId, err)
 		}
 
 		domainSuffix, ok := meta.(*clients.Client).Account.Environment.AppConfiguration.DomainSuffix()
 		if !ok {
-			return rawState, fmt.Errorf("App Configuration is not supported in this Environment")
+			return rawState, fmt.Errorf("app configuration is not supported in this Environment")
 		}
 
 		configurationStoreEndpoint := fmt.Sprintf("https://%s.%s", configurationStoreId.ConfigurationStoreName, *domainSuffix)

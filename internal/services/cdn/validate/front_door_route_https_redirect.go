@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package validate
@@ -6,8 +6,8 @@ package validate
 import (
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/services/cdn/mgmt/2020-09-01/cdn" // nolint: staticcheck
-	"github.com/hashicorp/terraform-provider-azurerm/utils"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/cdn/2025-12-01/endpoints"
+	"github.com/hashicorp/terraform-provider-azurerm/helpers"
 )
 
 func SupportsBothHttpAndHttps(input []interface{}, key string) error {
@@ -22,8 +22,8 @@ func SupportsBothHttpAndHttps(input []interface{}, key string) error {
 		}
 	}
 
-	protocols := utils.ExpandStringSlice(input)
-	if !utils.SliceContainsValue(*protocols, string(cdn.AFDEndpointProtocolsHTTP)) || !utils.SliceContainsValue(*protocols, string(cdn.AFDEndpointProtocolsHTTPS)) {
+	protocols := helpers.ExpandStringSlice(input)
+	if !helpers.SliceContainsValue(*protocols, string(endpoints.DestinationProtocolHTTP)) || !helpers.SliceContainsValue(*protocols, string(endpoints.DestinationProtocolHTTPS)) {
 		return fmt.Errorf("'https_redirect_enabled' and 'supported_protocols' conflict. The 'https_redirect_enabled' field cannot be set to 'true' unless the 'supported_protocols' field contains both 'Http' and 'Https'")
 	}
 
