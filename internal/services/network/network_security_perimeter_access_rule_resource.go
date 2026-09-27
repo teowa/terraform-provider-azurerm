@@ -12,8 +12,8 @@ import (
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/networksecurityperimeteraccessrules"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-01-01/networksecurityperimeterprofiles"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/networksecurityperimeteraccessrules"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/networksecurityperimeterprofiles"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
@@ -171,12 +171,14 @@ func (r NetworkSecurityPerimeterAccessRuleResource) Create() sdk.ResourceFunc {
 
 			id := networksecurityperimeteraccessrules.NewAccessRuleID(subscriptionId, profileId.ResourceGroupName, profileId.NetworkSecurityPerimeterName, profileId.ProfileName, config.Name)
 
-			existing, err := client.Get(ctx, id)
-			if err != nil && !response.WasNotFound(existing.HttpResponse) {
-				return fmt.Errorf("checking for presence of existing %s: %+v", id, err)
-			}
-			if !response.WasNotFound(existing.HttpResponse) {
-				return metadata.ResourceRequiresImport(r.ResourceType(), id)
+			if !metadata.Client.Features.SkipImportCheckOnCreateAndAllowOverwritingExistingResources {
+				existing, err := client.Get(ctx, id)
+				if err != nil && !response.WasNotFound(existing.HttpResponse) {
+					return fmt.Errorf("checking for presence of existing %s: %+v", id, err)
+				}
+				if !response.WasNotFound(existing.HttpResponse) {
+					return metadata.ResourceRequiresImport(r.ResourceType(), id)
+				}
 			}
 
 			param := networksecurityperimeteraccessrules.NspAccessRule{
@@ -281,7 +283,7 @@ func (NetworkSecurityPerimeterAccessRuleResource) Read() sdk.ResourceFunc {
 			if model := resp.Model; model != nil {
 				if props := model.Properties; props != nil {
 					state.AddressPrefixes = pointer.From(props.AddressPrefixes)
-					state.Direction = string(pointer.From(props.Direction))
+					state.Direction = pointer.FromEnum(props.Direction)
 					state.FullyQualifiedDomainNames = pointer.From(props.FullyQualifiedDomainNames)
 					state.ServiceTags = pointer.From(props.ServiceTags)
 					state.Subscriptions = flattenAccessRuleSubscriptionIDs(props.Subscriptions)
@@ -334,7 +336,7 @@ func expandAccessRuleSubscriptionIDs(subscriptionIDs []string) *[]networksecurit
 
 func flattenAccessRuleSubscriptionIDs(subscriptions *[]networksecurityperimeteraccessrules.SubscriptionId) []string {
 	if subscriptions == nil || len(*subscriptions) == 0 {
-		return nil
+		return []string{}
 	}
 
 	result := make([]string, 0, len(*subscriptions))
