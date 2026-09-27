@@ -85,11 +85,7 @@ func resourceArmLoadBalancerBackendAddressPool() *pluginsdk.Resource {
 							Type:     pluginsdk.TypeString,
 							Required: true,
 							ValidateFunc: validation.StringInSlice(
-								[]string{
-									string(loadbalancers.GatewayLoadBalancerTunnelInterfaceTypeNone),
-									string(loadbalancers.GatewayLoadBalancerTunnelInterfaceTypeInternal),
-									string(loadbalancers.GatewayLoadBalancerTunnelInterfaceTypeExternal),
-								},
+								loadbalancers.PossibleValuesForGatewayLoadBalancerTunnelInterfaceType(),
 								false,
 							),
 						},
@@ -98,11 +94,7 @@ func resourceArmLoadBalancerBackendAddressPool() *pluginsdk.Resource {
 							Type:     pluginsdk.TypeString,
 							Required: true,
 							ValidateFunc: validation.StringInSlice(
-								[]string{
-									string(loadbalancers.GatewayLoadBalancerTunnelProtocolNone),
-									string(loadbalancers.GatewayLoadBalancerTunnelProtocolNative),
-									string(loadbalancers.GatewayLoadBalancerTunnelProtocolVXLAN),
-								},
+								loadbalancers.PossibleValuesForGatewayLoadBalancerTunnelProtocol(),
 								false,
 							),
 						},
@@ -505,9 +497,9 @@ func flattenGatewayLoadBalancerTunnelInterfaces(input *[]loadbalancers.GatewayLo
 			identifier = int(*e.Identifier)
 		}
 
-		t := string(pointer.From(e.Type))
+		t := pointer.FromEnum(e.Type)
 
-		protocol := string(pointer.From(e.Protocol))
+		protocol := pointer.FromEnum(e.Protocol)
 
 		var port int
 		if e.Port != nil {
