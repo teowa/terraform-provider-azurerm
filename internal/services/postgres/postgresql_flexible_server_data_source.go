@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2014, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package postgres
@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/postgresql/2024-08-01/servers"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/postgresql/2025-08-01/servers"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/timeouts"
@@ -134,7 +134,7 @@ func dataSourceArmPostgresqlFlexibleServerRead(d *pluginsdk.ResourceData, meta i
 
 		if props := model.Properties; props != nil {
 			d.Set("administrator_login", props.AdministratorLogin)
-			d.Set("version", string(pointer.From(props.Version)))
+			d.Set("version", pointer.FromEnum(props.Version))
 			d.Set("fqdn", props.FullyQualifiedDomainName)
 			d.Set("zone", props.AvailabilityZone)
 
