@@ -113,7 +113,7 @@ func (r MsSqlFailoverGroupResource) Arguments() map[string]*pluginsdk.Schema {
 		"readonly_endpoint_failover_policy_enabled": {
 			Type:     pluginsdk.TypeBool,
 			Optional: true,
-			Computed: true,
+			Computed: true, // azignore:AZS007 - pre-existing violation
 		},
 
 		"read_write_endpoint_failover_policy": {
@@ -377,7 +377,7 @@ func (r MsSqlFailoverGroupResource) flattenPartnerServers(input []failovergroups
 	for _, partner := range input {
 		model := PartnerServerModel{
 			Location: location.NormalizeNilable(partner.Location),
-			Role:     string(pointer.From(partner.ReplicationRole)),
+			Role:     pointer.FromEnum(partner.ReplicationRole),
 			ID:       partner.Id,
 		}
 

@@ -259,7 +259,7 @@ func expandNetAppBucketCifsUser(input string) *buckets.CifsUser {
 
 func flattenNetAppBucketNfsUser(input *buckets.NfsUser) []netAppModels.NetAppVolumeBucketNfsUser {
 	if input == nil {
-		return nil
+		return []netAppModels.NetAppVolumeBucketNfsUser{}
 	}
 
 	return []netAppModels.NetAppVolumeBucketNfsUser{
@@ -371,7 +371,7 @@ func flattenNetAppBucketServer(input *buckets.BucketServerProperties) []netAppMo
 		Fqdn: pointer.From(input.Fqdn),
 	}
 	if input.OnCertificateConflictAction != nil {
-		out.OnCertificateConflictAction = string(pointer.From(input.OnCertificateConflictAction))
+		out.OnCertificateConflictAction = pointer.FromEnum(input.OnCertificateConflictAction)
 	}
 
 	if out.Fqdn == "" && out.OnCertificateConflictAction == "" {
