@@ -27,6 +27,7 @@ type ContainerAppDataSource struct{}
 type ContainerAppDataSourceModel struct {
 	Name                       string                                     `tfschema:"name"`
 	ResourceGroup              string                                     `tfschema:"resource_group_name"`
+	ReadSecrets                bool                                       `tfschema:"read_secrets"`
 	ManagedEnvironmentId       string                                     `tfschema:"container_app_environment_id"`
 	Location                   string                                     `tfschema:"location"`
 	RevisionMode               string                                     `tfschema:"revision_mode"`
@@ -56,6 +57,12 @@ func (r ContainerAppDataSource) Arguments() map[string]*pluginsdk.Schema {
 		},
 
 		"resource_group_name": commonschema.ResourceGroupNameForDataSource(),
+
+		"read_secrets": {
+			Type:     pluginsdk.TypeBool,
+			Optional: true,
+			Default:  true,
+		},
 	}
 }
 
@@ -173,7 +180,7 @@ func (r ContainerAppDataSource) Read() sdk.ResourceFunc {
 					if config := props.Configuration; config != nil {
 						if config.ActiveRevisionsMode != nil {
 							if config.ActiveRevisionsMode != nil {
-								containerApp.RevisionMode = string(pointer.From(config.ActiveRevisionsMode))
+								containerApp.RevisionMode = pointer.FromEnum(config.ActiveRevisionsMode)
 							}
 							containerApp.Ingress = helpers.FlattenContainerAppIngress(config.Ingress, id.ContainerAppName)
 							containerApp.Registries = helpers.FlattenContainerAppRegistries(config.Registries)
@@ -189,14 +196,15 @@ func (r ContainerAppDataSource) Read() sdk.ResourceFunc {
 				}
 			}
 
-			secretsResp, err := client.ListSecrets(ctx, id)
-			if err != nil {
-				return fmt.Errorf("listing secrets for %s: %+v", id, err)
+			if containerApp.ReadSecrets {
+				secretsResp, err := client.ListSecrets(ctx, id)
+				if err != nil {
+					return fmt.Errorf("listing secrets for %s: %+v", id, err)
+				}
+				containerApp.Secrets = helpers.FlattenContainerAppSecrets(secretsResp.Model)
 			}
 
-			containerApp.Secrets = helpers.FlattenContainerAppSecrets(secretsResp.Model)
 			metadata.SetID(id)
-
 			return metadata.Encode(&containerApp)
 		},
 	}
