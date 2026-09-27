@@ -26,35 +26,33 @@ resource "azurerm_storage_account" "example" {
   account_replication_type = "LRS"
 }
 
-resource "azurerm_app_service_plan" "example" {
-  name                = "example-appserviceplan"
+resource "azurerm_service_plan" "example" {
+  name                = "example-serviceplan"
   location            = azurerm_resource_group.example.location
   resource_group_name = azurerm_resource_group.example.name
-
-  sku {
-    tier = "Standard"
-    size = "S1"
-  }
+  os_type             = "Linux"
+  sku_name            = "S1"
 }
 
-resource "azurerm_app_service" "example" {
+resource "azurerm_linux_web_app" "example" {
   name                = "example-app-service"
   location            = azurerm_resource_group.example.location
   resource_group_name = azurerm_resource_group.example.name
-  app_service_plan_id = azurerm_app_service_plan.example.id
+  service_plan_id     = azurerm_service_plan.example.id
+
+  site_config {}
 }
 
-resource "azurerm_app_service_slot" "example" {
-  name                = "example-slot"
-  app_service_name    = azurerm_app_service.example.name
-  location            = azurerm_resource_group.example.location
-  resource_group_name = azurerm_resource_group.example.name
-  app_service_plan_id = azurerm_app_service_plan.example.id
+resource "azurerm_linux_web_app_slot" "example" {
+  name           = "example-slot"
+  app_service_id = azurerm_linux_web_app.example.id
+
+  site_config {}
 }
 
 resource "azurerm_app_service_slot_connection" "example" {
   name                = "example-serviceconnector"
-  app_service_slot_id = azurerm_app_service_slot.example.id
+  app_service_slot_id = azurerm_linux_web_app_slot.example.id
   target_resource_id  = azurerm_storage_account.example.id
   client_type         = "dotnet"
 

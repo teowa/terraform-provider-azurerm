@@ -156,12 +156,11 @@ func (r AppServiceSlotConnectorResource) storageBlob(data acceptance.TestData) s
 	return fmt.Sprintf(`
 %s
 
-resource "azurerm_app_service_slot" "test" {
-  name                = "acctestASSlot-%d"
-  app_service_name    = azurerm_app_service.test.name
-  location            = azurerm_resource_group.test.location
-  resource_group_name = azurerm_resource_group.test.name
-  app_service_plan_id = azurerm_app_service_plan.test.id
+resource "azurerm_linux_web_app_slot" "test" {
+  name           = "acctestWAS-%d"
+  app_service_id = azurerm_linux_web_app.test.id
+
+  site_config {}
 
   lifecycle {
     ignore_changes = [
@@ -172,7 +171,7 @@ resource "azurerm_app_service_slot" "test" {
 
 resource "azurerm_app_service_slot_connection" "test" {
   name                = "acctestserviceconnector%d"
-  app_service_slot_id = azurerm_app_service_slot.test.id
+  app_service_slot_id = azurerm_linux_web_app_slot.test.id
   target_resource_id  = azurerm_storage_account.test.id
   authentication {
     type = "systemAssignedIdentity"
@@ -200,17 +199,16 @@ func (r AppServiceSlotConnectorResource) complete(data acceptance.TestData) stri
 	return fmt.Sprintf(`
 %s
 
-resource "azurerm_app_service_slot" "test" {
-  name                = "acctestASSlot-%d"
-  app_service_name    = azurerm_app_service.test.name
-  location            = azurerm_resource_group.test.location
-  resource_group_name = azurerm_resource_group.test.name
-  app_service_plan_id = azurerm_app_service_plan.test.id
+resource "azurerm_linux_web_app_slot" "test" {
+  name           = "acctestWAS-%d"
+  app_service_id = azurerm_linux_web_app.test.id
+
+  site_config {}
 }
 
 resource "azurerm_app_service_slot_connection" "test" {
   name                = "acctestserviceconnector%d"
-  app_service_slot_id = azurerm_app_service_slot.test.id
+  app_service_slot_id = azurerm_linux_web_app_slot.test.id
   target_resource_id  = azurerm_storage_account.test.id
   client_type         = "dotnet"
   authentication {
@@ -227,12 +225,11 @@ func (r AppServiceSlotConnectorResource) cosmosdbBasic(data acceptance.TestData)
 	return fmt.Sprintf(`
 %[1]s
 
-resource "azurerm_app_service_slot" "test" {
-  name                = "acctestASSlot-%[2]d"
-  app_service_name    = azurerm_app_service.test.name
-  location            = azurerm_resource_group.test.location
-  resource_group_name = azurerm_resource_group.test.name
-  app_service_plan_id = azurerm_app_service_plan.test.id
+resource "azurerm_linux_web_app_slot" "test" {
+  name           = "acctestWAS-%[2]d"
+  app_service_id = azurerm_linux_web_app.test.id
+
+  site_config {}
 
   lifecycle {
     ignore_changes = [
@@ -243,7 +240,7 @@ resource "azurerm_app_service_slot" "test" {
 
 resource "azurerm_app_service_slot_connection" "test" {
   name                = "acctestserviceconnector%[2]d"
-  app_service_slot_id = azurerm_app_service_slot.test.id
+  app_service_slot_id = azurerm_linux_web_app_slot.test.id
   target_resource_id  = azurerm_cosmosdb_account.test.id
   authentication {
     type = "systemAssignedIdentity"
@@ -257,12 +254,11 @@ func (r AppServiceSlotConnectorResource) cosmosdbSecretAuth(data acceptance.Test
 	return fmt.Sprintf(`
 %[1]s
 
-resource "azurerm_app_service_slot" "test" {
-  name                = "acctestASSlot-%[2]d"
-  app_service_name    = azurerm_app_service.test.name
-  location            = azurerm_resource_group.test.location
-  resource_group_name = azurerm_resource_group.test.name
-  app_service_plan_id = azurerm_app_service_plan.test.id
+resource "azurerm_linux_web_app_slot" "test" {
+  name           = "acctestWAS-%[2]d"
+  app_service_id = azurerm_linux_web_app.test.id
+
+  site_config {}
 
   lifecycle {
     ignore_changes = [
@@ -273,7 +269,7 @@ resource "azurerm_app_service_slot" "test" {
 
 resource "azurerm_app_service_slot_connection" "test" {
   name                = "acctestserviceconnector%[2]d"
-  app_service_slot_id = azurerm_app_service_slot.test.id
+  app_service_slot_id = azurerm_linux_web_app_slot.test.id
   target_resource_id  = azurerm_cosmosdb_account.test.id
   authentication {
     type   = "secret"
@@ -295,12 +291,11 @@ resource "azurerm_user_assigned_identity" "test" {
   location            = azurerm_resource_group.test.location
 }
 
-resource "azurerm_app_service_slot" "test" {
-  name                = "acctestASSlot-%[3]d"
-  app_service_name    = azurerm_app_service.test.name
-  location            = azurerm_resource_group.test.location
-  resource_group_name = azurerm_resource_group.test.name
-  app_service_plan_id = azurerm_app_service_plan.test.id
+resource "azurerm_linux_web_app_slot" "test" {
+  name           = "acctestWAS-%[3]d"
+  app_service_id = azurerm_linux_web_app.test.id
+
+  site_config {}
 
   lifecycle {
     ignore_changes = [
@@ -311,7 +306,7 @@ resource "azurerm_app_service_slot" "test" {
 
 resource "azurerm_app_service_slot_connection" "test" {
   name                = "acctestserviceconnector%[3]d"
-  app_service_slot_id = azurerm_app_service_slot.test.id
+  app_service_slot_id = azurerm_linux_web_app_slot.test.id
   target_resource_id  = azurerm_cosmosdb_account.test.id
   authentication {
     type         = "servicePrincipalSecret"
@@ -336,12 +331,11 @@ resource "azurerm_user_assigned_identity" "test" {
   location            = azurerm_resource_group.test.location
 }
 
-resource "azurerm_app_service_slot" "test" {
-  name                = "acctestASSlot-%[3]d"
-  app_service_name    = azurerm_app_service.test.name
-  location            = azurerm_resource_group.test.location
-  resource_group_name = azurerm_resource_group.test.name
-  app_service_plan_id = azurerm_app_service_plan.test.id
+resource "azurerm_linux_web_app_slot" "test" {
+  name           = "acctestWAS-%[3]d"
+  app_service_id = azurerm_linux_web_app.test.id
+
+  site_config {}
 
   lifecycle {
     ignore_changes = [
@@ -352,7 +346,7 @@ resource "azurerm_app_service_slot" "test" {
 
 resource "azurerm_app_service_slot_connection" "test" {
   name                = "acctestserviceconnector%[3]d"
-  app_service_slot_id = azurerm_app_service_slot.test.id
+  app_service_slot_id = azurerm_linux_web_app_slot.test.id
   target_resource_id  = azurerm_cosmosdb_account.test.id
   authentication {
     type            = "userAssignedIdentity"
@@ -399,30 +393,28 @@ resource "azurerm_key_vault" "test" {
   purge_protection_enabled = true
 }
 
-resource "azurerm_app_service_plan" "test" {
+resource "azurerm_service_plan" "test" {
   name                = "acctestASP-%[2]d"
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
-
-  sku {
-    tier = "Standard"
-    size = "S1"
-  }
+  os_type             = "Linux"
+  sku_name            = "S1"
 }
 
-resource "azurerm_app_service" "test" {
+resource "azurerm_linux_web_app" "test" {
   name                = "acctestAS-%[2]d"
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
-  app_service_plan_id = azurerm_app_service_plan.test.id
+  service_plan_id     = azurerm_service_plan.test.id
+
+  site_config {}
 }
 
-resource "azurerm_app_service_slot" "test" {
-  name                = "acctestASSlot-%[2]d"
-  app_service_name    = azurerm_app_service.test.name
-  location            = azurerm_resource_group.test.location
-  resource_group_name = azurerm_resource_group.test.name
-  app_service_plan_id = azurerm_app_service_plan.test.id
+resource "azurerm_linux_web_app_slot" "test" {
+  name           = "acctestWAS-%[2]d"
+  app_service_id = azurerm_linux_web_app.test.id
+
+  site_config {}
 
   lifecycle {
     ignore_changes = [
@@ -433,7 +425,7 @@ resource "azurerm_app_service_slot" "test" {
 
 resource "azurerm_app_service_slot_connection" "test" {
   name                = "acctestserviceconnector%[2]d"
-  app_service_slot_id = azurerm_app_service_slot.test.id
+  app_service_slot_id = azurerm_linux_web_app_slot.test.id
   target_resource_id  = azurerm_storage_account.test.id
 
   secret_store {
@@ -465,22 +457,21 @@ resource "azurerm_storage_account" "test" {
   account_replication_type = "LRS"
 }
 
-resource "azurerm_app_service_plan" "test" {
+resource "azurerm_service_plan" "test" {
   name                = "acctestASP-%d"
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
-
-  sku {
-    tier = "Standard"
-    size = "S1"
-  }
+  os_type             = "Linux"
+  sku_name            = "S1"
 }
 
-resource "azurerm_app_service" "test" {
+resource "azurerm_linux_web_app" "test" {
   name                = "acctestAS-%d"
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
-  app_service_plan_id = azurerm_app_service_plan.test.id
+  service_plan_id     = azurerm_service_plan.test.id
+
+  site_config {}
 }
 `, data.RandomInteger, data.Locations.Primary, data.RandomString, data.RandomInteger, data.RandomInteger)
 }
@@ -513,22 +504,21 @@ resource "azurerm_cosmosdb_account" "test" {
   }
 }
 
-resource "azurerm_app_service_plan" "test" {
+resource "azurerm_service_plan" "test" {
   name                = "acctestASP-%[1]d"
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
-
-  sku {
-    tier = "Standard"
-    size = "S1"
-  }
+  os_type             = "Linux"
+  sku_name            = "S1"
 }
 
-resource "azurerm_app_service" "test" {
+resource "azurerm_linux_web_app" "test" {
   name                = "acctestAS-%[1]d"
   location            = azurerm_resource_group.test.location
   resource_group_name = azurerm_resource_group.test.name
-  app_service_plan_id = azurerm_app_service_plan.test.id
+  service_plan_id     = azurerm_service_plan.test.id
+
+  site_config {}
 }
 `, data.RandomInteger, data.Locations.Primary, data.RandomString)
 }
