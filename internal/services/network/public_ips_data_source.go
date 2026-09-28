@@ -87,7 +87,7 @@ func dataSourcePublicIPSchema() map[string]*pluginsdk.Schema {
 }
 
 func dataSourcePublicIPsRead(d *pluginsdk.ResourceData, meta interface{}) error {
-	client := meta.(*clients.Client).Network.PublicIPAddressesClient
+	client := meta.(*clients.Client).Network.PublicIPAddresses
 	subscriptionId := meta.(*clients.Client).Account.SubscriptionId
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()

@@ -1,4 +1,4 @@
-// Copyright IBM Corp.
+// Copyright IBM Corp. 2014, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package network
@@ -30,7 +30,7 @@ func (r PublicIpListResource) Metadata(_ context.Context, _ resource.MetadataReq
 }
 
 func (r PublicIpListResource) List(ctx context.Context, request list.ListRequest, stream *list.ListResultsStream, metadata sdk.ResourceMetadata) {
-	client := metadata.Client.Network.PublicIPAddressesClient
+	client := metadata.Client.Network.PublicIPAddresses
 	var data sdk.DefaultListModel
 	diags := request.Config.Get(ctx, &data)
 	if diags.HasError() {
