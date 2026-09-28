@@ -1400,6 +1400,16 @@ func resourceApplicationGateway() *pluginsdk.Resource {
 							},
 						},
 
+						"verify_client_auth_mode": {
+							Type:     pluginsdk.TypeString,
+							Optional: true,
+							Default:  string(applicationgateways.ApplicationGatewayClientAuthVerificationModesStrict),
+							ValidateFunc: validation.StringInSlice(
+								applicationgateways.PossibleValuesForApplicationGatewayClientAuthVerificationModes(),
+								false,
+							),
+						},
+
 						"verify_client_certificate_issuer_dn": {
 							Type:     pluginsdk.TypeBool,
 							Optional: true,
@@ -4466,6 +4476,7 @@ func expandApplicationGatewaySslProfiles(d *pluginsdk.ResourceData, gatewayID st
 			Name: pointer.To(name),
 			Properties: &applicationgateways.ApplicationGatewaySslProfilePropertiesFormat{
 				ClientAuthConfiguration: &applicationgateways.ApplicationGatewayClientAuthConfiguration{
+					VerifyClientAuthMode:     pointer.ToEnum[applicationgateways.ApplicationGatewayClientAuthVerificationModes](v["verify_client_auth_mode"].(string)),
 					VerifyClientCertIssuerDN: pointer.To(v["verify_client_certificate_issuer_dn"].(bool)),
 					VerifyClientRevocation:   pointer.To(verifyClientCertificateRevocation),
 				},
@@ -4518,11 +4529,13 @@ func flattenApplicationGatewaySslProfiles(input *[]applicationgateways.Applicati
 		output["name"] = *v.Name
 		output["ssl_policy"] = flattenApplicationGatewaySslPolicy(v.Properties.SslPolicy)
 
+		verifyClientAuthMode := string(applicationgateways.ApplicationGatewayClientAuthVerificationModesStrict)
 		verifyClientCertIssuerDn := false
 		verifyClientCertificateRevocation := ""
 
 		if props := v.Properties; props != nil {
 			if props.ClientAuthConfiguration != nil {
+				verifyClientAuthMode = pointer.FromEnum(props.ClientAuthConfiguration.VerifyClientAuthMode)
 				verifyClientCertIssuerDn = pointer.From(props.ClientAuthConfiguration.VerifyClientCertIssuerDN)
 				if *props.ClientAuthConfiguration.VerifyClientRevocation != applicationgateways.ApplicationGatewayClientRevocationOptionsNone {
 					verifyClientCertificateRevocation = pointer.FromEnum(props.ClientAuthConfiguration.VerifyClientRevocation)
@@ -4545,6 +4558,7 @@ func flattenApplicationGatewaySslProfiles(input *[]applicationgateways.Applicati
 				}
 			}
 			output["trusted_client_certificate_names"] = trustedClientCertificateNames
+			output["verify_client_auth_mode"] = verifyClientAuthMode
 			output["verify_client_certificate_issuer_dn"] = verifyClientCertIssuerDn
 			output["verify_client_certificate_revocation"] = verifyClientCertificateRevocation
 		}

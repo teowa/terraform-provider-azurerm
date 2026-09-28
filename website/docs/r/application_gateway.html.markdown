@@ -593,13 +593,15 @@ A `ssl_profile` block supports the following:
 
 * `name` - (Required) The name of the SSL Profile that is unique within this Application Gateway.
 
+* `ssl_policy` - (Optional) A `ssl_policy` block as defined below.
+
 * `trusted_client_certificate_names` - (Optional) The name of the Trusted Client Certificate that will be used to authenticate requests from clients.
+
+* `verify_client_auth_mode` - (Optional) The client authentication mode. Possible values are `Passthrough` and `Strict`. Defaults to `Strict`.
 
 * `verify_client_certificate_issuer_dn` - (Optional) Should client certificate issuer DN be verified? Defaults to `false`.
  
 * `verify_client_certificate_revocation` - (Optional) Specify the method to check client certificate revocation status. Possible value is `OCSP`.
-
-* `ssl_policy` - (Optional) a `ssl_policy` block as defined below.
 
 ---
 
