@@ -17,13 +17,9 @@ func CacheExpiration() *pluginsdk.Resource {
 	return &pluginsdk.Resource{
 		Schema: map[string]*pluginsdk.Schema{
 			"behavior": {
-				Type:     pluginsdk.TypeString,
-				Required: true,
-				ValidateFunc: validation.StringInSlice([]string{
-					string(cdn.CacheBehaviorBypassCache),
-					string(cdn.CacheBehaviorOverride),
-					string(cdn.CacheBehaviorSetIfMissing),
-				}, false),
+				Type:         pluginsdk.TypeString,
+				Required:     true,
+				ValidateFunc: validation.StringInEnumSlice(cdn.PossibleCacheBehaviorValues(), false),
 			},
 
 			"duration": {
@@ -35,11 +31,11 @@ func CacheExpiration() *pluginsdk.Resource {
 	}
 }
 
-func ExpandArmCdnEndpointActionCacheExpiration(input []interface{}) (*[]cdn.BasicDeliveryRuleAction, error) {
+func ExpandArmCdnEndpointActionCacheExpiration(input []any) (*[]cdn.BasicDeliveryRuleAction, error) {
 	output := make([]cdn.BasicDeliveryRuleAction, 0)
 
 	for _, v := range input {
-		item := v.(map[string]interface{})
+		item := v.(map[string]any)
 
 		cacheExpirationAction := cdn.DeliveryRuleCacheExpirationAction{
 			Name: cdn.NameBasicDeliveryRuleActionNameCacheExpiration,
@@ -64,7 +60,7 @@ func ExpandArmCdnEndpointActionCacheExpiration(input []interface{}) (*[]cdn.Basi
 	return &output, nil
 }
 
-func FlattenArmCdnEndpointActionCacheExpiration(input cdn.BasicDeliveryRuleAction) (*map[string]interface{}, error) {
+func FlattenArmCdnEndpointActionCacheExpiration(input cdn.BasicDeliveryRuleAction) (*map[string]any, error) {
 	action, ok := input.AsDeliveryRuleCacheExpirationAction()
 	if !ok {
 		return nil, errors.New("expected a delivery rule cache expiration action")
@@ -80,7 +76,7 @@ func FlattenArmCdnEndpointActionCacheExpiration(input cdn.BasicDeliveryRuleActio
 		}
 	}
 
-	return &map[string]interface{}{
+	return &map[string]any{
 		"behavior": behaviour,
 		"duration": duration,
 	}, nil
