@@ -204,9 +204,27 @@ The `policy_settings` block supports the following:
 
 The `managed_rules` block supports the following:
 
+* `exception` - (Optional) One or more `exception` block defined below.
+
 * `exclusion` - (Optional) One or more `exclusion` block defined below.
 
 * `managed_rule_set` - (Required) One or more `managed_rule_set` block defined below.
+
+---
+
+The `exception` block supports the following:
+
+* `match_variable` - (Required) The variable to match for the exception. Possible values are `RemoteAddr`, `RequestHeader` and `RequestURI`.
+
+* `value_match_operator` - (Required) The operator used to match `values`. Possible values are `Contains`, `EndsWith`, `Equals`, `IPMatch` and `StartsWith`.
+
+* `selector` - (Optional) The name of the field of the `match_variable` collection to match, for example a request header name.
+
+* `selector_match_operator` - (Optional) The operator used to match `selector`. Possible values are `Contains`, `EndsWith`, `Equals` and `StartsWith`.
+
+* `values` - (Optional) A set of values to match against the `match_variable`.
+
+* `excluded_rule_set` - (Optional) An `excluded_rule_set` block as defined below, specifying the managed rules the exception applies to.
 
 ---
 
@@ -222,7 +240,7 @@ The `exclusion` block supports the following:
 
 ---
 
-The `excluded_rule_set` block supports the following:
+The `excluded_rule_set` block (used by both `exception` and `exclusion`) supports the following:
 
 * `type` - (Optional) The rule set type. Possible values are `Microsoft_DefaultRuleSet`, `Microsoft_BotManagerRuleSet` and `OWASP`. Defaults to `OWASP`.
 

@@ -172,6 +172,83 @@ func resourceWebApplicationFirewallPolicy() *pluginsdk.Resource {
 				MaxItems: 1,
 				Elem: &pluginsdk.Resource{
 					Schema: map[string]*pluginsdk.Schema{
+						"exception": {
+							Type:     pluginsdk.TypeList,
+							Optional: true,
+							Elem: &pluginsdk.Resource{
+								Schema: map[string]*pluginsdk.Schema{
+									"match_variable": {
+										Type:         pluginsdk.TypeString,
+										Required:     true,
+										ValidateFunc: validation.StringInSlice(webapplicationfirewallpolicies.PossibleValuesForExceptionEntryMatchVariable(), false),
+									},
+									"value_match_operator": {
+										Type:         pluginsdk.TypeString,
+										Required:     true,
+										ValidateFunc: validation.StringInSlice(webapplicationfirewallpolicies.PossibleValuesForExceptionEntryValueMatchOperator(), false),
+									},
+									"selector": {
+										Type:         pluginsdk.TypeString,
+										Optional:     true,
+										ValidateFunc: validation.StringIsNotEmpty,
+									},
+									"selector_match_operator": {
+										Type:         pluginsdk.TypeString,
+										Optional:     true,
+										ValidateFunc: validation.StringInSlice(webapplicationfirewallpolicies.PossibleValuesForExceptionEntrySelectorMatchOperator(), false),
+									},
+									"values": {
+										Type:     pluginsdk.TypeSet,
+										Optional: true,
+										Elem: &pluginsdk.Schema{
+											Type:         pluginsdk.TypeString,
+											ValidateFunc: validation.StringIsNotEmpty,
+										},
+									},
+									"excluded_rule_set": {
+										Type:     pluginsdk.TypeList,
+										Optional: true,
+										MaxItems: 1,
+										Elem: &pluginsdk.Resource{
+											Schema: map[string]*pluginsdk.Schema{
+												"type": {
+													Type:         pluginsdk.TypeString,
+													Optional:     true,
+													Default:      "OWASP",
+													ValidateFunc: validate.ValidateWebApplicationFirewallPolicyExclusionRuleSetType,
+												},
+												"version": {
+													Type:         pluginsdk.TypeString,
+													Optional:     true,
+													Default:      "3.2",
+													ValidateFunc: validate.ValidateWebApplicationFirewallPolicyExclusionRuleSetVersion,
+												},
+												"rule_group": {
+													Type:     pluginsdk.TypeList,
+													Optional: true,
+													Elem: &pluginsdk.Resource{
+														Schema: map[string]*pluginsdk.Schema{
+															"rule_group_name": {
+																Type:         pluginsdk.TypeString,
+																Required:     true,
+																ValidateFunc: validate.ValidateWebApplicationFirewallPolicyRuleGroupName,
+															},
+															"excluded_rules": {
+																Type:     pluginsdk.TypeList,
+																Optional: true,
+																Elem: &pluginsdk.Schema{
+																	Type: pluginsdk.TypeString,
+																},
+															},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
 						"exclusion": {
 							Type:     pluginsdk.TypeList,
 							Optional: true,
@@ -739,11 +816,13 @@ func expandWebApplicationFirewallPolicyManagedRulesDefinition(input []any) *weba
 	v := input[0].(map[string]any)
 
 	exclusions := v["exclusion"].([]any)
+	exceptions := v["exception"].([]any)
 	managedRuleSets := v["managed_rule_set"].([]any)
 
 	expandedManagedRuleSets := expandWebApplicationFirewallPolicyManagedRuleSet(managedRuleSets)
 
 	return &webapplicationfirewallpolicies.ManagedRulesDefinition{
+		Exceptions:      expandWebApplicationFirewallPolicyExceptions(exceptions),
 		Exclusions:      expandWebApplicationFirewallPolicyExclusions(exclusions),
 		ManagedRuleSets: *expandedManagedRuleSets,
 	}
@@ -820,6 +899,38 @@ func expandWebApplicationFirewallPolicyExclusions(input []any) *[]webapplication
 			SelectorMatchOperator:    webapplicationfirewallpolicies.OwaspCrsExclusionEntrySelectorMatchOperator(selectorMatchOperator),
 			Selector:                 selector,
 			ExclusionManagedRuleSets: expandWebApplicationFirewallPolicyExclusionManagedRuleSet(exclusionManagedRuleSets),
+		}
+
+		results = append(results, result)
+	}
+	return &results
+}
+
+func expandWebApplicationFirewallPolicyExceptions(input []any) *[]webapplicationfirewallpolicies.ExceptionEntry {
+	results := make([]webapplicationfirewallpolicies.ExceptionEntry, 0)
+	for _, item := range input {
+		v := item.(map[string]any)
+
+		result := webapplicationfirewallpolicies.ExceptionEntry{
+			MatchVariable:            webapplicationfirewallpolicies.ExceptionEntryMatchVariable(v["match_variable"].(string)),
+			ValueMatchOperator:       webapplicationfirewallpolicies.ExceptionEntryValueMatchOperator(v["value_match_operator"].(string)),
+			ExceptionManagedRuleSets: expandWebApplicationFirewallPolicyExclusionManagedRuleSet(v["excluded_rule_set"].([]any)),
+		}
+
+		if selector := v["selector"].(string); selector != "" {
+			result.Selector = pointer.To(selector)
+		}
+
+		if operator := v["selector_match_operator"].(string); operator != "" {
+			result.SelectorMatchOperator = pointer.To(webapplicationfirewallpolicies.ExceptionEntrySelectorMatchOperator(operator))
+		}
+
+		if values := v["values"].(*pluginsdk.Set).List(); len(values) > 0 {
+			vals := make([]string, 0, len(values))
+			for _, value := range values {
+				vals = append(vals, value.(string))
+			}
+			result.Values = &vals
 		}
 
 		results = append(results, result)
@@ -1031,6 +1142,7 @@ func flattenWebApplicationFirewallPolicyManagedRulesDefinition(input webapplicat
 
 	v := make(map[string]any)
 
+	v["exception"] = flattenWebApplicationFirewallPolicyExceptions(input.Exceptions)
 	v["exclusion"] = flattenWebApplicationFirewallPolicyExclusions(input.Exclusions)
 	v["managed_rule_set"] = flattenWebApplicationFirewallPolicyManagedRuleSets(input.ManagedRuleSets)
 
@@ -1103,6 +1215,35 @@ func flattenWebApplicationFirewallPolicyExclusions(input *[]webapplicationfirewa
 		v["excluded_rule_set"] = flattenWebApplicationFirewallPolicyExclusionManagedRuleSets(item.ExclusionManagedRuleSets)
 
 		results = append(results, v)
+	}
+	return results
+}
+
+func flattenWebApplicationFirewallPolicyExceptions(input *[]webapplicationfirewallpolicies.ExceptionEntry) []any {
+	results := make([]any, 0)
+	if input == nil {
+		return results
+	}
+
+	for _, item := range *input {
+		v := make(map[string]any)
+
+		v["match_variable"] = string(item.MatchVariable)
+		v["value_match_operator"] = string(item.ValueMatchOperator)
+		v["selector"] = pointer.From(item.Selector)
+		v["selector_match_operator"] = string(pointer.From(item.SelectorMatchOperator))
+		v["values"] = pluginsdk.NewSet(pluginsdk.HashString, flattenWebApplicationFirewallPolicyExceptionValues(item.Values))
+		v["excluded_rule_set"] = flattenWebApplicationFirewallPolicyExclusionManagedRuleSets(item.ExceptionManagedRuleSets)
+
+		results = append(results, v)
+	}
+	return results
+}
+
+func flattenWebApplicationFirewallPolicyExceptionValues(input *[]string) []any {
+	results := make([]any, 0)
+	for _, item := range pointer.From(input) {
+		results = append(results, item)
 	}
 	return results
 }

@@ -309,6 +309,21 @@ func TestAccWebApplicationFirewallPolicy_excludedRules(t *testing.T) {
 	})
 }
 
+func TestAccWebApplicationFirewallPolicy_exceptions(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_web_application_firewall_policy", "test")
+	r := WebApplicationFirewallPolicyResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.exceptions(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
 func TestAccWebApplicationFirewallPolicy_updateDisabledRules(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_web_application_firewall_policy", "test")
 	r := WebApplicationFirewallPolicyResource{}
@@ -2253,4 +2268,48 @@ resource "azurerm_web_application_firewall_policy" "test" {
   }
 }
 `, data.RandomInteger, data.Locations.Primary, data.RandomInteger, enforcement)
+}
+
+func (WebApplicationFirewallPolicyResource) exceptions(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_resource_group" "test" {
+  name     = "acctestRG-%d"
+  location = "%s"
+}
+
+resource "azurerm_web_application_firewall_policy" "test" {
+  name                = "acctestwafpolicy-%d"
+  resource_group_name = azurerm_resource_group.test.name
+  location            = azurerm_resource_group.test.location
+
+  managed_rules {
+    exception {
+      match_variable          = "RequestHeader"
+      selector                = "x-shared-secret"
+      selector_match_operator = "Equals"
+      value_match_operator    = "Equals"
+      values                  = ["abc", "def"]
+
+      excluded_rule_set {
+        type    = "Microsoft_DefaultRuleSet"
+        version = "2.1"
+
+        rule_group {
+          rule_group_name = "SQLI"
+          excluded_rules  = ["942100"]
+        }
+      }
+    }
+
+    managed_rule_set {
+      type    = "OWASP"
+      version = "3.2"
+    }
+  }
+}
+`, data.RandomInteger, data.Locations.Primary, data.RandomInteger)
 }
