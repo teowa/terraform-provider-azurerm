@@ -452,6 +452,12 @@ func (r DashboardGrafanaResource) Update() sdk.ResourceFunc {
 
 			if metadata.ResourceData.HasChange("smtp") || metadata.ResourceData.HasChange("csrf_always_check") || metadata.ResourceData.HasChange("snapshot_external_enabled") || metadata.ResourceData.HasChange("unified_alerting_screenshots_capture_enabled") || metadata.ResourceData.HasChange("users") {
 				properties.Properties.GrafanaConfigurations = expandGrafanaConfigurationModel(model.SMTP, model.CsrfAlwaysCheck, model.SnapshotExternalEnabled, model.UnifiedAlertingScreenshotsCaptureEnabled, model.UsersConfiguration)
+			} else if properties.Properties.GrafanaConfigurations != nil {
+				// The SMTP password is never returned by the API, so it must be re-expanded from config on every update,
+				// not just when `smtp` changes, otherwise Azure rejects the request with `InvalidConfigurationForSMTP`.
+				properties.Properties.GrafanaConfigurations.Smtp = expandSMTPConfigurationModel(model.SMTP)
+			} else {
+				properties.Properties.GrafanaConfigurations = expandGrafanaConfigurationModel(model.SMTP, model.CsrfAlwaysCheck, model.SnapshotExternalEnabled, model.UnifiedAlertingScreenshotsCaptureEnabled, model.UsersConfiguration)
 			}
 
 			if metadata.ResourceData.HasChange("grafana_major_version") {
@@ -644,34 +650,18 @@ func (r DashboardGrafanaResource) CustomizeDiff() sdk.ResourceFunc {
 }
 
 func expandGrafanaConfigurationModel(smtpInput []SMTPConfigurationModel, csrfAlwaysCheck bool, snapshotExternalEnabled bool, unifiedAlertingScreenshotsCaptureEnabled bool, usersInput []UsersConfigurationModel) *managedgrafanas.GrafanaConfigurations {
-	config := &managedgrafanas.GrafanaConfigurations{}
-
-	if len(smtpInput) > 0 {
-		v := smtpInput[0]
-		smtp := managedgrafanas.Smtp{
-			Enabled:        pointer.To(v.SMTPEnabled),
-			FromAddress:    pointer.To(v.FromAddress),
-			FromName:       pointer.To(v.FromName),
-			Host:           pointer.To(v.Host),
-			Password:       pointer.To(v.Password),
-			SkipVerify:     pointer.To(v.SkipVerify),
-			User:           pointer.To(v.User),
-			StartTLSPolicy: (*managedgrafanas.StartTLSPolicy)(pointer.To(v.StartTLSPolicy)),
-		}
-		config.Smtp = pointer.To(smtp)
+	config := &managedgrafanas.GrafanaConfigurations{
+		Smtp: expandSMTPConfigurationModel(smtpInput),
+		Security: pointer.To(managedgrafanas.Security{
+			CsrfAlwaysCheck: pointer.To(csrfAlwaysCheck),
+		}),
+		Snapshots: pointer.To(managedgrafanas.Snapshots{
+			ExternalEnabled: pointer.To(snapshotExternalEnabled),
+		}),
+		UnifiedAlertingScreenshots: pointer.To(managedgrafanas.UnifiedAlertingScreenshots{
+			CaptureEnabled: pointer.To(unifiedAlertingScreenshotsCaptureEnabled),
+		}),
 	}
-
-	config.Security = pointer.To(managedgrafanas.Security{
-		CsrfAlwaysCheck: pointer.To(csrfAlwaysCheck),
-	})
-
-	config.Snapshots = pointer.To(managedgrafanas.Snapshots{
-		ExternalEnabled: pointer.To(snapshotExternalEnabled),
-	})
-
-	config.UnifiedAlertingScreenshots = pointer.To(managedgrafanas.UnifiedAlertingScreenshots{
-		CaptureEnabled: pointer.To(unifiedAlertingScreenshotsCaptureEnabled),
-	})
 
 	if len(usersInput) > 0 {
 		v := usersInput[0]
@@ -682,6 +672,24 @@ func expandGrafanaConfigurationModel(smtpInput []SMTPConfigurationModel, csrfAlw
 	}
 
 	return config
+}
+
+func expandSMTPConfigurationModel(input []SMTPConfigurationModel) *managedgrafanas.Smtp {
+	if len(input) == 0 {
+		return nil
+	}
+
+	v := input[0]
+	return &managedgrafanas.Smtp{
+		Enabled:        pointer.To(v.SMTPEnabled),
+		FromAddress:    pointer.To(v.FromAddress),
+		FromName:       pointer.To(v.FromName),
+		Host:           pointer.To(v.Host),
+		Password:       pointer.To(v.Password),
+		SkipVerify:     pointer.To(v.SkipVerify),
+		User:           pointer.To(v.User),
+		StartTLSPolicy: (*managedgrafanas.StartTLSPolicy)(pointer.To(v.StartTLSPolicy)),
+	}
 }
 
 func expandGrafanaIntegrationsModel(inputList []AzureMonitorWorkspaceIntegrationModel) *managedgrafanas.GrafanaIntegrations {
