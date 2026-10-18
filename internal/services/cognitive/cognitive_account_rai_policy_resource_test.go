@@ -18,7 +18,17 @@ import (
 
 type RaiPolicyTestResource struct{}
 
-func TestCognitiveAccountRaiPolicy_basic(t *testing.T) {
+func TestAccCognitiveAccountRaiPolicy_regressionTest(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_cognitive_account_rai_policy", "test")
+	r := RaiPolicyTestResource{}
+	data.ResourceRegressionTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.complete(data),
+		},
+	}, "")
+}
+
+func TestAccCognitiveAccountRaiPolicy_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_cognitive_account_rai_policy", "test")
 	r := RaiPolicyTestResource{}
 
@@ -33,7 +43,7 @@ func TestCognitiveAccountRaiPolicy_basic(t *testing.T) {
 	})
 }
 
-func TestCognitiveAccountRaiPolicy_requiresImport(t *testing.T) {
+func TestAccCognitiveAccountRaiPolicy_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_cognitive_account_rai_policy", "test")
 	r := RaiPolicyTestResource{}
 
@@ -51,7 +61,7 @@ func TestCognitiveAccountRaiPolicy_requiresImport(t *testing.T) {
 	})
 }
 
-func TestCognitiveAccountRaiPolicy_update(t *testing.T) {
+func TestAccCognitiveAccountRaiPolicy_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_cognitive_account_rai_policy", "test")
 	r := RaiPolicyTestResource{}
 
@@ -81,7 +91,7 @@ func TestCognitiveAccountRaiPolicy_update(t *testing.T) {
 	})
 }
 
-func TestCognitiveAccountRaiPolicy_withoutSeverityThreshold(t *testing.T) {
+func TestAccCognitiveAccountRaiPolicy_withoutSeverityThreshold(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_cognitive_account_rai_policy", "test")
 	r := RaiPolicyTestResource{}
 

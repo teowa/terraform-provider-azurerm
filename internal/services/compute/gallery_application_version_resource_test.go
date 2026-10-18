@@ -20,6 +20,16 @@ import (
 
 type GalleryApplicationVersionResource struct{}
 
+func TestAccGalleryApplicationVersion_regressionTest(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_gallery_application_version", "test")
+	r := GalleryApplicationVersionResource{}
+	data.ResourceRegressionTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.complete(data),
+		},
+	}, "")
+}
+
 func TestAccGalleryApplicationVersion_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_gallery_application_version", "test")
 	r := GalleryApplicationVersionResource{}
@@ -275,6 +285,11 @@ func (r GalleryApplicationVersionResource) Exists(ctx context.Context, client *c
 
 func (r GalleryApplicationVersionResource) template(data acceptance.TestData) string {
 	return fmt.Sprintf(`
+
+provider "azurerm" {
+  features {}
+}
+
 resource "azurerm_resource_group" "test" {
   name     = "acctest-compute-%[2]d"
   location = "%[1]s"

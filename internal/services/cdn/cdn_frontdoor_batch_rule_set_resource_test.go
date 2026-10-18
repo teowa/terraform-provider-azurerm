@@ -19,6 +19,16 @@ import (
 
 type CdnFrontdoorBatchRuleSetResource struct{}
 
+func TestAccCdnFrontDoorBatchRuleSet_regressionTest(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_cdn_frontdoor_batch_rule_set", "test")
+	r := CdnFrontdoorBatchRuleSetResource{}
+	data.ResourceRegressionTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.complete(data),
+		},
+	}, "")
+}
+
 func TestAccCdnFrontDoorBatchRuleSet_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_cdn_frontdoor_batch_rule_set", "test")
 	r := CdnFrontdoorBatchRuleSetResource{}
@@ -305,6 +315,38 @@ func TestAccCdnFrontDoorBatchRuleSet_honorOrigin_unattachedRoute(t *testing.T) {
 	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.honorOriginWithoutOrigin(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
+func TestAccCdnFrontDoorBatchRuleSet_requestPathRootValue_unattachedRoute(t *testing.T) {
+	// NOTE: Regression test for issue #33035, released in v4.81.0; standalone root-path support was added in PR #22610 for issue #21851.
+	data := acceptance.BuildTestData(t, "azurerm_cdn_frontdoor_batch_rule_set", "test")
+	r := CdnFrontdoorBatchRuleSetResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.requestPathRootValue(data, false),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
+func TestAccCdnFrontDoorBatchRuleSet_requestPathRootValue_attachedRoute(t *testing.T) {
+	// NOTE: Regression test for issue #33035, released in v4.81.0; standalone root-path support was added in PR #22610 for issue #21851.
+	data := acceptance.BuildTestData(t, "azurerm_cdn_frontdoor_batch_rule_set", "test")
+	r := CdnFrontdoorBatchRuleSetResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.requestPathRootValue(data, true),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 			),
@@ -1414,6 +1456,50 @@ resource "azurerm_cdn_frontdoor_batch_rule_set" "test" {
       request_path {
         values   = [".html", ".htm"]
         operator = "EndsWith"
+      }
+    }
+  }
+}
+`, template, data.RandomInteger)
+}
+
+func (r CdnFrontdoorBatchRuleSetResource) requestPathRootValue(data acceptance.TestData, attachRoute bool) string {
+	template := r.templateUnattachedRoute(data)
+	if attachRoute {
+		template = r.templateAttachedRoute(data)
+	}
+
+	return fmt.Sprintf(`
+provider "azurerm" {
+  features {}
+}
+
+%[1]s
+
+resource "azurerm_cdn_frontdoor_batch_rule_set" "test" {
+  depends_on = [azurerm_cdn_frontdoor_origin_group.test, azurerm_cdn_frontdoor_origin.test]
+
+  name                     = "acctestBatchRuleSet%[2]d"
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.test.id
+
+  rule {
+    name  = "acctestBatchRule%[2]d"
+    order = 0
+
+    actions {
+      route_configuration_override {
+        caching {
+          behaviour              = "HonorOrigin"
+          compression_enabled    = true
+          query_string_behaviour = "IgnoreQueryString"
+        }
+      }
+    }
+
+    conditions {
+      request_path {
+        operator = "Equal"
+        values   = ["/"]
       }
     }
   }

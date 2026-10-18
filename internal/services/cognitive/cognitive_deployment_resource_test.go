@@ -6,6 +6,7 @@ package cognitive_test
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
@@ -17,11 +18,21 @@ import (
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 )
 
-type CognitiveDeploymentTestResource struct{}
+type CognitiveDeploymentResource struct{}
+
+func TestAccCognitiveDeployment_regressionTest(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_cognitive_deployment", "test")
+	r := CognitiveDeploymentResource{}
+	data.ResourceSequentialRegressionTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.complete(data),
+		},
+	}, "")
+}
 
 func TestAccCognitiveDeployment_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_cognitive_deployment", "test")
-	r := CognitiveDeploymentTestResource{}
+	r := CognitiveDeploymentResource{}
 
 	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
@@ -37,7 +48,7 @@ func TestAccCognitiveDeployment_basic(t *testing.T) {
 func TestAccCognitiveDeployment_requiresImport(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_cognitive_deployment", "test")
 
-	r := CognitiveDeploymentTestResource{}
+	r := CognitiveDeploymentResource{}
 	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.basic(data),
@@ -51,7 +62,7 @@ func TestAccCognitiveDeployment_requiresImport(t *testing.T) {
 
 func TestAccCognitiveDeployment_complete(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_cognitive_deployment", "test")
-	r := CognitiveDeploymentTestResource{}
+	r := CognitiveDeploymentResource{}
 	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
 			Config: r.complete(data),
@@ -66,7 +77,7 @@ func TestAccCognitiveDeployment_complete(t *testing.T) {
 
 func TestAccCognitiveDeployment_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_cognitive_deployment", "test")
-	r := CognitiveDeploymentTestResource{}
+	r := CognitiveDeploymentResource{}
 
 	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
@@ -114,7 +125,48 @@ func TestAccCognitiveDeployment_update(t *testing.T) {
 	})
 }
 
-func (r CognitiveDeploymentTestResource) Exists(ctx context.Context, clients *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
+func TestAccCognitiveDeployment_spilloverDeploymentName(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_cognitive_deployment", "test")
+	r := CognitiveDeploymentResource{}
+
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.withoutSpilloverDeploymentName(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+		{
+			Config: r.withSpilloverDeploymentName(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+		{
+			Config: r.withoutSpilloverDeploymentName(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
+func TestAccCognitiveDeployment_spilloverDeploymentNameInvalidSku(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_cognitive_deployment", "test")
+	r := CognitiveDeploymentResource{}
+
+	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
+		{
+			Config:      r.spilloverDeploymentNameInvalidSku(data),
+			ExpectError: regexp.MustCompile("`spillover_deployment_name` can only be set when `sku.0.name` is"),
+		},
+	})
+}
+
+func (r CognitiveDeploymentResource) Exists(ctx context.Context, clients *clients.Client, state *pluginsdk.InstanceState) (*bool, error) {
 	id, err := deployments.ParseDeploymentID(state.ID)
 	if err != nil {
 		return nil, err
@@ -131,7 +183,7 @@ func (r CognitiveDeploymentTestResource) Exists(ctx context.Context, clients *cl
 	return pointer.To(resp.Model != nil), nil
 }
 
-func (r CognitiveDeploymentTestResource) template(data acceptance.TestData) string {
+func (r CognitiveDeploymentResource) template(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 provider "azurerm" {
   features {}
@@ -151,7 +203,7 @@ resource "azurerm_cognitive_account" "test" {
 `, data.RandomInteger, data.Locations.Secondary, data.RandomInteger)
 }
 
-func (r CognitiveDeploymentTestResource) basic(data acceptance.TestData) string {
+func (r CognitiveDeploymentResource) basic(data acceptance.TestData) string {
 	template := r.template(data)
 	return fmt.Sprintf(`
 %s
@@ -173,7 +225,7 @@ resource "azurerm_cognitive_deployment" "test" {
 `, template, data.RandomInteger)
 }
 
-func (r CognitiveDeploymentTestResource) requiresImport(data acceptance.TestData) string {
+func (r CognitiveDeploymentResource) requiresImport(data acceptance.TestData) string {
 	config := r.basic(data)
 	return fmt.Sprintf(`
 %s
@@ -193,7 +245,7 @@ resource "azurerm_cognitive_deployment" "import" {
 `, config)
 }
 
-func (r CognitiveDeploymentTestResource) complete(data acceptance.TestData) string {
+func (r CognitiveDeploymentResource) complete(data acceptance.TestData) string {
 	template := r.template(data)
 	return fmt.Sprintf(`
 %s
@@ -216,7 +268,7 @@ resource "azurerm_cognitive_deployment" "test" {
 `, template, data.RandomInteger)
 }
 
-func (r CognitiveDeploymentTestResource) update(data acceptance.TestData) string {
+func (r CognitiveDeploymentResource) update(data acceptance.TestData) string {
 	template := r.template(data)
 	return fmt.Sprintf(`
 %s
@@ -238,7 +290,7 @@ resource "azurerm_cognitive_deployment" "test" {
 `, template, data.RandomInteger)
 }
 
-func (r CognitiveDeploymentTestResource) updateVersion(data acceptance.TestData) string {
+func (r CognitiveDeploymentResource) updateVersion(data acceptance.TestData) string {
 	template := r.template(data)
 	return fmt.Sprintf(`
 %s
@@ -260,7 +312,7 @@ resource "azurerm_cognitive_deployment" "test" {
 `, template, data.RandomInteger)
 }
 
-func (r CognitiveDeploymentTestResource) versionUpgradeOption(data acceptance.TestData, versionUpgradeOption string) string {
+func (r CognitiveDeploymentResource) versionUpgradeOption(data acceptance.TestData, versionUpgradeOption string) string {
 	template := r.template(data)
 	return fmt.Sprintf(`
 %s
@@ -281,4 +333,105 @@ resource "azurerm_cognitive_deployment" "test" {
   }
 }
 `, template, data.RandomInteger, versionUpgradeOption)
+}
+
+func (r CognitiveDeploymentResource) withoutSpilloverDeploymentName(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+%s
+
+resource "azurerm_cognitive_deployment" "spillover" {
+  name                 = "acctest-cd-spillover-%d"
+  cognitive_account_id = azurerm_cognitive_account.test.id
+  model {
+    format  = "OpenAI"
+    name    = "gpt-5.4-mini"
+    version = "2026-03-17"
+  }
+  sku {
+    name = "DataZoneStandard"
+  }
+  lifecycle {
+    ignore_changes = [model.0.version]
+  }
+}
+
+resource "azurerm_cognitive_deployment" "test" {
+  name                 = "acctest-cd-%d"
+  cognitive_account_id = azurerm_cognitive_account.test.id
+  model {
+    format  = "OpenAI"
+    name    = "gpt-5.4-mini"
+    version = "2026-03-17"
+  }
+  sku {
+    name     = "DataZoneProvisionedManaged"
+    capacity = 15
+  }
+  lifecycle {
+    ignore_changes = [model.0.version]
+  }
+}
+`, r.template(data), data.RandomInteger, data.RandomInteger)
+}
+
+func (r CognitiveDeploymentResource) withSpilloverDeploymentName(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+%s
+
+resource "azurerm_cognitive_deployment" "spillover" {
+  name                 = "acctest-cd-spillover-%d"
+  cognitive_account_id = azurerm_cognitive_account.test.id
+  model {
+    format  = "OpenAI"
+    name    = "gpt-5.4-mini"
+    version = "2026-03-17"
+  }
+  sku {
+    name = "DataZoneStandard"
+  }
+  lifecycle {
+    ignore_changes = [model.0.version]
+  }
+}
+
+resource "azurerm_cognitive_deployment" "test" {
+  name                      = "acctest-cd-%d"
+  cognitive_account_id      = azurerm_cognitive_account.test.id
+  spillover_deployment_name = azurerm_cognitive_deployment.spillover.name
+  model {
+    format  = "OpenAI"
+    name    = "gpt-5.4-mini"
+    version = "2026-03-17"
+  }
+  sku {
+    name     = "DataZoneProvisionedManaged"
+    capacity = 15
+  }
+  lifecycle {
+    ignore_changes = [model.0.version]
+  }
+}
+`, r.template(data), data.RandomInteger, data.RandomInteger)
+}
+
+func (r CognitiveDeploymentResource) spilloverDeploymentNameInvalidSku(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+%s
+
+resource "azurerm_cognitive_deployment" "test" {
+  name                      = "acctest-cd-%d"
+  cognitive_account_id      = azurerm_cognitive_account.test.id
+  spillover_deployment_name = "acctest-cd-spillover"
+  model {
+    format = "OpenAI"
+    name   = "gpt-5.4-mini-mini"
+  }
+  sku {
+    name = "Standard"
+  }
+  lifecycle {
+    ignore_changes = [model.0.version]
+  }
+}
+`, r.template(data), data.RandomInteger)
 }

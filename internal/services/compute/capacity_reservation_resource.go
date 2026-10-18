@@ -8,8 +8,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
-
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
@@ -20,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/compute/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
@@ -27,6 +26,8 @@ import (
 )
 
 //go:generate go run ../../tools/generator-tests resourceidentity -resource-name capacity_reservation -service-package-name compute -properties "name" -compare-values "subscription_id:capacity_reservation_group_id,resource_group_name:capacity_reservation_group_id,capacity_reservation_group_name:capacity_reservation_group_id"
+
+const azureCapacityReservationResourceName = "azurerm_capacity_reservation"
 
 func resourceCapacityReservation() *pluginsdk.Resource {
 	return &pluginsdk.Resource{
@@ -92,7 +93,7 @@ func resourceCapacityReservation() *pluginsdk.Resource {
 	}
 }
 
-func resourceCapacityReservationCreate(d *pluginsdk.ResourceData, meta interface{}) error {
+func resourceCapacityReservationCreate(d *pluginsdk.ResourceData, meta any) error {
 	client := meta.(*clients.Client).Compute.CapacityReservationsClient
 	groupsClient := meta.(*clients.Client).Compute.CapacityReservationGroupsClient
 	subscriptionId := meta.(*clients.Client).Account.SubscriptionId
@@ -122,14 +123,14 @@ func resourceCapacityReservationCreate(d *pluginsdk.ResourceData, meta interface
 			}
 		}
 		if !response.WasNotFound(existing.HttpResponse) {
-			return tf.ImportAsExistsError("azurerm_capacity_reservation", id.ID())
+			return tf.ImportAsExistsError(azureCapacityReservationResourceName, id.ID())
 		}
 	}
 
 	payload := capacityreservations.CapacityReservation{
 		Location: location.Normalize(capacityReservationGroup.Model.Location),
-		Sku:      expandCapacityReservationSku(d.Get("sku").([]interface{})),
-		Tags:     tags.Expand(d.Get("tags").(map[string]interface{})),
+		Sku:      expandCapacityReservationSku(d.Get("sku").([]any)),
+		Tags:     tags.Expand(d.Get("tags").(map[string]any)),
 	}
 	if v, ok := d.GetOk("zone"); ok {
 		payload.Zones = &[]string{
@@ -149,7 +150,7 @@ func resourceCapacityReservationCreate(d *pluginsdk.ResourceData, meta interface
 	return resourceCapacityReservationRead(d, meta)
 }
 
-func resourceCapacityReservationRead(d *pluginsdk.ResourceData, meta interface{}) error {
+func resourceCapacityReservationRead(d *pluginsdk.ResourceData, meta any) error {
 	client := meta.(*clients.Client).Compute.CapacityReservationsClient
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()
@@ -169,11 +170,16 @@ func resourceCapacityReservationRead(d *pluginsdk.ResourceData, meta interface{}
 		return fmt.Errorf("retrieving %s: %+v", id, err)
 	}
 
+	return resourceCapacityReservationFlatten(d, id, resp.Model)
+}
+
+// Note: when adding new properties, ensure the `(CapacityReservationListResource).capacityReservationToCapacityReservations` function is updated as well.
+func resourceCapacityReservationFlatten(d *pluginsdk.ResourceData, id *capacityreservations.CapacityReservationId, model *capacityreservations.CapacityReservation) error {
 	d.Set("name", id.CapacityReservationName)
 	groupId := capacityreservationgroups.NewCapacityReservationGroupID(id.SubscriptionId, id.ResourceGroupName, id.CapacityReservationGroupName)
 	d.Set("capacity_reservation_group_id", groupId.ID())
 
-	if model := resp.Model; model != nil {
+	if model != nil {
 		if err := d.Set("sku", flattenCapacityReservationSku(model.Sku)); err != nil {
 			return fmt.Errorf("setting `sku`: %+v", err)
 		}
@@ -193,7 +199,7 @@ func resourceCapacityReservationRead(d *pluginsdk.ResourceData, meta interface{}
 	return pluginsdk.SetResourceIdentityData(d, id)
 }
 
-func resourceCapacityReservationUpdate(d *pluginsdk.ResourceData, meta interface{}) error {
+func resourceCapacityReservationUpdate(d *pluginsdk.ResourceData, meta any) error {
 	client := meta.(*clients.Client).Compute.CapacityReservationsClient
 	ctx, cancel := timeouts.ForUpdate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
@@ -205,10 +211,10 @@ func resourceCapacityReservationUpdate(d *pluginsdk.ResourceData, meta interface
 
 	payload := capacityreservations.CapacityReservationUpdate{}
 	if d.HasChange("sku") {
-		payload.Sku = pointer.To(expandCapacityReservationSku(d.Get("sku").([]interface{})))
+		payload.Sku = pointer.To(expandCapacityReservationSku(d.Get("sku").([]any)))
 	}
 	if d.HasChange("tags") {
-		payload.Tags = tags.Expand(d.Get("tags").(map[string]interface{}))
+		payload.Tags = tags.Expand(d.Get("tags").(map[string]any))
 	}
 
 	if err := client.UpdateThenPoll(ctx, *id, payload); err != nil {
@@ -218,7 +224,7 @@ func resourceCapacityReservationUpdate(d *pluginsdk.ResourceData, meta interface
 	return resourceCapacityReservationRead(d, meta)
 }
 
-func resourceCapacityReservationDelete(d *pluginsdk.ResourceData, meta interface{}) error {
+func resourceCapacityReservationDelete(d *pluginsdk.ResourceData, meta any) error {
 	client := meta.(*clients.Client).Compute.CapacityReservationsClient
 	ctx, cancel := timeouts.ForDelete(meta.(*clients.Client).StopContext, d)
 	defer cancel()
@@ -235,29 +241,19 @@ func resourceCapacityReservationDelete(d *pluginsdk.ResourceData, meta interface
 	return nil
 }
 
-func expandCapacityReservationSku(input []interface{}) capacityreservations.Sku {
-	v := input[0].(map[string]interface{})
+func expandCapacityReservationSku(input []any) capacityreservations.Sku {
+	v := input[0].(map[string]any)
 	return capacityreservations.Sku{
 		Name:     pointer.To(v["name"].(string)),
 		Capacity: pointer.To(int64(v["capacity"].(int))),
 	}
 }
 
-func flattenCapacityReservationSku(input capacityreservations.Sku) []interface{} {
-	var name string
-	if input.Name != nil {
-		name = *input.Name
-	}
-
-	var capacity int64
-	if input.Capacity != nil {
-		capacity = *input.Capacity
-	}
-
-	return []interface{}{
-		map[string]interface{}{
-			"name":     name,
-			"capacity": capacity,
+func flattenCapacityReservationSku(input capacityreservations.Sku) []any {
+	return []any{
+		map[string]any{
+			"name":     pointer.From(input.Name),
+			"capacity": pointer.From(input.Capacity),
 		},
 	}
 }
