@@ -14,6 +14,16 @@ import (
 
 type SharedImageVersionsDataSource struct{}
 
+func TestAccDataSourceSharedImageVersions_regressionTest(t *testing.T) {
+	data := acceptance.BuildTestData(t, "data.azurerm_shared_image_versions", "test")
+	r := SharedImageVersionsDataSource{}
+	data.DataSourceRegressionTest(t, []acceptance.TestStep{
+		{
+			Config: r.basic(data),
+		},
+	}, "")
+}
+
 func TestAccDataSourceSharedImageVersions_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "data.azurerm_shared_image_versions", "test")
 	r := SharedImageVersionsDataSource{}
@@ -24,8 +34,8 @@ func TestAccDataSourceSharedImageVersions_basic(t *testing.T) {
 			Config:  SharedImageVersionResource{}.setup(data),
 			Destroy: false,
 			Check: acceptance.ComposeTestCheckFunc(
-				data.CheckWithClientForResource(ImageResource{}.virtualMachineExists, "azurerm_virtual_machine.testsource"),
-				data.CheckWithClientForResource(ImageResource{}.generalizeVirtualMachine(data), "azurerm_virtual_machine.testsource"),
+				data.CheckWithClientForResource(ImageResource{}.virtualMachineExists, "azurerm_linux_virtual_machine.testsource"),
+				data.CheckWithClientForResource(ImageResource{}.generalizeVirtualMachine(), "azurerm_linux_virtual_machine.testsource"),
 			),
 		},
 		{
@@ -51,8 +61,8 @@ func TestAccDataSourceSharedImageVersions_tagsFilterError(t *testing.T) {
 			Config:  SharedImageVersionResource{}.setup(data),
 			Destroy: false,
 			Check: acceptance.ComposeTestCheckFunc(
-				data.CheckWithClientForResource(ImageResource{}.virtualMachineExists, "azurerm_virtual_machine.testsource"),
-				data.CheckWithClientForResource(ImageResource{}.generalizeVirtualMachine(data), "azurerm_virtual_machine.testsource"),
+				data.CheckWithClientForResource(ImageResource{}.virtualMachineExists, "azurerm_linux_virtual_machine.testsource"),
+				data.CheckWithClientForResource(ImageResource{}.generalizeVirtualMachine(), "azurerm_linux_virtual_machine.testsource"),
 			),
 		},
 		{
@@ -71,8 +81,8 @@ func TestAccDataSourceSharedImageVersions_tagsFilter(t *testing.T) {
 			Config:  SharedImageVersionResource{}.setup(data),
 			Destroy: false,
 			Check: acceptance.ComposeTestCheckFunc(
-				data.CheckWithClientForResource(ImageResource{}.virtualMachineExists, "azurerm_virtual_machine.testsource"),
-				data.CheckWithClientForResource(ImageResource{}.generalizeVirtualMachine(data), "azurerm_virtual_machine.testsource"),
+				data.CheckWithClientForResource(ImageResource{}.virtualMachineExists, "azurerm_linux_virtual_machine.testsource"),
+				data.CheckWithClientForResource(ImageResource{}.generalizeVirtualMachine(), "azurerm_linux_virtual_machine.testsource"),
 			),
 		},
 		{

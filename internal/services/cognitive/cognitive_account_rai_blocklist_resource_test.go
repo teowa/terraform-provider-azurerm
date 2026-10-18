@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/cognitive/2025-06-01/raiblocklists"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/cognitive/2026-03-01/raiblocklists"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
@@ -18,15 +18,27 @@ import (
 
 type CognitiveRaiBlocklistTestResource struct{}
 
-func TestAccCognitiveRaiBlocklistSequential(t *testing.T) {
+func TestAccCognitiveRaiBlocklist_sequential(t *testing.T) {
 	acceptance.RunTestsInSequence(t, map[string]map[string]func(t *testing.T){
 		"raiBlocklist": {
 			"basic":          TestAccCognitiveRaiBlocklist_basic,
 			"requiresImport": TestAccCognitiveRaiBlocklist_requiresImport,
 			"complete":       TestAccCognitiveRaiBlocklist_complete,
 			"update":         TestAccCognitiveRaiBlocklist_update,
+			"regression":     TestAccCognitiveRaiBlocklist_regressionTest,
 		},
 	})
+}
+
+func TestAccCognitiveRaiBlocklist_regressionTest(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_cognitive_account_rai_blocklist", "test")
+	r := CognitiveRaiBlocklistTestResource{}
+
+	data.ResourceSequentialRegressionTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.complete(data),
+		},
+	}, "")
 }
 
 func TestAccCognitiveRaiBlocklist_basic(t *testing.T) {

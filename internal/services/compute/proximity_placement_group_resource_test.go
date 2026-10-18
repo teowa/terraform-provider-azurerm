@@ -18,6 +18,16 @@ import (
 
 type ProximityPlacementGroupResource struct{}
 
+func TestAccProximityPlacementGroup_regressionTest(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_proximity_placement_group", "test")
+	r := ProximityPlacementGroupResource{}
+	data.ResourceRegressionTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.basic(data),
+		},
+	}, "")
+}
+
 func TestAccProximityPlacementGroup_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_proximity_placement_group", "test")
 	r := ProximityPlacementGroupResource{}
@@ -77,13 +87,6 @@ func TestAccProximityPlacementGroup_allowedVmSizes(t *testing.T) {
 		data.ImportStep(),
 		{
 			Config: r.basicWithAllowedVmSizesUpdated(data),
-			Check: acceptance.ComposeTestCheckFunc(
-				check.That(data.ResourceName).ExistsInAzure(r),
-			),
-		},
-		data.ImportStep(),
-		{
-			Config: r.basic(data),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 			),

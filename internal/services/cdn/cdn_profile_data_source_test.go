@@ -9,11 +9,29 @@ import (
 
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/acceptance/check"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/services/cdn"
 )
 
 type CdnProfileDataSource struct{}
 
+func TestAccCdnProfileDataSource_regressionTest(t *testing.T) {
+	if cdn.IsCdnDeprecatedForCreation() {
+		t.Skip(cdn.CreateDeprecationMessage)
+	}
+	data := acceptance.BuildTestData(t, "data.azurerm_cdn_profile", "test")
+	r := CdnProfileDataSource{}
+	data.DataSourceRegressionTest(t, []acceptance.TestStep{
+		{
+			Config: r.basic(data),
+		},
+	}, "")
+}
+
 func TestAccCdnProfileDataSource_basic(t *testing.T) {
+	if cdn.IsCdnDeprecatedForCreation() {
+		t.Skip(cdn.CreateDeprecationMessage)
+	}
+
 	data := acceptance.BuildTestData(t, "data.azurerm_cdn_profile", "test")
 	d := CdnProfileDataSource{}
 
@@ -28,6 +46,10 @@ func TestAccCdnProfileDataSource_basic(t *testing.T) {
 }
 
 func TestAccCdnProfileDataSource_withTags(t *testing.T) {
+	if cdn.IsCdnDeprecatedForCreation() {
+		t.Skip(cdn.CreateDeprecationMessage)
+	}
+
 	data := acceptance.BuildTestData(t, "data.azurerm_cdn_profile", "test")
 	d := CdnProfileDataSource{}
 

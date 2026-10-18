@@ -18,6 +18,16 @@ import (
 
 type AutomationAccountResource struct{}
 
+func TestAccAutomationAccount_regressionTest(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_automation_account", "test")
+	r := AutomationAccountResource{}
+	data.ResourceRegressionTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.complete(data),
+		},
+	}, "")
+}
+
 func TestAccAutomationAccount_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_automation_account", "test")
 	r := AutomationAccountResource{}
@@ -354,7 +364,7 @@ resource "azurerm_key_vault" "test" {
   sku_name                   = "standard"
   soft_delete_retention_days = 7
   purge_protection_enabled   = true
-  enable_rbac_authorization  = true
+  rbac_authorization_enabled = true
 }
 
 resource "azurerm_role_assignment" "current" {

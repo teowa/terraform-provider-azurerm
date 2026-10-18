@@ -26,6 +26,20 @@ import (
 
 type RoleAssignmentMarketplaceResource struct{}
 
+func TestAccRoleAssignmentMarketplace_regressionTest(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_marketplace_role_assignment", "test")
+	r := RoleAssignmentMarketplaceResource{}
+	roleName := "Reader"
+
+	data.ResourceSequentialRegressionTest(t, r, []acceptance.TestStep{
+		{
+			// Last error may cause the role already assigned. Need to delete it before a new test.
+			PreConfig: r.deleteAssignedRole(t, roleName),
+			Config:    r.emptyNameConfig(roleName),
+		},
+	}, "")
+}
+
 func TestAccRoleAssignmentMarketplace_emptyName(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_marketplace_role_assignment", "test")
 	r := RoleAssignmentMarketplaceResource{}
@@ -72,7 +86,7 @@ func TestAccRoleAssignmentMarketplace_requiresImport(t *testing.T) {
 	id := uuid.New().String()
 
 	r := RoleAssignmentMarketplaceResource{}
-	roleName := "Managed Applications Reader"
+	roleName := "ContainerApp Reader"
 
 	data.ResourceSequentialTest(t, r, []acceptance.TestStep{
 		{
@@ -310,7 +324,7 @@ provider "azurerm" {
 resource "azurerm_marketplace_role_assignment" "test" {
   name                 = "%s"
   role_definition_name = "%s"
-  principal_id         = azuread_service_principal.test.id
+  principal_id         = azuread_service_principal.test.object_id
 
   lifecycle {
     ignore_changes = [
@@ -340,7 +354,7 @@ provider "azurerm" {
 resource "azurerm_marketplace_role_assignment" "test" {
   name                             = "%s"
   role_definition_name             = "%s"
-  principal_id                     = azuread_service_principal.test.id
+  principal_id                     = azuread_service_principal.test.object_id
   skip_service_principal_aad_check = true
 
   lifecycle {

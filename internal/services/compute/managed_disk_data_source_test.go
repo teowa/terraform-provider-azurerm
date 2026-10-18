@@ -13,6 +13,16 @@ import (
 
 type ManagedDiskDataSource struct{}
 
+func TestAccDataSourceManagedDisk_regressionTest(t *testing.T) {
+	data := acceptance.BuildTestData(t, "data.azurerm_managed_disk", "test")
+	r := ManagedDiskDataSource{}
+	data.DataSourceRegressionTest(t, []acceptance.TestStep{
+		{
+			Config: r.diskAccess(data),
+		},
+	}, "")
+}
+
 func TestAccDataSourceManagedDisk_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "data.azurerm_managed_disk", "test")
 	r := ManagedDiskDataSource{}
@@ -214,11 +224,12 @@ resource "azurerm_resource_group" "test" {
 }
 
 resource "azurerm_key_vault" "test" {
-  name                = "acctestkv-%s"
-  location            = "${azurerm_resource_group.test.location}"
-  resource_group_name = "${azurerm_resource_group.test.name}"
-  tenant_id           = "${data.azurerm_client_config.current.tenant_id}"
-  sku_name            = "standard"
+  name                       = "acctestkv-%s"
+  location                   = "${azurerm_resource_group.test.location}"
+  resource_group_name        = "${azurerm_resource_group.test.name}"
+  rbac_authorization_enabled = false
+  tenant_id                  = "${data.azurerm_client_config.current.tenant_id}"
+  sku_name                   = "standard"
 
   access_policy {
     tenant_id = "${data.azurerm_client_config.current.tenant_id}"

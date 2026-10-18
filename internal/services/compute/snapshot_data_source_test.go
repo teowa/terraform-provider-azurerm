@@ -13,6 +13,16 @@ import (
 
 type SnapshotDataSource struct{}
 
+func TestAccDataSourceSnapshot_regressionTest(t *testing.T) {
+	data := acceptance.BuildTestData(t, "data.azurerm_snapshot", "test")
+	r := SnapshotDataSource{}
+	data.DataSourceRegressionTest(t, []acceptance.TestStep{
+		{
+			Config: r.basic(data),
+		},
+	}, "")
+}
+
 func TestAccDataSourceSnapshot_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "data.azurerm_snapshot", "snapshot")
 	r := SnapshotDataSource{}
@@ -115,10 +125,11 @@ resource "azurerm_managed_disk" "test" {
 }
 
 resource "azurerm_key_vault" "test" {
-  name                = "acctestkv%s"
-  location            = azurerm_resource_group.test.location
-  resource_group_name = azurerm_resource_group.test.name
-  tenant_id           = data.azurerm_client_config.current.tenant_id
+  name                       = "acctestkv%s"
+  location                   = azurerm_resource_group.test.location
+  resource_group_name        = azurerm_resource_group.test.name
+  rbac_authorization_enabled = false
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
 
   sku_name = "standard"
 
