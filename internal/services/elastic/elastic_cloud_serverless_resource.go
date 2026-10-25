@@ -286,7 +286,7 @@ func (r ElasticCloudServerlessResource) Delete() sdk.ResourceFunc {
 				}
 				return fmt.Errorf("retrieving %s: %+v", id, err)
 			}
-			if err := validateElasticCloudServerlessMonitor(id, existing.Model); err != nil {
+			if err := validate.ElasticCloudServerlessMonitor(id, existing.Model); err != nil {
 				return err
 			}
 
@@ -316,7 +316,7 @@ func (r ElasticCloudServerlessResource) CustomImporter() sdk.ResourceRunFunc {
 			return fmt.Errorf("retrieving %s: %+v", id, err)
 		}
 
-		return validateElasticCloudServerlessMonitor(id, resp.Model)
+		return validate.ElasticCloudServerlessMonitor(id, resp.Model)
 	}
 }
 
@@ -333,7 +333,7 @@ func (r ElasticCloudServerlessResource) ResourceType() string {
 }
 
 func (r ElasticCloudServerlessResource) flatten(metadata sdk.ResourceMetaData, id *elasticmonitorresources.MonitorId, model *elasticmonitorresources.ElasticMonitorResource) error {
-	if err := validateElasticCloudServerlessMonitor(id, model); err != nil {
+	if err := validate.ElasticCloudServerlessMonitor(id, model); err != nil {
 		return err
 	}
 
@@ -386,46 +386,4 @@ func (r ElasticCloudServerlessResource) flatten(metadata sdk.ResourceMetaData, i
 	}
 
 	return metadata.Encode(&state)
-}
-
-func validateElasticCloudServerlessMonitor(id *elasticmonitorresources.MonitorId, model *elasticmonitorresources.ElasticMonitorResource) error {
-	if model == nil {
-		return fmt.Errorf("retrieving %s: model was nil", id)
-	}
-	if model.Properties == nil {
-		return fmt.Errorf("retrieving %s: `properties` was nil", id)
-	}
-	if model.Properties.HostingType == nil {
-		return fmt.Errorf("retrieving %s: `properties.hostingType` was nil", id)
-	}
-	if *model.Properties.HostingType != elasticmonitorresources.HostingTypeServerless {
-		if *model.Properties.HostingType == elasticmonitorresources.HostingTypeHosted {
-			return fmt.Errorf("expected %s to use `Serverless` hosting, got `Hosted`; use the `azurerm_elastic_cloud_elasticsearch` resource instead", id)
-		}
-		return fmt.Errorf("expected %s to use `Serverless` hosting, got `%s`", id, *model.Properties.HostingType)
-	}
-
-	return nil
-}
-
-func validateElasticCloudHostedMonitor(id *elasticmonitorresources.MonitorId, model *elasticmonitorresources.ElasticMonitorResource) error {
-	if model == nil {
-		return fmt.Errorf("retrieving %s: model was nil", id)
-	}
-	if model.Properties == nil {
-		return fmt.Errorf("retrieving %s: `properties` was nil", id)
-	}
-
-	// Hosted monitors created before hostingType was introduced can omit this field.
-	if model.Properties.HostingType == nil {
-		return nil
-	}
-	if *model.Properties.HostingType != elasticmonitorresources.HostingTypeHosted {
-		if *model.Properties.HostingType == elasticmonitorresources.HostingTypeServerless {
-			return fmt.Errorf("expected %s to use `Hosted` hosting, got `Serverless`; use the `azurerm_elastic_cloud_serverless` resource instead", id)
-		}
-		return fmt.Errorf("expected %s to use `Hosted` hosting, got `%s`", id, *model.Properties.HostingType)
-	}
-
-	return nil
 }
