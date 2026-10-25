@@ -1,4 +1,4 @@
-// Copyright IBM Corp. 2014, 2025
+// Copyright IBM Corp. 2014, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package validate
@@ -27,6 +27,16 @@ func TestFlexibleServerSkuName(t *testing.T) {
 		{
 			name:  "GP_Standard_D16ds_v4",
 			input: "GP_Standard_D16ds_v4",
+			valid: true,
+		},
+		{
+			name:  "GP_Standard_D4ds_v5",
+			input: "GP_Standard_D4ds_v5",
+			valid: true,
+		},
+		{
+			name:  "GP_Standard_D4ds_v6",
+			input: "GP_Standard_D4ds_v6",
 			valid: true,
 		},
 		{
@@ -112,6 +122,11 @@ func TestFlexibleServerSkuName(t *testing.T) {
 		{
 			name:  "MO_Standard_E96ds_v5",
 			input: "MO_Standard_E96ds_v5",
+			valid: true,
+		},
+		{
+			name:  "MO_Standard_E96ds_v6",
+			input: "MO_Standard_E96ds_v6",
 			valid: true,
 		},
 		{
