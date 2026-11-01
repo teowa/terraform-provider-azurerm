@@ -1,4 +1,4 @@
-// Copyright IBM Corp. 2014, 2025
+// Copyright IBM Corp. 2014, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package helpers
@@ -401,9 +401,9 @@ func ExpandContainerAppJobTemplate(input []JobTemplateModel) *jobs.JobTemplate {
 	}
 	v := input[0]
 	return &jobs.JobTemplate{
-		Containers:     expandContainerAppJobContainers(v.Containers),
-		InitContainers: expandInitContainerAppJobContainers(v.InitContainers),
-		Volumes:        expandContainerAppJobVolumes(v.Volumes),
+		Containers:     ExpandContainerAppJobContainers(v.Containers),
+		InitContainers: ExpandInitContainerAppJobContainers(v.InitContainers),
+		Volumes:        ExpandContainerAppJobVolumes(v.Volumes),
 	}
 }
 
@@ -413,15 +413,15 @@ func FlattenContainerAppJobTemplate(input *jobs.JobTemplate) []JobTemplateModel 
 	}
 
 	template := JobTemplateModel{
-		Containers:     flattenContainerAppJobContainers(input.Containers),
-		InitContainers: flattenInitContainerAppJobContainers(input.InitContainers),
-		Volumes:        flattenContainerAppJobVolumes(input.Volumes),
+		Containers:     FlattenContainerAppJobContainers(input.Containers),
+		InitContainers: FlattenInitContainerAppJobContainers(input.InitContainers),
+		Volumes:        FlattenContainerAppJobVolumes(input.Volumes),
 	}
 
 	return []JobTemplateModel{template}
 }
 
-func expandContainerAppJobContainers(input []Container) *[]jobs.Container {
+func ExpandContainerAppJobContainers(input []Container) *[]jobs.Container {
 	if input == nil {
 		return nil
 	}
@@ -430,16 +430,16 @@ func expandContainerAppJobContainers(input []Container) *[]jobs.Container {
 
 	for _, v := range input {
 		container := jobs.Container{
-			Env:    expandContainerJobEnvVar(v),
+			Env:    ExpandContainerJobEnvVar(v),
 			Image:  pointer.To(v.Image),
 			Name:   pointer.To(v.Name),
-			Probes: expandJobContainerProbes(v),
+			Probes: ExpandJobContainerProbes(v),
 			Resources: &jobs.ContainerResources{
 				Cpu:              pointer.To(v.CPU),
 				EphemeralStorage: pointer.To(v.EphemeralStorage),
 				Memory:           pointer.To(v.Memory),
 			},
-			VolumeMounts: expandContainerJobVolumeMounts(v.VolumeMounts),
+			VolumeMounts: ExpandContainerJobVolumeMounts(v.VolumeMounts),
 		}
 		if len(v.Args) != 0 {
 			container.Args = pointer.To(v.Args)
@@ -454,7 +454,7 @@ func expandContainerAppJobContainers(input []Container) *[]jobs.Container {
 	return &result
 }
 
-func expandInitContainerAppJobContainers(input []BaseContainer) *[]jobs.BaseContainer {
+func ExpandInitContainerAppJobContainers(input []BaseContainer) *[]jobs.BaseContainer {
 	if input == nil {
 		return nil
 	}
@@ -463,7 +463,7 @@ func expandInitContainerAppJobContainers(input []BaseContainer) *[]jobs.BaseCont
 
 	for _, v := range input {
 		container := jobs.BaseContainer{
-			Env:   expandInitContainerJobEnvVar(v),
+			Env:   ExpandInitContainerJobEnvVar(v),
 			Image: pointer.To(v.Image),
 			Name:  pointer.To(v.Name),
 			Resources: &jobs.ContainerResources{
@@ -471,7 +471,7 @@ func expandInitContainerAppJobContainers(input []BaseContainer) *[]jobs.BaseCont
 				EphemeralStorage: pointer.To(v.EphemeralStorage),
 				Memory:           pointer.To(v.Memory),
 			},
-			VolumeMounts: expandContainerJobVolumeMounts(v.VolumeMounts),
+			VolumeMounts: ExpandContainerJobVolumeMounts(v.VolumeMounts),
 		}
 		if len(v.Args) != 0 {
 			container.Args = pointer.To(v.Args)
@@ -486,7 +486,7 @@ func expandInitContainerAppJobContainers(input []BaseContainer) *[]jobs.BaseCont
 	return pointer.To(result)
 }
 
-func flattenContainerAppJobContainers(input *[]jobs.Container) []Container {
+func FlattenContainerAppJobContainers(input *[]jobs.Container) []Container {
 	if input == nil || len(*input) == 0 {
 		return []Container{}
 	}
@@ -497,18 +497,18 @@ func flattenContainerAppJobContainers(input *[]jobs.Container) []Container {
 			Image:        pointer.From(v.Image),
 			Args:         pointer.From(v.Args),
 			Command:      pointer.From(v.Command),
-			Env:          flattenContainerJobEnvVar(v.Env),
-			VolumeMounts: flattenContainerJobVolumeMounts(v.VolumeMounts),
+			Env:          FlattenContainerJobEnvVar(v.Env),
+			VolumeMounts: FlattenContainerJobVolumeMounts(v.VolumeMounts),
 		}
 		if v.Probes != nil {
 			for _, p := range *v.Probes {
 				switch *p.Type {
 				case jobs.TypeLiveness:
-					container.LivenessProbe = flattenContainerAppJobLivenessProbe(p)
+					container.LivenessProbe = FlattenContainerAppJobLivenessProbe(p)
 				case jobs.TypeReadiness:
-					container.ReadinessProbe = flattenContainerAppJobReadinessProbe(p)
+					container.ReadinessProbe = FlattenContainerAppJobReadinessProbe(p)
 				case jobs.TypeStartup:
-					container.StartupProbe = flattenContainerAppJobStartupProbe(p)
+					container.StartupProbe = FlattenContainerAppJobStartupProbe(p)
 				}
 			}
 		}
@@ -524,7 +524,7 @@ func flattenContainerAppJobContainers(input *[]jobs.Container) []Container {
 	return result
 }
 
-func flattenInitContainerAppJobContainers(input *[]jobs.BaseContainer) []BaseContainer {
+func FlattenInitContainerAppJobContainers(input *[]jobs.BaseContainer) []BaseContainer {
 	if input == nil || len(*input) == 0 {
 		return []BaseContainer{}
 	}
@@ -535,8 +535,8 @@ func flattenInitContainerAppJobContainers(input *[]jobs.BaseContainer) []BaseCon
 			Image:        pointer.From(v.Image),
 			Args:         pointer.From(v.Args),
 			Command:      pointer.From(v.Command),
-			Env:          flattenContainerJobEnvVar(v.Env),
-			VolumeMounts: flattenContainerJobVolumeMounts(v.VolumeMounts),
+			Env:          FlattenContainerJobEnvVar(v.Env),
+			VolumeMounts: FlattenContainerJobVolumeMounts(v.VolumeMounts),
 		}
 
 		if resources := v.Resources; resources != nil {
@@ -550,7 +550,7 @@ func flattenInitContainerAppJobContainers(input *[]jobs.BaseContainer) []BaseCon
 	return result
 }
 
-func expandContainerJobEnvVar(input Container) *[]jobs.EnvironmentVar {
+func ExpandContainerJobEnvVar(input Container) *[]jobs.EnvironmentVar {
 	envs := make([]jobs.EnvironmentVar, 0)
 	if len(input.Env) == 0 {
 		return &envs
@@ -572,7 +572,7 @@ func expandContainerJobEnvVar(input Container) *[]jobs.EnvironmentVar {
 	return &envs
 }
 
-func expandInitContainerJobEnvVar(input BaseContainer) *[]jobs.EnvironmentVar {
+func ExpandInitContainerJobEnvVar(input BaseContainer) *[]jobs.EnvironmentVar {
 	envs := make([]jobs.EnvironmentVar, 0)
 	if len(input.Env) == 0 {
 		return &envs
@@ -594,7 +594,7 @@ func expandInitContainerJobEnvVar(input BaseContainer) *[]jobs.EnvironmentVar {
 	return &envs
 }
 
-func expandContainerAppJobVolumes(input []ContainerVolume) *[]jobs.Volume {
+func ExpandContainerAppJobVolumes(input []ContainerVolume) *[]jobs.Volume {
 	if input == nil {
 		return nil
 	}
@@ -620,25 +620,25 @@ func expandContainerAppJobVolumes(input []ContainerVolume) *[]jobs.Volume {
 	return &volumes
 }
 
-func expandJobContainerProbes(input Container) *[]jobs.ContainerAppProbe {
+func ExpandJobContainerProbes(input Container) *[]jobs.ContainerAppProbe {
 	probes := make([]jobs.ContainerAppProbe, 0)
 
 	if len(input.LivenessProbe) == 1 {
-		probes = append(probes, expandContainerAppJobLivenessProbe(input.LivenessProbe[0]))
+		probes = append(probes, ExpandContainerAppJobLivenessProbe(input.LivenessProbe[0]))
 	}
 
 	if len(input.ReadinessProbe) == 1 {
-		probes = append(probes, expandContainerAppJobReadinessProbe(input.ReadinessProbe[0]))
+		probes = append(probes, ExpandContainerAppJobReadinessProbe(input.ReadinessProbe[0]))
 	}
 
 	if len(input.StartupProbe) == 1 {
-		probes = append(probes, expandContainerAppJobStartupProbe(input.StartupProbe[0]))
+		probes = append(probes, ExpandContainerAppJobStartupProbe(input.StartupProbe[0]))
 	}
 
 	return &probes
 }
 
-func expandContainerJobVolumeMounts(input []ContainerVolumeMount) *[]jobs.VolumeMount {
+func ExpandContainerJobVolumeMounts(input []ContainerVolumeMount) *[]jobs.VolumeMount {
 	if input == nil {
 		return nil
 	}
@@ -654,7 +654,7 @@ func expandContainerJobVolumeMounts(input []ContainerVolumeMount) *[]jobs.Volume
 	return &volumeMounts
 }
 
-func expandContainerAppJobLivenessProbe(input ContainerAppLivenessProbe) jobs.ContainerAppProbe {
+func ExpandContainerAppJobLivenessProbe(input ContainerAppLivenessProbe) jobs.ContainerAppProbe {
 	result := jobs.ContainerAppProbe{
 		Type:                pointer.To(jobs.TypeLiveness),
 		InitialDelaySeconds: pointer.To(input.InitialDelay),
@@ -693,7 +693,7 @@ func expandContainerAppJobLivenessProbe(input ContainerAppLivenessProbe) jobs.Co
 	return result
 }
 
-func expandContainerAppJobReadinessProbe(input ContainerAppReadinessProbe) jobs.ContainerAppProbe {
+func ExpandContainerAppJobReadinessProbe(input ContainerAppReadinessProbe) jobs.ContainerAppProbe {
 	result := jobs.ContainerAppProbe{
 		Type:                pointer.To(jobs.TypeReadiness),
 		InitialDelaySeconds: pointer.To(input.InitialDelay),
@@ -733,7 +733,7 @@ func expandContainerAppJobReadinessProbe(input ContainerAppReadinessProbe) jobs.
 	return result
 }
 
-func expandContainerAppJobStartupProbe(input ContainerAppStartupProbe) jobs.ContainerAppProbe {
+func ExpandContainerAppJobStartupProbe(input ContainerAppStartupProbe) jobs.ContainerAppProbe {
 	result := jobs.ContainerAppProbe{
 		Type:                pointer.To(jobs.TypeStartup),
 		InitialDelaySeconds: pointer.To(input.InitialDelay),
@@ -783,7 +783,7 @@ func UnpackContainerJobSecretsCollection(input *jobs.JobSecretsCollection) *[]jo
 	return &result
 }
 
-func flattenContainerJobEnvVar(input *[]jobs.EnvironmentVar) []ContainerEnvVar {
+func FlattenContainerJobEnvVar(input *[]jobs.EnvironmentVar) []ContainerEnvVar {
 	if input == nil || len(*input) == 0 {
 		return []ContainerEnvVar{}
 	}
@@ -801,7 +801,7 @@ func flattenContainerJobEnvVar(input *[]jobs.EnvironmentVar) []ContainerEnvVar {
 	return result
 }
 
-func flattenContainerJobVolumeMounts(input *[]jobs.VolumeMount) []ContainerVolumeMount {
+func FlattenContainerJobVolumeMounts(input *[]jobs.VolumeMount) []ContainerVolumeMount {
 	if input == nil || len(*input) == 0 {
 		return []ContainerVolumeMount{}
 	}
@@ -818,7 +818,7 @@ func flattenContainerJobVolumeMounts(input *[]jobs.VolumeMount) []ContainerVolum
 	return result
 }
 
-func flattenContainerAppJobLivenessProbe(input jobs.ContainerAppProbe) []ContainerAppLivenessProbe {
+func FlattenContainerAppJobLivenessProbe(input jobs.ContainerAppProbe) []ContainerAppLivenessProbe {
 	result := make([]ContainerAppLivenessProbe, 0)
 	probe := ContainerAppLivenessProbe{
 		InitialDelay:     pointer.From(input.InitialDelaySeconds),
@@ -857,7 +857,7 @@ func flattenContainerAppJobLivenessProbe(input jobs.ContainerAppProbe) []Contain
 	return result
 }
 
-func flattenContainerAppJobReadinessProbe(input jobs.ContainerAppProbe) []ContainerAppReadinessProbe {
+func FlattenContainerAppJobReadinessProbe(input jobs.ContainerAppProbe) []ContainerAppReadinessProbe {
 	result := make([]ContainerAppReadinessProbe, 0)
 	probe := ContainerAppReadinessProbe{
 		InitialDelay:     pointer.From(input.InitialDelaySeconds),
@@ -898,7 +898,7 @@ func flattenContainerAppJobReadinessProbe(input jobs.ContainerAppProbe) []Contai
 	return result
 }
 
-func flattenContainerAppJobStartupProbe(input jobs.ContainerAppProbe) []ContainerAppStartupProbe {
+func FlattenContainerAppJobStartupProbe(input jobs.ContainerAppProbe) []ContainerAppStartupProbe {
 	result := make([]ContainerAppStartupProbe, 0)
 	probe := ContainerAppStartupProbe{
 		InitialDelay:     pointer.From(input.InitialDelaySeconds),
@@ -938,7 +938,7 @@ func flattenContainerAppJobStartupProbe(input jobs.ContainerAppProbe) []Containe
 	return result
 }
 
-func flattenContainerAppJobVolumes(input *[]jobs.Volume) []ContainerVolume {
+func FlattenContainerAppJobVolumes(input *[]jobs.Volume) []ContainerVolume {
 	if input == nil || len(*input) == 0 {
 		return []ContainerVolume{}
 	}
@@ -994,7 +994,7 @@ func FlattenContainerAppJobConfigurationEventTriggerConfig(input *jobs.JobConfig
 	}
 
 	if input.Scale != nil {
-		eventTriggerConfig.Scale = flattenContainerAppJobScale(input.Scale)
+		eventTriggerConfig.Scale = FlattenContainerAppJobScale(input.Scale)
 	}
 
 	result = append(result, eventTriggerConfig)
@@ -1040,7 +1040,7 @@ func FlattenContainerAppJobConfigurationScheduleTriggerConfig(input *jobs.JobCon
 	return result
 }
 
-func flattenContainerAppJobScale(input *jobs.JobScale) []ScaleModel {
+func FlattenContainerAppJobScale(input *jobs.JobScale) []ScaleModel {
 	if input == nil {
 		return []ScaleModel{}
 	}
@@ -1054,7 +1054,7 @@ func flattenContainerAppJobScale(input *jobs.JobScale) []ScaleModel {
 	}
 
 	if input.Rules != nil {
-		scale.Rules = flattenContainerAppJobScaleRules(input.Rules)
+		scale.Rules = FlattenContainerAppJobScaleRules(input.Rules)
 	}
 
 	result = append(result, scale)
@@ -1062,7 +1062,7 @@ func flattenContainerAppJobScale(input *jobs.JobScale) []ScaleModel {
 	return result
 }
 
-func flattenContainerAppJobScaleRules(input *[]jobs.JobScaleRule) []ScaleRule {
+func FlattenContainerAppJobScaleRules(input *[]jobs.JobScaleRule) []ScaleRule {
 	if input == nil || len(*input) == 0 {
 		return []ScaleRule{}
 	}
@@ -1084,7 +1084,7 @@ func flattenContainerAppJobScaleRules(input *[]jobs.JobScaleRule) []ScaleRule {
 		}
 
 		if v.Auth != nil {
-			rule.Auth = flattenContainerAppJobScaleRulesAuth(v.Auth)
+			rule.Auth = FlattenContainerAppJobScaleRulesAuth(v.Auth)
 		}
 
 		result = append(result, rule)
@@ -1093,7 +1093,7 @@ func flattenContainerAppJobScaleRules(input *[]jobs.JobScaleRule) []ScaleRule {
 	return result
 }
 
-func flattenContainerAppJobScaleRulesAuth(input *[]jobs.ScaleRuleAuth) []ScaleRuleAuth {
+func FlattenContainerAppJobScaleRulesAuth(input *[]jobs.ScaleRuleAuth) []ScaleRuleAuth {
 	if input == nil || len(*input) == 0 {
 		return []ScaleRuleAuth{}
 	}
