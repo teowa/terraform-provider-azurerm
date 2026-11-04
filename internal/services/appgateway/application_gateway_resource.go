@@ -22,8 +22,8 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/zones"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/applicationgateways"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/webapplicationfirewallpolicies"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2026-03-01/applicationgateways"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/clients"
@@ -789,9 +789,12 @@ func resourceApplicationGateway() *pluginsdk.Resource {
 						},
 
 						"rule_type": {
-							Type:         pluginsdk.TypeString,
-							Required:     true,
-							ValidateFunc: validation.StringInSlice(applicationgateways.PossibleValuesForApplicationGatewayRequestRoutingRuleType(), false),
+							Type:     pluginsdk.TypeString,
+							Required: true,
+							ValidateFunc: validation.StringInSlice([]string{
+								string(applicationgateways.ApplicationGatewayRequestRoutingRuleTypeBasic),
+								string(applicationgateways.ApplicationGatewayRequestRoutingRuleTypePathBasedRouting),
+							}, false),
 						},
 
 						"http_listener_name": {
@@ -1009,15 +1012,30 @@ func resourceApplicationGateway() *pluginsdk.Resource {
 				Elem: &pluginsdk.Resource{
 					Schema: map[string]*pluginsdk.Schema{
 						"name": {
-							Type:         pluginsdk.TypeString,
-							Required:     true,
-							ValidateFunc: validation.StringInSlice(applicationgateways.PossibleValuesForApplicationGatewaySkuName(), false),
+							Type:     pluginsdk.TypeString,
+							Required: true,
+							ValidateFunc: validation.StringInSlice([]string{
+								string(applicationgateways.ApplicationGatewaySkuNameBasic),
+								string(applicationgateways.ApplicationGatewaySkuNameStandardLarge),
+								string(applicationgateways.ApplicationGatewaySkuNameStandardMedium),
+								string(applicationgateways.ApplicationGatewaySkuNameStandardSmall),
+								string(applicationgateways.ApplicationGatewaySkuNameStandardVTwo),
+								string(applicationgateways.ApplicationGatewaySkuNameWAFLarge),
+								string(applicationgateways.ApplicationGatewaySkuNameWAFMedium),
+								string(applicationgateways.ApplicationGatewaySkuNameWAFVTwo),
+							}, false),
 						},
 
 						"tier": {
-							Type:         pluginsdk.TypeString,
-							Required:     true,
-							ValidateFunc: validation.StringInSlice(applicationgateways.PossibleValuesForApplicationGatewayTier(), false),
+							Type:     pluginsdk.TypeString,
+							Required: true,
+							ValidateFunc: validation.StringInSlice([]string{
+								string(applicationgateways.ApplicationGatewayTierBasic),
+								string(applicationgateways.ApplicationGatewayTierStandard),
+								string(applicationgateways.ApplicationGatewayTierStandardVTwo),
+								string(applicationgateways.ApplicationGatewayTierWAF),
+								string(applicationgateways.ApplicationGatewayTierWAFVTwo),
+							}, false),
 						},
 
 						"capacity": {
