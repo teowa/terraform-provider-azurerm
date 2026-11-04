@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/networksecurityperimeterassociations"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/networksecurityperimeterprofiles"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/networksecurityperimeters"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2026-03-01/ipampools"
 	"github.com/hashicorp/go-azure-sdk/sdk/client/resourcemanager"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/common"
 )
@@ -18,6 +19,7 @@ import (
 type Client struct {
 	*network_2025_07_01.Client
 
+	IPamPools                                  *ipampools.IPamPoolsClient
 	NetworkSecurityPerimeterAccessRulesClient  *networksecurityperimeteraccessrules.NetworkSecurityPerimeterAccessRulesClient
 	NetworkSecurityPerimeterAssociationsClient *networksecurityperimeterassociations.NetworkSecurityPerimeterAssociationsClient
 	NetworkSecurityPerimeterProfilesClient     *networksecurityperimeterprofiles.NetworkSecurityPerimeterProfilesClient
@@ -25,6 +27,12 @@ type Client struct {
 }
 
 func NewClient(o *common.ClientOptions) (*Client, error) {
+	IPamPools, err := ipampools.NewIPamPoolsClientWithBaseURI(o.Environment.ResourceManager)
+	if err != nil {
+		return nil, fmt.Errorf("building IPAM Pools Client: %+v", err)
+	}
+	o.Configure(IPamPools.Client, o.Authorizers.ResourceManager)
+
 	NetworkSecurityPerimeterAssociationsClient, err := networksecurityperimeterassociations.NewNetworkSecurityPerimeterAssociationsClientWithBaseURI(o.Environment.ResourceManager)
 	if err != nil {
 		return nil, fmt.Errorf("building Network Security Perimeter Resource Association Client: %+v", err)
@@ -57,6 +65,7 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 	}
 
 	return &Client{
+		IPamPools: IPamPools,
 		NetworkSecurityPerimeterAccessRulesClient:  NetworkSecurityPerimeterAccessRulesClient,
 		NetworkSecurityPerimeterAssociationsClient: NetworkSecurityPerimeterAssociationsClient,
 		NetworkSecurityPerimeterProfilesClient:     NetworkSecurityPerimeterProfilesClient,
