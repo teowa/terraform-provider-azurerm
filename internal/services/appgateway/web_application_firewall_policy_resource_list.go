@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/webapplicationfirewallpolicies"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2026-03-01/webapplicationfirewallpolicies"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
@@ -30,7 +30,7 @@ func (r WebApplicationFirewallPolicyListResource) Metadata(_ context.Context, _ 
 }
 
 func (r WebApplicationFirewallPolicyListResource) List(ctx context.Context, request list.ListRequest, stream *list.ListResultsStream, metadata sdk.ResourceMetadata) {
-	client := metadata.Client.AppGateway.WebApplicationFirewallPolicies
+	client := metadata.Client.AppGateway.WebApplicationFirewallPoliciesClient
 	var data sdk.DefaultListModel
 	diags := request.Config.Get(ctx, &data)
 	if diags.HasError() {

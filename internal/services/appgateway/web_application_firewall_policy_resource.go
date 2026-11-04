@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/location"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2025-07-01/webapplicationfirewallpolicies"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/network/2026-03-01/webapplicationfirewallpolicies"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/azure"
 	"github.com/hashicorp/terraform-provider-azurerm/helpers/tf"
@@ -445,7 +445,7 @@ func resourceWebApplicationFirewallPolicy() *pluginsdk.Resource {
 }
 
 func resourceWebApplicationFirewallPolicyCreate(d *pluginsdk.ResourceData, meta any) error {
-	client := meta.(*clients.Client).AppGateway.WebApplicationFirewallPolicies
+	client := meta.(*clients.Client).AppGateway.WebApplicationFirewallPoliciesClient
 	subscriptionId := meta.(*clients.Client).Account.SubscriptionId
 	ctx, cancel := timeouts.ForCreate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
@@ -493,7 +493,7 @@ func resourceWebApplicationFirewallPolicyCreate(d *pluginsdk.ResourceData, meta 
 }
 
 func resourceWebApplicationFirewallPolicyUpdate(d *pluginsdk.ResourceData, meta any) error {
-	client := meta.(*clients.Client).AppGateway.WebApplicationFirewallPolicies
+	client := meta.(*clients.Client).AppGateway.WebApplicationFirewallPoliciesClient
 	subscriptionId := meta.(*clients.Client).Account.SubscriptionId
 	ctx, cancel := timeouts.ForUpdate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
@@ -538,7 +538,7 @@ func resourceWebApplicationFirewallPolicyUpdate(d *pluginsdk.ResourceData, meta 
 }
 
 func resourceWebApplicationFirewallPolicyRead(d *pluginsdk.ResourceData, meta any) error {
-	client := meta.(*clients.Client).AppGateway.WebApplicationFirewallPolicies
+	client := meta.(*clients.Client).AppGateway.WebApplicationFirewallPoliciesClient
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
@@ -590,7 +590,7 @@ func resourceWebApplicationFirewallPolicySetFlatten(d *pluginsdk.ResourceData, i
 }
 
 func resourceWebApplicationFirewallPolicyDelete(d *pluginsdk.ResourceData, meta any) error {
-	client := meta.(*clients.Client).AppGateway.WebApplicationFirewallPolicies
+	client := meta.(*clients.Client).AppGateway.WebApplicationFirewallPoliciesClient
 	ctx, cancel := timeouts.ForDelete(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
