@@ -18,8 +18,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-azure-helpers v0.82.0
 	github.com/hashicorp/go-azure-sdk/data-plane v0.20261104.1160259
-	github.com/hashicorp/go-azure-sdk/resource-manager v0.20261104.1160259
-	github.com/hashicorp/go-azure-sdk/sdk v0.20261104.1160259
+	github.com/hashicorp/go-azure-sdk/resource-manager v0.20261106.1110204-0.20261106155956-539e761362fd
+	github.com/hashicorp/go-azure-sdk/sdk v0.20261106.1110203
 	github.com/hashicorp/go-cty v1.5.0
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-multierror v1.1.1

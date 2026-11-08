@@ -157,6 +157,6 @@ terraform import azurerm_container_app_environment.example "/subscriptions/00000
 <!-- This section is generated, changes will be overwritten -->
 This resource uses the following Azure API Providers:
 
-* `Microsoft.App` - 2025-07-01
+* `Microsoft.App` - 2026-07-01
 
 * `Microsoft.OperationalInsights` - 2020-08-01

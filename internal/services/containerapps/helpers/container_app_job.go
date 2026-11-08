@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/containerapps/2025-07-01/jobs"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/containerapps/2026-07-01/jobs"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
 )
@@ -562,10 +562,10 @@ func ExpandContainerAppJobLivenessProbe(input ContainerAppLivenessProbe) jobs.Co
 			Scheme: pointer.ToEnum[jobs.Scheme](p),
 		}
 		if input.Headers != nil {
-			headers := make([]jobs.ContainerAppProbeHTTPGetHTTPHeadersInlined, 0)
+			headers := make([]jobs.ContainerAppProbeHTTPGetHTTPHeadersItem, 0)
 
 			for _, h := range input.Headers {
-				headers = append(headers, jobs.ContainerAppProbeHTTPGetHTTPHeadersInlined{
+				headers = append(headers, jobs.ContainerAppProbeHTTPGetHTTPHeadersItem{
 					Name:  h.Name,
 					Value: h.Value,
 				})
@@ -602,10 +602,10 @@ func ExpandContainerAppJobReadinessProbe(input ContainerAppReadinessProbe) jobs.
 			Scheme: pointer.ToEnum[jobs.Scheme](p),
 		}
 		if input.Headers != nil {
-			headers := make([]jobs.ContainerAppProbeHTTPGetHTTPHeadersInlined, 0)
+			headers := make([]jobs.ContainerAppProbeHTTPGetHTTPHeadersItem, 0)
 
 			for _, h := range input.Headers {
-				headers = append(headers, jobs.ContainerAppProbeHTTPGetHTTPHeadersInlined{
+				headers = append(headers, jobs.ContainerAppProbeHTTPGetHTTPHeadersItem{
 					Name:  h.Name,
 					Value: h.Value,
 				})
@@ -641,10 +641,10 @@ func ExpandContainerAppJobStartupProbe(input ContainerAppStartupProbe) jobs.Cont
 			Scheme: pointer.ToEnum[jobs.Scheme](p),
 		}
 		if input.Headers != nil {
-			headers := make([]jobs.ContainerAppProbeHTTPGetHTTPHeadersInlined, 0)
+			headers := make([]jobs.ContainerAppProbeHTTPGetHTTPHeadersItem, 0)
 
 			for _, h := range input.Headers {
-				headers = append(headers, jobs.ContainerAppProbeHTTPGetHTTPHeadersInlined{
+				headers = append(headers, jobs.ContainerAppProbeHTTPGetHTTPHeadersItem{
 					Name:  h.Name,
 					Value: h.Value,
 				})

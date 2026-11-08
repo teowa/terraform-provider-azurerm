@@ -4,7 +4,7 @@
 package container_app_environment_storage
 
 import (
-	"github.com/hashicorp/go-azure-sdk/resource-manager/containerapps/2025-07-01/managedenvironmentsstorages"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/containerapps/2026-07-01/managedenvironmentsstorages"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/containerapps/validate"
 	storageValidate "github.com/hashicorp/terraform-provider-azurerm/internal/services/storage/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"

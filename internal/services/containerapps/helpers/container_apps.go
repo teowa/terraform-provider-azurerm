@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/keyvault"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/containerapps/2025-07-01/containerapps"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/containerapps/2025-07-01/daprcomponents"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/containerapps/2026-07-01/containerapps"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/containerapps/2026-07-01/daprcomponents"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/containerapps/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
@@ -2206,10 +2206,10 @@ func ExpandContainerAppReadinessProbe(input ContainerAppReadinessProbe) containe
 			Scheme: pointer.ToEnum[containerapps.Scheme](p),
 		}
 		if input.Headers != nil {
-			headers := make([]containerapps.ContainerAppProbeHTTPGetHTTPHeadersInlined, 0)
+			headers := make([]containerapps.ContainerAppProbeHTTPGetHTTPHeadersItem, 0)
 
 			for _, h := range input.Headers {
-				headers = append(headers, containerapps.ContainerAppProbeHTTPGetHTTPHeadersInlined{
+				headers = append(headers, containerapps.ContainerAppProbeHTTPGetHTTPHeadersItem{
 					Name:  h.Name,
 					Value: h.Value,
 				})
@@ -2472,10 +2472,10 @@ func ExpandContainerAppLivenessProbe(input ContainerAppLivenessProbe) containera
 			Scheme: pointer.ToEnum[containerapps.Scheme](p),
 		}
 		if input.Headers != nil {
-			headers := make([]containerapps.ContainerAppProbeHTTPGetHTTPHeadersInlined, 0)
+			headers := make([]containerapps.ContainerAppProbeHTTPGetHTTPHeadersItem, 0)
 
 			for _, h := range input.Headers {
-				headers = append(headers, containerapps.ContainerAppProbeHTTPGetHTTPHeadersInlined{
+				headers = append(headers, containerapps.ContainerAppProbeHTTPGetHTTPHeadersItem{
 					Name:  h.Name,
 					Value: h.Value,
 				})
@@ -2732,10 +2732,10 @@ func ExpandContainerAppStartupProbe(input ContainerAppStartupProbe) containerapp
 			Scheme: pointer.ToEnum[containerapps.Scheme](p),
 		}
 		if input.Headers != nil {
-			headers := make([]containerapps.ContainerAppProbeHTTPGetHTTPHeadersInlined, 0)
+			headers := make([]containerapps.ContainerAppProbeHTTPGetHTTPHeadersItem, 0)
 
 			for _, h := range input.Headers {
-				headers = append(headers, containerapps.ContainerAppProbeHTTPGetHTTPHeadersInlined{
+				headers = append(headers, containerapps.ContainerAppProbeHTTPGetHTTPHeadersItem{
 					Name:  h.Name,
 					Value: h.Value,
 				})

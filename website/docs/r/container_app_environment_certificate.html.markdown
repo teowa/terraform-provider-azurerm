@@ -197,4 +197,4 @@ terraform import azurerm_container_app_environment_certificate.example "/subscri
 <!-- This section is generated, changes will be overwritten -->
 This resource uses the following Azure API Providers:
 
-* `Microsoft.App` - 2025-07-01
+* `Microsoft.App` - 2026-07-01

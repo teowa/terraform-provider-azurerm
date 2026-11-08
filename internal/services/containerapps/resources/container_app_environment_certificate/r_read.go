@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-helpers/lang/response"
 	"github.com/hashicorp/go-azure-helpers/resourcemanager/tags"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/containerapps/2025-07-01/certificates"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/containerapps/2026-07-01/certificates"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 )
 
