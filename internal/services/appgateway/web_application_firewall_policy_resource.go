@@ -1,10 +1,11 @@
-// Copyright IBM Corp. 2014, 2025
+// Copyright IBM Corp. 2014, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package appgateway
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -526,10 +527,6 @@ func resourceWebApplicationFirewallPolicy() *pluginsdk.Resource {
 
 		CustomizeDiff: pluginsdk.CustomizeDiffShim(func(ctx context.Context, diff *pluginsdk.ResourceDiff, meta any) error {
 			exceptions := diff.Get("managed_rules.0.exception").([]any)
-			if len(exceptions) == 0 {
-				return nil
-			}
-
 			for i, raw := range exceptions {
 				exception := raw.(map[string]any)
 				matchVariable := exception["match_variable"].(string)
@@ -541,10 +538,24 @@ func resourceWebApplicationFirewallPolicy() *pluginsdk.Resource {
 				}
 			}
 
+			if !diff.NewValueKnown("managed_rules.0.managed_rule_set") {
+				return nil
+			}
+
+			primaryRuleSetCount := 0
 			for i, raw := range diff.Get("managed_rules.0.managed_rule_set").([]any) {
+				if !diff.NewValueKnown(fmt.Sprintf("managed_rules.0.managed_rule_set.%d.type", i)) {
+					return nil
+				}
+
 				ruleSet := raw.(map[string]any)
 
-				if ruleSet["type"].(string) == "" || ruleSet["version"].(string) == "" {
+				switch ruleSet["type"].(string) {
+				case "OWASP", "Microsoft_DefaultRuleSet":
+					primaryRuleSetCount++
+				}
+
+				if len(exceptions) == 0 || ruleSet["type"].(string) == "" || ruleSet["version"].(string) == "" {
 					continue
 				}
 				configuredVersion, err := version.NewVersion(ruleSet["version"].(string))
@@ -562,6 +573,10 @@ func resourceWebApplicationFirewallPolicy() *pluginsdk.Resource {
 						return fmt.Errorf("`managed_rules.0.managed_rule_set.%d.version` must be `2.1` or later for `Microsoft_DefaultRuleSet` when `managed_rules.0.exception` is configured", i)
 					}
 				}
+			}
+
+			if primaryRuleSetCount != 1 {
+				return errors.New("`managed_rules.0.managed_rule_set` must contain exactly one primary rule set with `type` of `OWASP` or `Microsoft_DefaultRuleSet`")
 			}
 
 			return nil
