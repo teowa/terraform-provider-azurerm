@@ -11,6 +11,9 @@ import (
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cdn/2026-10-01/afdendpoints"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cdn/2026-10-01/afdorigingroups"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cdn/2026-10-01/afdorigins"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/cdn/2026-10-01/edgeactionexecutionfilters"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/cdn/2026-10-01/edgeactions"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/cdn/2026-10-01/edgeactionversions"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cdn/2026-10-01/profiles"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cdn/2026-10-01/routes"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cdn/2026-10-01/rules"
@@ -22,17 +25,20 @@ import (
 )
 
 type Client struct {
-	AFDCustomDomainsClient          *afddomains.AFDDomainsClient
-	AFDEndpointsClient              *afdendpoints.AFDEndpointsClient
-	FrontDoorFirewallPoliciesClient *webapplicationfirewallpolicies.WebApplicationFirewallPoliciesClient
-	FrontDoorOriginGroupsClient     *afdorigingroups.AFDOriginGroupsClient
-	FrontDoorOriginsClient          *afdorigins.AFDOriginsClient
-	FrontDoorProfilesClient         *profiles.ProfilesClient
-	FrontDoorRoutesClient           *routes.RoutesClient
-	FrontDoorRulesClient            *rules.RulesClient
-	FrontDoorRuleSetsClient         *rulesets.RuleSetsClient
-	FrontDoorSecretsClient          *secrets.SecretsClient
-	FrontDoorSecurityPoliciesClient *securitypolicies.SecurityPoliciesClient
+	EdgeActionsClient                *edgeactions.EdgeActionsClient
+	EdgeActionVersionsClient         *edgeactionversions.EdgeActionVersionsClient
+	EdgeActionExecutionFiltersClient *edgeactionexecutionfilters.EdgeActionExecutionFiltersClient
+	AFDCustomDomainsClient           *afddomains.AFDDomainsClient
+	AFDEndpointsClient               *afdendpoints.AFDEndpointsClient
+	FrontDoorFirewallPoliciesClient  *webapplicationfirewallpolicies.WebApplicationFirewallPoliciesClient
+	FrontDoorOriginGroupsClient      *afdorigingroups.AFDOriginGroupsClient
+	FrontDoorOriginsClient           *afdorigins.AFDOriginsClient
+	FrontDoorProfilesClient          *profiles.ProfilesClient
+	FrontDoorRoutesClient            *routes.RoutesClient
+	FrontDoorRulesClient             *rules.RulesClient
+	FrontDoorRuleSetsClient          *rulesets.RuleSetsClient
+	FrontDoorSecretsClient           *secrets.SecretsClient
+	FrontDoorSecurityPoliciesClient  *securitypolicies.SecurityPoliciesClient
 
 	// These clients are in-use by deprecated resources/data sources, and can no longer be created.
 	// Because we are unable to test, we'll leave these on the track1 SDK.
@@ -42,6 +48,24 @@ type Client struct {
 }
 
 func NewClient(o *common.ClientOptions) (*Client, error) {
+	edgeActionsClient, err := edgeactions.NewEdgeActionsClientWithBaseURI(o.Environment.ResourceManager)
+	if err != nil {
+		return nil, fmt.Errorf("building Edge Actions Client: %+v", err)
+	}
+	o.Configure(edgeActionsClient.Client, o.Authorizers.ResourceManager)
+
+	edgeActionVersionsClient, err := edgeactionversions.NewEdgeActionVersionsClientWithBaseURI(o.Environment.ResourceManager)
+	if err != nil {
+		return nil, fmt.Errorf("building Edge Action Versions Client: %+v", err)
+	}
+	o.Configure(edgeActionVersionsClient.Client, o.Authorizers.ResourceManager)
+
+	edgeActionExecutionFiltersClient, err := edgeactionexecutionfilters.NewEdgeActionExecutionFiltersClientWithBaseURI(o.Environment.ResourceManager)
+	if err != nil {
+		return nil, fmt.Errorf("building Edge Action Execution Filters Client: %+v", err)
+	}
+	o.Configure(edgeActionExecutionFiltersClient.Client, o.Authorizers.ResourceManager)
+
 	afdCustomDomainsClient, err := afddomains.NewAFDDomainsClientWithBaseURI(o.Environment.ResourceManager)
 	if err != nil {
 		return nil, fmt.Errorf("building AFD Domains Client: %+v", err)
@@ -115,17 +139,20 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 	o.ConfigureClient(&profilesClient.Client, o.ResourceManagerAuthorizer)
 
 	client := Client{
-		AFDCustomDomainsClient:          afdCustomDomainsClient,
-		AFDEndpointsClient:              afdEndpointsClient,
-		FrontDoorFirewallPoliciesClient: &frontDoorFirewallPoliciesClient,
-		FrontDoorOriginGroupsClient:     frontDoorOriginGroupsClient,
-		FrontDoorOriginsClient:          frontDoorOriginsClient,
-		FrontDoorProfilesClient:         frontDoorProfilesClient,
-		FrontDoorRoutesClient:           frontDoorRoutesClient,
-		FrontDoorRulesClient:            frontDoorRulesClient,
-		FrontDoorRuleSetsClient:         frontDoorRuleSetsClient,
-		FrontDoorSecretsClient:          frontDoorPolicySecretsClient,
-		FrontDoorSecurityPoliciesClient: frontDoorSecurityPoliciesClient,
+		EdgeActionsClient:                edgeActionsClient,
+		EdgeActionVersionsClient:         edgeActionVersionsClient,
+		EdgeActionExecutionFiltersClient: edgeActionExecutionFiltersClient,
+		AFDCustomDomainsClient:           afdCustomDomainsClient,
+		AFDEndpointsClient:               afdEndpointsClient,
+		FrontDoorFirewallPoliciesClient:  &frontDoorFirewallPoliciesClient,
+		FrontDoorOriginGroupsClient:      frontDoorOriginGroupsClient,
+		FrontDoorOriginsClient:           frontDoorOriginsClient,
+		FrontDoorProfilesClient:          frontDoorProfilesClient,
+		FrontDoorRoutesClient:            frontDoorRoutesClient,
+		FrontDoorRulesClient:             frontDoorRulesClient,
+		FrontDoorRuleSetsClient:          frontDoorRuleSetsClient,
+		FrontDoorSecretsClient:           frontDoorPolicySecretsClient,
+		FrontDoorSecurityPoliciesClient:  frontDoorSecurityPoliciesClient,
 
 		// Leave on track1 SDK
 		CustomDomainsClient: &customDomainsClient,
