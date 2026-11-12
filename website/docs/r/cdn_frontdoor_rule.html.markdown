@@ -160,6 +160,8 @@ The following arguments are supported:
 
 An `actions` block supports the following:
 
+* `edge_action` - (Optional) One or more `edge_action` blocks as defined below.
+
 ~> **Note:** The `actions` block must define at least one action, and may include up to `5` separate actions in total.
 
 -> **Note:** Specific actions support Rule Set server variables, for more information reference [Azure Front Door Rule Set Server Variables](https://learn.microsoft.com/azure/frontdoor/rule-set-server-variables)
@@ -177,6 +179,14 @@ An `actions` block supports the following:
 * `modify_request_header` - (Optional) One or more `modify_request_header` block as defined below.
 
 * `modify_response_header` - (Optional) One or more `modify_response_header` block as defined below.
+
+---
+
+An `edge_action` block supports the following:
+
+* `cdn_edge_action_id` - (Required) The resource ID of the CDN Edge Action to invoke.
+
+* `invocation_point` - (Required) The request processing stage at which to invoke the Edge Action. Possible values are `ClientRequest`, `ClientResponse`, and `OriginRequest`.
 
 ---
 

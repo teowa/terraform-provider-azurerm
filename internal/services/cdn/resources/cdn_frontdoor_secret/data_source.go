@@ -51,6 +51,22 @@ func RegisterDataSource() *pluginsdk.Resource {
 				Computed: true,
 				Elem: &pluginsdk.Resource{
 					Schema: map[string]*pluginsdk.Schema{
+						"mtls_certificate_chain": {
+							Type:     pluginsdk.TypeList,
+							Computed: true,
+							Elem: &pluginsdk.Resource{
+								Schema: map[string]*pluginsdk.Schema{
+									"key_vault_secret_id": {
+										Type:     pluginsdk.TypeString,
+										Computed: true,
+									},
+									"expiration_date": {
+										Type:     pluginsdk.TypeString,
+										Computed: true,
+									},
+								},
+							},
+						},
 						"customer_certificate": {
 							Type:     pluginsdk.TypeList,
 							Computed: true,

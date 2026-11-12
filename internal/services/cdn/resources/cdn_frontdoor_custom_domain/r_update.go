@@ -28,6 +28,10 @@ func resourceCdnFrontDoorCustomDomainUpdate(d *pluginsdk.ResourceData, meta any)
 	props := afddomains.AFDDomainUpdateParameters{
 		Properties: &afddomains.AFDDomainUpdatePropertiesParameters{},
 	}
+	props.Properties.MtlsSettings, err = expandFrontDoorCustomDomainMutualTls(d.Get("mutual_tls").([]any), d.Get("host_name").(string))
+	if err != nil {
+		return err
+	}
 
 	if d.HasChange("dns_zone_id") {
 		if dnsZone := d.Get("dns_zone_id").(string); dnsZone != "" {

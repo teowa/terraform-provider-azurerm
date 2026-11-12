@@ -55,6 +55,25 @@ func RegisterDataSource() *pluginsdk.Resource {
 				Computed: true,
 			},
 
+			"mutual_tls": {
+				Type:     pluginsdk.TypeList,
+				Computed: true,
+				Elem: &pluginsdk.Resource{
+					Schema: map[string]*pluginsdk.Schema{
+						"scenario": {Type: pluginsdk.TypeString, Computed: true},
+						"cdn_frontdoor_secret_ids": {
+							Type: pluginsdk.TypeSet, Computed: true,
+							Elem: &pluginsdk.Schema{Type: pluginsdk.TypeString},
+						},
+						"allowed_fqdns": {
+							Type: pluginsdk.TypeSet, Computed: true,
+							Elem: &pluginsdk.Schema{Type: pluginsdk.TypeString},
+						},
+						"certificate_revocation_check_enabled": {Type: pluginsdk.TypeBool, Computed: true},
+					},
+				},
+			},
+
 			"tls": {
 				Type:     pluginsdk.TypeList,
 				Computed: true,
@@ -69,6 +88,12 @@ func RegisterDataSource() *pluginsdk.Resource {
 						"minimum_version": {
 							Type:     pluginsdk.TypeString,
 							Computed: true,
+						},
+
+						"server_tls_group_policy": {Type: pluginsdk.TypeString, Computed: true},
+						"server_tls_groups": {
+							Type: pluginsdk.TypeSet, Computed: true,
+							Elem: &pluginsdk.Schema{Type: pluginsdk.TypeString},
 						},
 
 						"cdn_frontdoor_secret_id": {
@@ -154,6 +179,14 @@ func dataSourceCdnFrontDoorCustomDomainRead(d *pluginsdk.ResourceData, meta any)
 	if model := resp.Model; model != nil {
 		if props := model.Properties; props != nil {
 			d.Set("host_name", props.HostName)
+
+			mutualTls, err := flattenFrontDoorCustomDomainMutualTls(props.MtlsSettings)
+			if err != nil {
+				return err
+			}
+			if err := d.Set("mutual_tls", mutualTls); err != nil {
+				return fmt.Errorf("setting `mutual_tls`: %+v", err)
+			}
 
 			if err := d.Set("dns_zone_id", flattenAfdDNSZoneResourceReference(props.AzureDnsZone)); err != nil {
 				return fmt.Errorf("setting `dns_zone_id`: %+v", err)

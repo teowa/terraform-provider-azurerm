@@ -73,6 +73,18 @@ func flattenAfdDomainHttpsParameters(input *afddomains.AFDDomainHTTPSParameters,
 		"certificate_type":        string(input.CertificateType),
 		"cipher_suite":            cipherSuite,
 		"minimum_version":         minTlsVersion,
+		"server_tls_group_policy": string(pointer.From(input.ServerTlsGroupPolicy)),
+		"server_tls_groups":       []string{},
+	}
+	if input.ServerTlsGroupPolicy == nil {
+		result["server_tls_group_policy"] = string(afddomains.AfdServerTlsGroupPolicyStandard)
+	}
+	if pointer.From(input.ServerTlsGroupPolicy) == afddomains.AfdServerTlsGroupPolicyCustom {
+		groups := make([]string, 0)
+		for _, group := range pointer.From(input.ServerTlsGroups) {
+			groups = append(groups, string(group))
+		}
+		result["server_tls_groups"] = groups
 	}
 
 	return []any{result}

@@ -5,6 +5,7 @@ package cdn_frontdoor_secret
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
@@ -70,9 +71,15 @@ func expandCdnFrontDoorSecretParameters(ctx context.Context, input []any, client
 	v := input[0].(map[string]any)
 
 	cc := v["customer_certificate"].([]any)
-	cc0 := cc[0].(map[string]any)
-
-	certificateId, err := keyvault.ParseNestedItemID(cc0["key_vault_certificate_id"].(string), keyvault.VersionTypeAny, keyvault.NestedItemTypeCertificate)
+	var certificateId *keyvault.NestedItemID
+	var err error
+	if chain := v["mtls_certificate_chain"].([]any); len(chain) > 0 {
+		certificateId, err = keyvault.ParseNestedItemID(chain[0].(map[string]any)["key_vault_secret_id"].(string), keyvault.VersionTypeVersioned, keyvault.NestedItemTypeSecret)
+	} else if len(cc) > 0 {
+		certificateId, err = keyvault.ParseNestedItemID(cc[0].(map[string]any)["key_vault_certificate_id"].(string), keyvault.VersionTypeAny, keyvault.NestedItemTypeCertificate)
+	} else {
+		return nil, errors.New("one of `customer_certificate` or `mtls_certificate_chain` must be specified")
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -92,6 +99,15 @@ func expandCdnFrontDoorSecretParameters(ctx context.Context, input []any, client
 	}
 
 	useLatest := certificateId.Version == ""
+	if len(v["mtls_certificate_chain"].([]any)) > 0 {
+		return secrets.AfdSecretMtlsCertificateChain{
+			Type: secrets.SecretTypeMtlsCertificateChain,
+			SecretSource: secrets.ResourceReference{
+				Id: pointer.To(parse.NewSecretVersionlessID(keyVaultId.SubscriptionId, keyVaultId.ResourceGroupName, keyVaultId.VaultName, certificateId.Name).ID()),
+			},
+			SecretVersion: certificateId.Version,
+		}, nil
+	}
 	customerCertificate := &secrets.CustomerCertificateParameters{
 		Type: secrets.SecretTypeCustomerCertificate,
 		SecretSource: secrets.ResourceReference{

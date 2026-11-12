@@ -61,6 +61,10 @@ func resourceCdnFrontDoorCustomDomainCreate(d *pluginsdk.ResourceData, meta any)
 	}
 
 	props.Properties.TlsSettings = tlsSettings
+	props.Properties.MtlsSettings, err = expandFrontDoorCustomDomainMutualTls(d.Get("mutual_tls").([]any), d.Get("host_name").(string))
+	if err != nil {
+		return err
+	}
 
 	if err := client.AFDCustomDomainsCreateCallbackThenPoll(ctx, id, props, sdk.SetIDCallback(meta, &id, d)); err != nil {
 		return fmt.Errorf("creating %s: %+v", id, err)

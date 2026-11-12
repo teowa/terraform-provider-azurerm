@@ -69,9 +69,17 @@ func flattenCdnFrontDoorSecretParameters(ctx context.Context, input secrets.Secr
 
 	result := make(map[string]any)
 
-	customerCertificate, ok := input.(secrets.CustomerCertificateParameters)
-	if !ok {
-		return nil, fmt.Errorf("received an unexpected type (`%T`)", input.(secrets.CustomerCertificateParameters))
+	var customerCertificate secrets.CustomerCertificateParameters
+	var chain *secrets.AfdSecretMtlsCertificateChain
+	switch v := input.(type) {
+	case secrets.CustomerCertificateParameters:
+		customerCertificate = v
+	case secrets.AfdSecretMtlsCertificateChain:
+		chain = &v
+		customerCertificate.SecretSource = v.SecretSource
+		customerCertificate.SecretVersion = pointer.To(v.SecretVersion)
+	default:
+		return results, fmt.Errorf("received an unexpected type (`%T`)", input)
 	}
 
 	secretSourceId, err := parse.SecretVersionlessID(pointer.From(customerCertificate.SecretSource.Id))
@@ -85,7 +93,11 @@ func flattenCdnFrontDoorSecretParameters(ctx context.Context, input secrets.Secr
 		return nil, fmt.Errorf("looking up Base URI for Certificate %q in %s: %+v", secretSourceId.SecretName, keyVaultId, err)
 	}
 
-	keyVaultCertificateId, err := keyvault.NewNestedItemID(*keyVaultBaseUri, keyvault.NestedItemTypeCertificate, secretSourceId.SecretName, pointer.From(customerCertificate.SecretVersion))
+	itemType := keyvault.NestedItemTypeCertificate
+	if chain != nil {
+		itemType = keyvault.NestedItemTypeSecret
+	}
+	keyVaultCertificateId, err := keyvault.NewNestedItemID(*keyVaultBaseUri, itemType, secretSourceId.SecretName, pointer.From(customerCertificate.SecretVersion))
 	if err != nil {
 		return nil, err
 	}
@@ -93,6 +105,15 @@ func flattenCdnFrontDoorSecretParameters(ctx context.Context, input secrets.Secr
 	certificateID := keyVaultCertificateId.ID()
 	if pointer.From(customerCertificate.UseLatestVersion) {
 		certificateID = keyVaultCertificateId.VersionlessID()
+	}
+
+	if chain != nil {
+		return []any{map[string]any{
+			"mtls_certificate_chain": []any{map[string]any{
+				"key_vault_secret_id": certificateID,
+				"expiration_date":     pointer.From(chain.ExpirationDate),
+			}},
+		}}, nil
 	}
 
 	result["customer_certificate"] = []any{

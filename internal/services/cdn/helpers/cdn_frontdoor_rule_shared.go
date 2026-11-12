@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/cdn/2026-10-01/edgeactions"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cdn/2026-10-01/rules"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cdn/2026-10-01/rulesets"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/cdn/validate"
@@ -112,11 +113,38 @@ func CdnFrontDoorSocketAddressValuesSchema() *pluginsdk.Schema {
 // Models
 
 type CdnFrontDoorRuleActionsModel struct {
+	EdgeAction                 []CdnFrontDoorRuleEdgeActionModel                       `tfschema:"edge_action"`
 	URLRedirect                []CdnFrontDoorRuleURLRedirectActionModel                `tfschema:"url_redirect"`
 	URLRewrite                 []CdnFrontDoorRuleURLRewriteActionModel                 `tfschema:"url_rewrite"`
 	ModifyRequestHeader        []CdnFrontDoorRuleHeaderActionModel                     `tfschema:"modify_request_header"`
 	ModifyResponseHeader       []CdnFrontDoorRuleHeaderActionModel                     `tfschema:"modify_response_header"`
 	RouteConfigurationOverride []CdnFrontDoorRuleRouteConfigurationOverrideActionModel `tfschema:"route_configuration_override"`
+}
+
+type CdnFrontDoorRuleEdgeActionModel struct {
+	CdnEdgeActionID string `tfschema:"cdn_edge_action_id"`
+	InvocationPoint string `tfschema:"invocation_point"`
+}
+
+func CdnFrontDoorRuleEdgeActionSchema() *pluginsdk.Schema {
+	return &pluginsdk.Schema{
+		Type:     pluginsdk.TypeList,
+		Optional: true,
+		Elem: &pluginsdk.Resource{
+			Schema: map[string]*pluginsdk.Schema{
+				"cdn_edge_action_id": {
+					Type:         pluginsdk.TypeString,
+					Required:     true,
+					ValidateFunc: edgeactions.ValidateEdgeActionID,
+				},
+				"invocation_point": {
+					Type:         pluginsdk.TypeString,
+					Required:     true,
+					ValidateFunc: validation.StringInSlice(rules.PossibleValuesForInvocationPoint(), false),
+				},
+			},
+		},
+	}
 }
 
 type CdnFrontDoorRuleURLRedirectActionModel struct {
@@ -362,6 +390,7 @@ func CountCdnFrontDoorBatchRuleActions(input []CdnFrontDoorRuleActionsModel) (ur
 	urlRedirect = len(actions.URLRedirect)
 	routeConfigurationOverride = len(actions.RouteConfigurationOverride)
 	total = urlRewrite + urlRedirect + routeConfigurationOverride + len(actions.ModifyRequestHeader) + len(actions.ModifyResponseHeader)
+	total += len(actions.EdgeAction)
 
 	return
 }

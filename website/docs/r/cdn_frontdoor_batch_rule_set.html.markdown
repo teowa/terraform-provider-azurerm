@@ -177,6 +177,8 @@ A `rule` block supports the following:
 
 An `actions` block supports the following:
 
+* `edge_action` - (Optional) One or more `edge_action` blocks as defined below.
+
 ~> **Note:** The `actions` block must define at least one action, and may include up to `5` separate actions in total.
 
 -> **Note:** Specific actions support Rule Set server variables, for more information reference [Azure Front Door Rule Set Server Variables](https://learn.microsoft.com/azure/frontdoor/rule-set-server-variables)
@@ -260,6 +262,14 @@ A `caching` block supports the following:
 * `query_string_parameters` - (Optional) A list of query string parameter names. A maximum of `100` parameters may be defined.
 
 ~> **Note:** `query_string_parameters` is required when `query_string_behaviour` is set to `IncludeSpecifiedQueryStrings` or `IgnoreSpecifiedQueryStrings`, and must not be set when `query_string_behaviour` is set to `UseQueryString` or `IgnoreQueryString`.
+
+---
+
+An `edge_action` block supports the following:
+
+* `cdn_edge_action_id` - (Required) The resource ID of the CDN Edge Action to invoke.
+
+* `invocation_point` - (Required) The request processing stage at which to invoke the Edge Action. Possible values are `ClientRequest`, `ClientResponse`, and `OriginRequest`.
 
 ---
 

@@ -130,7 +130,16 @@ func (DataSource) Attributes() map[string]*pluginsdk.Schema {
 										},
 									}},
 								},
-								"modify_request_header":  cdnFrontDoorBatchRuleSetRuleHeaderActionComputedSchema(),
+								"modify_request_header": cdnFrontDoorBatchRuleSetRuleHeaderActionComputedSchema(),
+								"edge_action": {
+									Type: pluginsdk.TypeList, Computed: true,
+									Elem: &pluginsdk.Resource{
+										Schema: map[string]*pluginsdk.Schema{
+											"cdn_edge_action_id": {Type: pluginsdk.TypeString, Computed: true},
+											"invocation_point":   {Type: pluginsdk.TypeString, Computed: true},
+										},
+									},
+								},
 								"modify_response_header": cdnFrontDoorBatchRuleSetRuleHeaderActionComputedSchema(),
 								"route_configuration_override": {
 									Type:     pluginsdk.TypeList,

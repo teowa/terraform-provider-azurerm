@@ -34,6 +34,7 @@ func RegisterResource() *pluginsdk.Resource {
 		CustomizeDiff: pluginsdk.CustomDiffWithAll(
 			pluginsdk.CustomizeDiffShim(frontDoorCustomDomainHostNameCustomizeDiff),
 			pluginsdk.CustomizeDiffShim(frontDoorCustomDomainTlsCustomizeDiff),
+			pluginsdk.CustomizeDiffShim(frontDoorCustomDomainAdvancedTlsCustomizeDiff),
 		),
 
 		Schema: cdnFrontdoorCustomDomainSchema(),

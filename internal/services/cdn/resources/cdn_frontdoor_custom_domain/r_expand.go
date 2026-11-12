@@ -5,6 +5,7 @@ package cdn_frontdoor_custom_domain
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cdn/2026-10-01/afddomains"
@@ -43,6 +44,18 @@ func expandAfdDomainTlsParameters(d *pluginsdk.ResourceData, input []any) (*afdd
 	tls := afddomains.AFDDomainHTTPSParameters{
 		CertificateType: afddomains.AfdCertificateType(certType),
 	}
+
+	groupPolicy := afddomains.AfdServerTlsGroupPolicy(v["server_tls_group_policy"].(string))
+	rawGroups := v["server_tls_groups"].(*pluginsdk.Set)
+	if err := validateFrontDoorCustomDomainTlsGroups(groupPolicy, rawGroups.Len()); err != nil {
+		return nil, err
+	}
+	groups := make([]afddomains.AfdServerTlsGroup, 0)
+	for _, group := range rawGroups.List() {
+		groups = append(groups, afddomains.AfdServerTlsGroup(group.(string)))
+	}
+	tls.ServerTlsGroupPolicy = pointer.To(groupPolicy)
+	tls.ServerTlsGroups = pointer.To(groups)
 
 	if certType == string(afddomains.AfdCertificateTypeCustomerCertificate) && secretRaw == "" {
 		return nil, errors.New("the `cdn_frontdoor_secret_id` field must be set if the `certificate_type` is `CustomerCertificate`")
@@ -85,6 +98,16 @@ func expandAfdDomainTlsParameters(d *pluginsdk.ResourceData, input []any) (*afdd
 	}
 
 	return &tls, nil
+}
+
+func validateFrontDoorCustomDomainTlsGroups(policy afddomains.AfdServerTlsGroupPolicy, count int) error {
+	if policy == afddomains.AfdServerTlsGroupPolicyCustom && count == 0 {
+		return errors.New("`tls.server_tls_groups` must be specified when `tls.server_tls_group_policy` is `Custom`")
+	}
+	if policy != afddomains.AfdServerTlsGroupPolicyCustom && count != 0 {
+		return fmt.Errorf("`tls.server_tls_groups` cannot be specified when `tls.server_tls_group_policy` is `%s`", policy)
+	}
+	return nil
 }
 
 func expandAfdCustomizedCipherSuiteSet(input []any) *afddomains.AFDDomainHTTPSCustomizedCipherSuiteSet {

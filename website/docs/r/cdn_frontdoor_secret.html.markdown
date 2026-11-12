@@ -123,7 +123,11 @@ The following arguments are supported:
 
 A `secret` block supports the following:
 
-* `customer_certificate` - (Required) A `customer_certificate` block as defined below. Changing this forces a new Front Door Secret to be created.
+* `customer_certificate` - (Optional) A `customer_certificate` block as defined below. Changing this forces a new resource to be created.
+
+* `mtls_certificate_chain` - (Optional) A `mtls_certificate_chain` block as defined below. Changing this forces a new resource to be created.
+
+~> **Note:** Exactly one of `customer_certificate` or `mtls_certificate_chain` must be specified.
 
 ---
 
@@ -132,6 +136,12 @@ A `customer_certificate` block supports the following:
 * `key_vault_certificate_id` - (Required) The ID of the Key Vault certificate resource to use. Changing this forces a new Front Door Secret to be created.
 
 -> **Note:** If you would like to use the **latest version** of the Key Vault Certificate use the Key Vault Certificates `versionless_id` attribute as the `key_vault_certificate_id` fields value(e.g. `key_vault_certificate_id = azurerm_key_vault_certificate.example.versionless_id`).
+
+---
+
+A `mtls_certificate_chain` block supports the following:
+
+* `key_vault_secret_id` - (Required) The versioned Key Vault Secret ID containing the mutual TLS certificate chain, for example `azurerm_key_vault_secret.example.id`. Changing this forces a new resource to be created.
 
 ---
 
@@ -151,6 +161,8 @@ A `secret` block exports the following:
 
 * `customer_certificate` - A `customer_certificate` block as defined below.
 
+* `mtls_certificate_chain` - A `mtls_certificate_chain` block as defined below.
+
 ---
 
 A `customer_certificate` block exports the following:
@@ -158,6 +170,12 @@ A `customer_certificate` block exports the following:
 * `expiration_date` - The key vault certificate expiration date. 
 
 * `subject_alternative_names` - One or more `subject alternative names` contained within the key vault certificate.
+
+---
+
+A `mtls_certificate_chain` block exports the following:
+
+* `expiration_date` - The earliest expiration date among the certificates in the chain.
 
 ## Timeouts
 

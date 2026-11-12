@@ -46,6 +46,8 @@ A `secret` block exports the following:
 
 * `customer_certificate` - A `customer_certificate` block as defined below.
 
+* `mtls_certificate_chain` - A `mtls_certificate_chain` block as defined below.
+
 ---
 
 A `customer_certificate` block exports the following:
@@ -56,6 +58,14 @@ A `customer_certificate` block exports the following:
 * `key_vault_certificate_id` - The key vault certificate ID.
 
 * `subject_alternative_names` - One or more `subject alternative names` contained within the key vault certificate.
+
+---
+
+A `mtls_certificate_chain` block exports the following:
+
+* `expiration_date` - The earliest expiration date among the certificates in the chain.
+
+* `key_vault_secret_id` - The versioned Key Vault Secret ID containing the mutual TLS certificate chain.
 
 ---
 

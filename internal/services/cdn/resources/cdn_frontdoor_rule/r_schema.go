@@ -46,6 +46,7 @@ func (c Resource) Arguments() map[string]*pluginsdk.Schema {
 			MaxItems: 1,
 			Elem: &pluginsdk.Resource{
 				Schema: map[string]*pluginsdk.Schema{
+					"edge_action": helpers.CdnFrontDoorRuleEdgeActionSchema(),
 					"url_redirect": {
 						Type:     pluginsdk.TypeList,
 						Optional: true,

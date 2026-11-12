@@ -36,6 +36,8 @@ func cdnFrontdoorCustomDomainSchema() map[string]*pluginsdk.Schema {
 			ValidateFunc: zones.ValidateDnsZoneID,
 		},
 
+		"mutual_tls": frontDoorCustomDomainMutualTlsSchema(),
+
 		"host_name": {
 			Type:         pluginsdk.TypeString,
 			ForceNew:     true,
@@ -66,6 +68,22 @@ func cdnFrontdoorCustomDomainSchema() map[string]*pluginsdk.Schema {
 						ValidateFunc: validation.StringInSlice([]string{
 							string(afddomains.AfdMinimumTlsVersionTLSOneTwo),
 						}, false),
+					},
+
+					"server_tls_group_policy": {
+						Type:         pluginsdk.TypeString,
+						Optional:     true,
+						Default:      string(afddomains.AfdServerTlsGroupPolicyStandard),
+						ValidateFunc: validation.StringInSlice(afddomains.PossibleValuesForAfdServerTlsGroupPolicy(), false),
+					},
+
+					"server_tls_groups": {
+						Type:     pluginsdk.TypeSet,
+						Optional: true,
+						Elem: &pluginsdk.Schema{
+							Type:         pluginsdk.TypeString,
+							ValidateFunc: validation.StringInSlice(afddomains.PossibleValuesForAfdServerTlsGroup(), false),
+						},
 					},
 
 					"cdn_frontdoor_secret_id": {

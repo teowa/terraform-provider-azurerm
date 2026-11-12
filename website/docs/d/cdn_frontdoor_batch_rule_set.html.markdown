@@ -60,6 +60,8 @@ A `rules` block exports the following:
 
 An `actions` block exports the following:
 
+* `edge_action` - One or more `edge_action` blocks as defined below.
+
 * `modify_request_header` - One or more `modify_request_header` blocks as defined below.
 
 * `modify_response_header` - One or more `modify_response_header` blocks as defined below.
@@ -69,6 +71,14 @@ An `actions` block exports the following:
 * `url_redirect` - A `url_redirect` block as defined below.
 
 * `url_rewrite` - A `url_rewrite` block as defined below.
+
+---
+
+An `edge_action` block exports the following:
+
+* `cdn_edge_action_id` - The resource ID of the CDN Edge Action.
+
+* `invocation_point` - The request processing stage at which the Edge Action is invoked.
 
 ---
 

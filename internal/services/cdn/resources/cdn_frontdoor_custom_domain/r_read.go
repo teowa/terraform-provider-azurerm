@@ -43,6 +43,14 @@ func resourceCdnFrontDoorCustomDomainRead(d *pluginsdk.ResourceData, meta any) e
 		if props := model.Properties; props != nil {
 			d.Set("host_name", props.HostName)
 
+			mutualTls, err := flattenFrontDoorCustomDomainMutualTls(props.MtlsSettings)
+			if err != nil {
+				return err
+			}
+			if err := d.Set("mutual_tls", mutualTls); err != nil {
+				return fmt.Errorf("setting `mutual_tls`: %+v", err)
+			}
+
 			if err := d.Set("dns_zone_id", flattenAfdDNSZoneResourceReference(props.AzureDnsZone)); err != nil {
 				return fmt.Errorf("setting `dns_zone_id`: %+v", err)
 			}

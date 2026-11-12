@@ -160,27 +160,13 @@ The following arguments are supported:
 
 -> **Note:** If you are using Azure to host your [DNS domains](https://learn.microsoft.com/azure/dns/dns-overview), you must delegate the domain provider's domain name system (DNS) to an Azure DNS Zone. For more information, see [Delegate a domain to Azure DNS](https://learn.microsoft.com/azure/dns/dns-delegate-domain-azure-dns). Otherwise, if you're using your own domain provider to handle your DNS, you must validate the Front Door Custom Domain by creating the DNS TXT records manually.
 
+* `mutual_tls` - (Optional) A `mutual_tls` block as defined below.
+
+~> **Note:** `mutual_tls` cannot be configured when `host_name` is a wildcard domain.
+
 <!-- * `pre_validated_cdn_frontdoor_custom_domain_id` - (Optional) The resource ID of the pre-validated Front Door Custom Domain. This domain type is used when you wish to onboard a validated Azure service domain, and then configure the Azure service behind an Azure Front Door.
 
 -> **Note:** Currently `pre_validated_cdn_frontdoor_custom_domain_id` only supports domains validated by Static Web App. -->
-
----
-
-A `tls` block supports the following:
-
-* `cdn_frontdoor_secret_id` - (Optional) Resource ID of the Front Door Secret.
-
-~> **Note:** `cdn_frontdoor_secret_id` must be specified when `certificate_type` is `CustomerCertificate` and must not be specified when `certificate_type` is `ManagedCertificate`.
-
-* `certificate_type` - (Optional) Defines the source of the SSL certificate. Possible values are `CustomerCertificate` and `ManagedCertificate`. Defaults to `ManagedCertificate`.
-
--> **Note:** It may take up to 15 minutes for the Front Door Service to validate the state and domain ownership of the Custom Domain.
-
-~> **Note:** When `certificate_type` is `ManagedCertificate`, `host_name` must not exceed 64 characters. Azure Front Door supports managed certificates for apex and wildcard domains, but apex-domain certificate rotation can require revalidation of domain ownership and wildcard-domain managed certificates are not rotated automatically.
-
-* `cipher_suite` - (Optional) A `cipher_suite` block as defined below.
-
-* `minimum_version` - (Optional) TLS protocol version that will be used for HTTPS. The only possible value is `TLS12`. Defaults to `TLS12`.
 
 ---
 
@@ -203,6 +189,46 @@ A `custom_ciphers` block supports the following:
 * `tls13` - (Optional) A set of TLS 1.3 cipher suites. Possible values are `TLS_AES_128_GCM_SHA256` and `TLS_AES_256_GCM_SHA384`.
 
 ~> **Note:** When `tls13` is specified, it must include both `TLS_AES_128_GCM_SHA256` and `TLS_AES_256_GCM_SHA384`.
+
+---
+
+A `mutual_tls` block supports the following:
+
+* `scenario` - (Required) The mutual TLS scenario. Possible values are `ClientCertificateRequiredAndOriginValidates`, `ClientCertificateRequiredAndValidated`, `ClientCertificateValidatedIfPresented`, and `CompleteMtlsPassthroughToOrigin`.
+
+* `allowed_fqdns` - (Optional) A set of allowed client certificate fully qualified domain names.
+
+* `cdn_frontdoor_secret_ids` - (Optional) A set of Front Door Secret IDs containing the client certificate validation chains.
+
+~> **Note:** `cdn_frontdoor_secret_ids` must be specified when `scenario` is `ClientCertificateRequiredAndValidated` or `ClientCertificateValidatedIfPresented` and must not be specified otherwise.
+
+* `certificate_revocation_check_enabled` - (Optional) Whether `certificate revocation check` is enabled. Defaults to `false`.
+
+~> **Note:** `allowed_fqdns` must not be specified and `certificate_revocation_check_enabled` must be `false` unless `scenario` is `ClientCertificateRequiredAndValidated` or `ClientCertificateValidatedIfPresented`.
+
+---
+
+A `tls` block supports the following:
+
+* `cdn_frontdoor_secret_id` - (Optional) Resource ID of the Front Door Secret.
+
+~> **Note:** `cdn_frontdoor_secret_id` must be specified when `certificate_type` is `CustomerCertificate` and must not be specified when `certificate_type` is `ManagedCertificate`.
+
+* `certificate_type` - (Optional) Defines the source of the SSL certificate. Possible values are `CustomerCertificate` and `ManagedCertificate`. Defaults to `ManagedCertificate`.
+
+-> **Note:** It may take up to 15 minutes for the Front Door Service to validate the state and domain ownership of the Custom Domain.
+
+~> **Note:** When `certificate_type` is `ManagedCertificate`, `host_name` must not exceed 64 characters. Azure Front Door supports managed certificates for apex and wildcard domains, but apex-domain certificate rotation can require revalidation of domain ownership and wildcard-domain managed certificates are not rotated automatically.
+
+* `cipher_suite` - (Optional) A `cipher_suite` block as defined above.
+
+* `minimum_version` - (Optional) TLS protocol version that will be used for HTTPS. The only possible value is `TLS12`. Defaults to `TLS12`.
+
+* `server_tls_group_policy` - (Optional) The server TLS key-exchange group policy. Possible values are `Custom`, `Enhanced`, and `Standard`. Defaults to `Standard`.
+
+* `server_tls_groups` - (Optional) A set of server TLS key-exchange groups. Possible values are `prime256v1`, `SecP256r1MLKEM768`, `SecP384r1MLKEM1024`, `secp384r1`, `secp521r1`, `X25519`, and `X25519MLKEM768`.
+
+~> **Note:** `server_tls_groups` must be specified when `server_tls_group_policy` is `Custom` and must not be specified otherwise.
 
 ---
 

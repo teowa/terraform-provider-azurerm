@@ -11,6 +11,7 @@ import (
 
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cdn/2026-10-01/afdorigins"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/cdn/2026-10-01/edgeactions"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/cdn/2026-10-01/rulesets"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/cdn/helpers"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/cdn/validate"
@@ -164,6 +165,21 @@ func expandCdnFrontDoorBatchRuleSetActions(input []helpers.CdnFrontDoorRuleActio
 		return nil, err
 	}
 
+	for _, item := range actions.EdgeAction {
+		id, err := edgeactions.ParseEdgeActionID(item.CdnEdgeActionID)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, rulesets.EdgeAction{
+			Name: rulesets.DeliveryRuleActionNameEdgeAction,
+			Parameters: rulesets.DeliveryRuleEdgeActionParameters{
+				TypeName:            rulesets.DeliveryRuleActionParametersTypeDeliveryRuleEdgeActionParameters,
+				EdgeActionReference: rulesets.ResourceReference{Id: pointer.To(id.ID())},
+				InvocationPoint:     rulesets.InvocationPoint(item.InvocationPoint),
+			},
+		})
+	}
+
 	for _, item := range actions.URLRedirect {
 		results = append(results, rulesets.URLRedirectAction{
 			Name: rulesets.DeliveryRuleActionNameURLRedirect,
@@ -250,6 +266,14 @@ func flattenCdnFrontDoorBatchRuleSetActions(input *[]rulesets.DeliveryRuleAction
 
 	for _, action := range *input {
 		switch a := action.(type) {
+		case rulesets.EdgeAction:
+			id, err := edgeactions.ParseEdgeActionIDInsensitively(pointer.From(a.Parameters.EdgeActionReference.Id))
+			if err != nil {
+				return results, err
+			}
+			actions.EdgeAction = append(actions.EdgeAction, helpers.CdnFrontDoorRuleEdgeActionModel{
+				CdnEdgeActionID: id.ID(), InvocationPoint: string(a.Parameters.InvocationPoint),
+			})
 		case rulesets.URLRedirectAction:
 			actions.URLRedirect = append(actions.URLRedirect, helpers.CdnFrontDoorRuleURLRedirectActionModel{
 				RedirectType:        string(a.Parameters.RedirectType),

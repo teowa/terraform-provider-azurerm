@@ -44,21 +44,11 @@ In addition to the Arguments listed above - the following Attributes are exporte
 
 * `host_name` - The host name of the domain.
 
+* `mutual_tls` - A `mutual_tls` block as defined below.
+
 * `tls` - A `tls` block as defined below.
 
 * `validation_token` - The challenge used for DNS TXT record or file based validation.
-
----
-
-A `tls` block exports the following:
-
-* `certificate_type` - The SSL certificate type.
-
-* `cdn_frontdoor_secret_id` - The Resource ID of the Front Door Secret.
-
-* `cipher_suite` - A `cipher_suite` block as defined below.
-
-* `minimum_version` - The TLS protocol version that will be used for Https connections.
 
 ---
 
@@ -75,6 +65,34 @@ A `custom_ciphers` block exports the following:
 * `tls12` - A set of TLS 1.2 cipher suites.
 
 * `tls13` - A set of TLS 1.3 cipher suites.
+
+---
+
+A `mutual_tls` block exports the following:
+
+* `allowed_fqdns` - The allowed client certificate fully qualified domain names.
+
+* `cdn_frontdoor_secret_ids` - The Front Door Secret IDs containing the client certificate validation chains.
+
+* `certificate_revocation_check_enabled` - Whether `certificate revocation check` is enabled.
+
+* `scenario` - The mutual TLS scenario.
+
+---
+
+A `tls` block exports the following:
+
+* `cdn_frontdoor_secret_id` - The Resource ID of the Front Door Secret.
+
+* `certificate_type` - The SSL certificate type.
+
+* `cipher_suite` - A `cipher_suite` block as defined above.
+
+* `minimum_version` - The TLS protocol version that will be used for HTTPS connections.
+
+* `server_tls_group_policy` - The server TLS key-exchange group policy.
+
+* `server_tls_groups` - The custom server TLS key-exchange groups.
 
 ---
 
