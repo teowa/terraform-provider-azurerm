@@ -6,14 +6,12 @@ package client
 import (
 	"fmt"
 
-	"github.com/hashicorp/go-azure-sdk/resource-manager/dataprotection/2025-07-01/backupinstanceresources"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/dataprotection/2025-07-01/backupvaultresources"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/dataprotection/2025-07-01/basebackuppolicyresources"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/dataprotection/2025-07-01/resourceguardproxybaseresources"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/dataprotection/2025-07-01/resourceguardresources"
-	backupinstanceresources20260601 "github.com/hashicorp/go-azure-sdk/resource-manager/dataprotection/2026-06-01/backupinstanceresources"
-	"github.com/hashicorp/go-azure-sdk/resource-manager/dataprotection/2026-06-01/backupinstances"
-	basebackuppolicyresources20260601 "github.com/hashicorp/go-azure-sdk/resource-manager/dataprotection/2026-06-01/basebackuppolicyresources"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/dataprotection/2026-07-01/backupinstanceresources"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/dataprotection/2026-07-01/backupinstances"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/dataprotection/2026-07-01/backupvaultresources"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/dataprotection/2026-07-01/basebackuppolicyresources"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/dataprotection/2026-07-01/resourceguardproxybaseresources"
+	"github.com/hashicorp/go-azure-sdk/resource-manager/dataprotection/2026-07-01/resourceguardresources"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/common"
 )
 
@@ -21,15 +19,9 @@ type Client struct {
 	BackupVaultClient        *backupvaultresources.BackupVaultResourcesClient
 	BackupPolicyClient       *basebackuppolicyresources.BaseBackupPolicyResourcesClient
 	BackupInstanceClient     *backupinstanceresources.BackupInstanceResourcesClient
+	BackupInstancesClient    *backupinstances.BackupInstancesClient
 	ResourceGuardProxyClient *resourceguardproxybaseresources.ResourceGuardProxyBaseResourcesClient
 	ResourceGuardClient      *resourceguardresources.ResourceGuardResourcesClient
-
-	// Using 2026-06-01 only for resources requiring its new features.
-	// Backup vaults stay on 2025-07-01 because 2026-06-01 requires soft delete to be AlwaysOn,
-	// which would break existing configurations using other soft-delete settings.
-	BackupPolicyClient20260601    *basebackuppolicyresources20260601.BaseBackupPolicyResourcesClient
-	BackupInstanceClient20260601  *backupinstanceresources20260601.BackupInstanceResourcesClient
-	BackupInstancesClient20260601 *backupinstances.BackupInstancesClient
 }
 
 func NewClient(o *common.ClientOptions) (*Client, error) {
@@ -63,33 +55,18 @@ func NewClient(o *common.ClientOptions) (*Client, error) {
 	}
 	o.Configure(resourceGuardProxyClient.Client, o.Authorizers.ResourceManager)
 
-	backupPolicyClient20260601, err := basebackuppolicyresources20260601.NewBaseBackupPolicyResourcesClientWithBaseURI(o.Environment.ResourceManager)
+	backupInstancesClient, err := backupinstances.NewBackupInstancesClientWithBaseURI(o.Environment.ResourceManager)
 	if err != nil {
-		return nil, fmt.Errorf("building 2026-06-01 BaseBackupPolicyResources client: %+v", err)
+		return nil, fmt.Errorf("building BackupInstances client: %+v", err)
 	}
-	o.Configure(backupPolicyClient20260601.Client, o.Authorizers.ResourceManager)
-
-	backupInstanceClient20260601, err := backupinstanceresources20260601.NewBackupInstanceResourcesClientWithBaseURI(o.Environment.ResourceManager)
-	if err != nil {
-		return nil, fmt.Errorf("building 2026-06-01 BackupInstanceResources client: %+v", err)
-	}
-	o.Configure(backupInstanceClient20260601.Client, o.Authorizers.ResourceManager)
-
-	backupInstancesClient20260601, err := backupinstances.NewBackupInstancesClientWithBaseURI(o.Environment.ResourceManager)
-	if err != nil {
-		return nil, fmt.Errorf("building 2026-06-01 BackupInstances client: %+v", err)
-	}
-	o.Configure(backupInstancesClient20260601.Client, o.Authorizers.ResourceManager)
+	o.Configure(backupInstancesClient.Client, o.Authorizers.ResourceManager)
 
 	return &Client{
 		BackupVaultClient:        backupVaultClient,
 		BackupPolicyClient:       backupPolicyClient,
 		BackupInstanceClient:     backupInstanceClient,
+		BackupInstancesClient:    backupInstancesClient,
 		ResourceGuardProxyClient: resourceGuardProxyClient,
 		ResourceGuardClient:      resourceGuardClient,
-
-		BackupPolicyClient20260601:    backupPolicyClient20260601,
-		BackupInstanceClient20260601:  backupInstanceClient20260601,
-		BackupInstancesClient20260601: backupInstancesClient20260601,
 	}, nil
 }
