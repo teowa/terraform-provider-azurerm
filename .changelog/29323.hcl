@@ -1,0 +1,19 @@
+change "resource-fix" {
+  body = "`azurerm_hdinsight_hadoop_cluster` - the identity specified in `disk_encryption.key_vault_managed_identity_id` is now assigned to the cluster"
+}
+
+change "resource-fix" {
+  body = "`azurerm_hdinsight_hbase_cluster` - the identity specified in `disk_encryption.key_vault_managed_identity_id` is now assigned to the cluster"
+}
+
+change "resource-fix" {
+  body = "`azurerm_hdinsight_interactive_query_cluster` - the identity specified in `disk_encryption.key_vault_managed_identity_id` is now assigned to the cluster"
+}
+
+change "resource-fix" {
+  body = "`azurerm_hdinsight_kafka_cluster` - the identity specified in `disk_encryption.key_vault_managed_identity_id` is now assigned to the cluster"
+}
+
+change "resource-fix" {
+  body = "`azurerm_hdinsight_spark_cluster` - the identity specified in `disk_encryption.key_vault_managed_identity_id` is now assigned to the cluster"
+}
