@@ -1,4 +1,4 @@
-// Copyright IBM Corp. 2014, 2025
+// Copyright IBM Corp. 2014, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package helpers
@@ -108,16 +108,11 @@ func AuthV2SettingsSchema() *pluginsdk.Schema {
 				},
 
 				"unauthenticated_action": {
-					Type:     pluginsdk.TypeString,
-					Optional: true,
-					Default:  string(webapps.UnauthenticatedClientActionV2RedirectToLoginPage),
-					ValidateFunc: validation.StringInSlice([]string{
-						string(webapps.UnauthenticatedClientActionV2RedirectToLoginPage),
-						string(webapps.UnauthenticatedClientActionV2AllowAnonymous),
-						string(webapps.UnauthenticatedClientActionV2ReturnFourZeroOne),
-						string(webapps.UnauthenticatedClientActionV2ReturnFourZeroThree),
-					}, false),
-					Description: "The action to take for requests made without authentication. Possible values include `RedirectToLoginPage`, `AllowAnonymous`, `Return401`, and `Return403`. Defaults to `RedirectToLoginPage`.",
+					Type:         pluginsdk.TypeString,
+					Optional:     true,
+					Default:      string(webapps.UnauthenticatedClientActionV2RedirectToLoginPage),
+					ValidateFunc: validation.StringInSlice(webapps.PossibleValuesForUnauthenticatedClientActionV2(), false),
+					Description:  "The action to take for requests made without authentication. Possible values include `RedirectToLoginPage`, `AllowAnonymous`, `Return401`, and `Return403`. Defaults to `RedirectToLoginPage`.",
 				},
 
 				"default_provider": {
@@ -154,7 +149,7 @@ func AuthV2SettingsSchema() *pluginsdk.Schema {
 
 				"twitter_v2": TwitterAuthV2SettingsSchema(),
 
-				"login": authV2LoginSchema(),
+				"login": AuthV2LoginSchema(),
 
 				"require_https": {
 					Type:        pluginsdk.TypeBool,
@@ -172,15 +167,11 @@ func AuthV2SettingsSchema() *pluginsdk.Schema {
 				},
 
 				"forward_proxy_convention": {
-					Type:     pluginsdk.TypeString,
-					Optional: true,
-					Default:  string(webapps.ForwardProxyConventionNoProxy),
-					ValidateFunc: validation.StringInSlice([]string{
-						string(webapps.ForwardProxyConventionNoProxy),
-						string(webapps.ForwardProxyConventionCustom),
-						string(webapps.ForwardProxyConventionStandard),
-					}, false),
-					Description: "The convention used to determine the url of the request made. Possible values include `ForwardProxyConventionNoProxy`, `ForwardProxyConventionStandard`, `ForwardProxyConventionCustom`. Defaults to `ForwardProxyConventionNoProxy`",
+					Type:         pluginsdk.TypeString,
+					Optional:     true,
+					Default:      string(webapps.ForwardProxyConventionNoProxy),
+					ValidateFunc: validation.StringInSlice(webapps.PossibleValuesForForwardProxyConvention(), false),
+					Description:  "The convention used to determine the url of the request made. Possible values include `ForwardProxyConventionNoProxy`, `ForwardProxyConventionStandard`, `ForwardProxyConventionCustom`. Defaults to `ForwardProxyConventionNoProxy`",
 				},
 
 				"forward_proxy_custom_host_header_name": {
@@ -269,7 +260,7 @@ func AuthV2SettingsComputedSchema() *pluginsdk.Schema {
 
 				"twitter_v2": TwitterAuthV2SettingsSchemaComputed(),
 
-				"login": authV2LoginSchemaComputed(),
+				"login": AuthV2LoginSchemaComputed(),
 
 				"require_https": {
 					Type:        pluginsdk.TypeBool,
@@ -319,7 +310,7 @@ type AuthV2Login struct {
 	NonceExpirationTime           string   `tfschema:"nonce_expiration_time"`
 }
 
-func authV2LoginSchema() *pluginsdk.Schema {
+func AuthV2LoginSchema() *pluginsdk.Schema {
 	return &pluginsdk.Schema{
 		Type:     pluginsdk.TypeList,
 		MaxItems: 1,
@@ -385,14 +376,11 @@ func authV2LoginSchema() *pluginsdk.Schema {
 				},
 
 				"cookie_expiration_convention": {
-					Type:     pluginsdk.TypeString,
-					Optional: true,
-					Default:  string(webapps.CookieExpirationConventionFixedTime),
-					ValidateFunc: validation.StringInSlice([]string{
-						string(webapps.CookieExpirationConventionIdentityProviderDerived),
-						string(webapps.CookieExpirationConventionFixedTime),
-					}, false),
-					Description: "The method by which cookies expire. Possible values include: `FixedTime`, and `IdentityProviderDerived`. Defaults to `FixedTime`.",
+					Type:         pluginsdk.TypeString,
+					Optional:     true,
+					Default:      string(webapps.CookieExpirationConventionFixedTime),
+					ValidateFunc: validation.StringInSlice(webapps.PossibleValuesForCookieExpirationConvention(), false),
+					Description:  "The method by which cookies expire. Possible values include: `FixedTime`, and `IdentityProviderDerived`. Defaults to `FixedTime`.",
 				},
 
 				"cookie_expiration_time": {
@@ -422,7 +410,7 @@ func authV2LoginSchema() *pluginsdk.Schema {
 	}
 }
 
-func authV2LoginSchemaComputed() *pluginsdk.Schema {
+func AuthV2LoginSchemaComputed() *pluginsdk.Schema {
 	return &pluginsdk.Schema{
 		Type:     pluginsdk.TypeList,
 		Computed: true,
@@ -500,7 +488,7 @@ func authV2LoginSchemaComputed() *pluginsdk.Schema {
 	}
 }
 
-func expandAuthV2LoginSettings(input []AuthV2Login) *webapps.Login {
+func ExpandAuthV2LoginSettings(input []AuthV2Login) *webapps.Login {
 	if len(input) == 0 {
 		return nil
 	}
@@ -518,7 +506,7 @@ func expandAuthV2LoginSettings(input []AuthV2Login) *webapps.Login {
 			NonceExpirationInterval: pointer.To(login.NonceExpirationTime),
 		},
 		CookieExpiration: &webapps.CookieExpiration{
-			Convention:       pointer.To(webapps.CookieExpirationConvention(login.CookieExpirationConvention)),
+			Convention:       pointer.ToEnum[webapps.CookieExpirationConvention](login.CookieExpirationConvention),
 			TimeToExpiration: pointer.To(login.CookieExpirationTime),
 		},
 	}
@@ -558,7 +546,7 @@ func expandAuthV2LoginSettings(input []AuthV2Login) *webapps.Login {
 	return result
 }
 
-func flattenAuthV2LoginSettings(input *webapps.Login) []AuthV2Login {
+func FlattenAuthV2LoginSettings(input *webapps.Login) []AuthV2Login {
 	if input == nil {
 		return []AuthV2Login{}
 	}
@@ -586,7 +574,7 @@ func flattenAuthV2LoginSettings(input *webapps.Login) []AuthV2Login {
 	}
 
 	if cookie := input.CookieExpiration; cookie != nil {
-		result.CookieExpirationConvention = string(pointer.From(cookie.Convention))
+		result.CookieExpirationConvention = pointer.FromEnum(cookie.Convention)
 		result.CookieExpirationTime = pointer.From(cookie.TimeToExpiration)
 	}
 
@@ -674,7 +662,7 @@ func AppleAuthV2SettingsSchemaComputed() *pluginsdk.Schema {
 	}
 }
 
-func expandAppleAuthV2Settings(input []AppleAuthV2Settings) *webapps.Apple {
+func ExpandAppleAuthV2Settings(input []AppleAuthV2Settings) *webapps.Apple {
 	if len(input) == 1 {
 		apple := input[0]
 		return &webapps.Apple{
@@ -694,7 +682,7 @@ func expandAppleAuthV2Settings(input []AppleAuthV2Settings) *webapps.Apple {
 	}
 }
 
-func flattenAppleAuthV2Settings(input *webapps.Apple) []AppleAuthV2Settings {
+func FlattenAppleAuthV2Settings(input *webapps.Apple) []AppleAuthV2Settings {
 	if input == nil || !pointer.From(input.Enabled) {
 		return []AppleAuthV2Settings{}
 	}
@@ -956,7 +944,7 @@ func AadAuthV2SettingsSchemaComputed() *pluginsdk.Schema {
 	}
 }
 
-func expandAadAuthV2Settings(input []AadAuthV2Settings) *webapps.AzureActiveDirectory {
+func ExpandAadAuthV2Settings(input []AadAuthV2Settings) *webapps.AzureActiveDirectory {
 	result := &webapps.AzureActiveDirectory{
 		Enabled: pointer.To(false),
 	}
@@ -1038,7 +1026,7 @@ func expandAadAuthV2Settings(input []AadAuthV2Settings) *webapps.AzureActiveDire
 	return result
 }
 
-func flattenAadAuthV2Settings(input *webapps.AzureActiveDirectory) []AadAuthV2Settings {
+func FlattenAadAuthV2Settings(input *webapps.AzureActiveDirectory) []AadAuthV2Settings {
 	if input == nil || !pointer.From(input.Enabled) {
 		return []AadAuthV2Settings{}
 	}
@@ -1135,7 +1123,7 @@ func StaticWebAppAuthV2SettingsSchemaComputed() *pluginsdk.Schema {
 	}
 }
 
-func expandStaticWebAppAuthV2Settings(input []StaticWebAppAuthV2Settings) *webapps.AzureStaticWebApps {
+func ExpandStaticWebAppAuthV2Settings(input []StaticWebAppAuthV2Settings) *webapps.AzureStaticWebApps {
 	if len(input) == 1 {
 		swa := input[0]
 		return &webapps.AzureStaticWebApps{
@@ -1151,16 +1139,16 @@ func expandStaticWebAppAuthV2Settings(input []StaticWebAppAuthV2Settings) *webap
 	}
 }
 
-func flattenStaticWebAppAuthV2Settings(input *webapps.AzureStaticWebApps) []StaticWebAppAuthV2Settings {
+func FlattenStaticWebAppAuthV2Settings(input *webapps.AzureStaticWebApps) []StaticWebAppAuthV2Settings {
 	if input == nil || (input.Enabled != nil && !*input.Enabled) {
 		return []StaticWebAppAuthV2Settings{}
 	}
 
 	result := StaticWebAppAuthV2Settings{}
 
-	if props := input; props != nil && pointer.From(props.Enabled) {
-		if props.Registration != nil {
-			result.ClientId = pointer.From(props.Registration.ClientId)
+	if pointer.From(input.Enabled) {
+		if input.Registration != nil {
+			result.ClientId = pointer.From(input.Registration.ClientId)
 		}
 	}
 
@@ -1354,7 +1342,7 @@ func CustomOIDCAuthV2SettingsSchemaComputed() *pluginsdk.Schema {
 	}
 }
 
-func expandCustomOIDCAuthV2Settings(input []CustomOIDCAuthV2Settings) map[string]webapps.CustomOpenIdConnectProvider {
+func ExpandCustomOIDCAuthV2Settings(input []CustomOIDCAuthV2Settings) map[string]webapps.CustomOpenIdConnectProvider {
 	if len(input) == 0 {
 		return nil
 	}
@@ -1390,7 +1378,7 @@ func expandCustomOIDCAuthV2Settings(input []CustomOIDCAuthV2Settings) map[string
 	return result
 }
 
-func flattenCustomOIDCAuthV2Settings(input *map[string]webapps.CustomOpenIdConnectProvider) []CustomOIDCAuthV2Settings {
+func FlattenCustomOIDCAuthV2Settings(input *map[string]webapps.CustomOpenIdConnectProvider) []CustomOIDCAuthV2Settings {
 	if input == nil || len(*input) == 0 {
 		return []CustomOIDCAuthV2Settings{}
 	}
@@ -1407,7 +1395,7 @@ func flattenCustomOIDCAuthV2Settings(input *map[string]webapps.CustomOpenIdConne
 				provider.ClientId = pointer.From(reg.ClientId)
 				if reg.ClientCredential != nil {
 					provider.ClientSecretSettingName = pointer.From(reg.ClientCredential.ClientSecretSettingName)
-					provider.ClientCredentialMethod = string(pointer.From(reg.ClientCredential.Method))
+					provider.ClientCredentialMethod = pointer.FromEnum(reg.ClientCredential.Method)
 				}
 				if config := reg.OpenIdConnectConfiguration; config != nil {
 					provider.OpenIDConfigurationEndpoint = pointer.From(config.WellKnownOpenIdConfiguration)
@@ -1472,7 +1460,7 @@ func FacebookAuthV2SettingsSchema() *pluginsdk.Schema {
 				"graph_api_version": {
 					Type:         pluginsdk.TypeString,
 					Optional:     true,
-					Computed:     true,
+					Computed:     true, // azignore:AZS007 - pre-existing violation
 					ValidateFunc: validation.StringIsNotEmpty,
 					Description:  "The version of the Facebook API to be used while logging in.",
 				},
@@ -1527,7 +1515,7 @@ func FacebookAuthV2SettingsSchemaComputed() *pluginsdk.Schema {
 	}
 }
 
-func expandFacebookAuthV2Settings(input []FacebookAuthV2Settings) *webapps.Facebook {
+func ExpandFacebookAuthV2Settings(input []FacebookAuthV2Settings) *webapps.Facebook {
 	if len(input) == 1 {
 		facebook := input[0]
 		result := &webapps.Facebook{
@@ -1551,7 +1539,7 @@ func expandFacebookAuthV2Settings(input []FacebookAuthV2Settings) *webapps.Faceb
 	}
 }
 
-func flattenFacebookAuthV2Settings(input *webapps.Facebook) []FacebookAuthV2Settings {
+func FlattenFacebookAuthV2Settings(input *webapps.Facebook) []FacebookAuthV2Settings {
 	if input == nil || !pointer.From(input.Enabled) {
 		return []FacebookAuthV2Settings{}
 	}
@@ -1651,10 +1639,10 @@ func GithubAuthV2SettingsSchemaComputed() *pluginsdk.Schema {
 	}
 }
 
-func expandGitHubAuthV2Settings(input []GithubAuthV2Settings) *webapps.GitHub {
+func ExpandGitHubAuthV2Settings(input []GithubAuthV2Settings) *webapps.GitHub {
 	if len(input) == 1 {
 		github := input[0]
-		result := &webapps.GitHub{
+		return &webapps.GitHub{
 			Enabled: pointer.To(true),
 			Registration: &webapps.ClientRegistration{
 				ClientId:                pointer.To(github.ClientId),
@@ -1664,8 +1652,6 @@ func expandGitHubAuthV2Settings(input []GithubAuthV2Settings) *webapps.GitHub {
 				Scopes: pointer.To(github.LoginScopes),
 			},
 		}
-
-		return result
 	}
 
 	return &webapps.GitHub{
@@ -1673,7 +1659,7 @@ func expandGitHubAuthV2Settings(input []GithubAuthV2Settings) *webapps.GitHub {
 	}
 }
 
-func flattenGitHubAuthV2Settings(input *webapps.GitHub) []GithubAuthV2Settings {
+func FlattenGitHubAuthV2Settings(input *webapps.GitHub) []GithubAuthV2Settings {
 	if input == nil || !pointer.From(input.Enabled) {
 		return []GithubAuthV2Settings{}
 	}
@@ -1794,7 +1780,7 @@ func GoogleAuthV2SettingsSchemaComputed() *pluginsdk.Schema {
 	}
 }
 
-func expandGoogleAuthV2Settings(input []GoogleAuthV2Settings) *webapps.Google {
+func ExpandGoogleAuthV2Settings(input []GoogleAuthV2Settings) *webapps.Google {
 	if len(input) == 1 {
 		google := input[0]
 		return &webapps.Google{
@@ -1817,7 +1803,7 @@ func expandGoogleAuthV2Settings(input []GoogleAuthV2Settings) *webapps.Google {
 	}
 }
 
-func flattenGoogleAuthV2Settings(input *webapps.Google) []GoogleAuthV2Settings {
+func FlattenGoogleAuthV2Settings(input *webapps.Google) []GoogleAuthV2Settings {
 	if input == nil || !pointer.From(input.Enabled) {
 		return []GoogleAuthV2Settings{}
 	}
@@ -1940,7 +1926,7 @@ func MicrosoftAuthV2SettingsSchemaComputed() *pluginsdk.Schema {
 	}
 }
 
-func expandMicrosoftAuthV2Settings(input []MicrosoftAuthV2Settings) *webapps.LegacyMicrosoftAccount {
+func ExpandMicrosoftAuthV2Settings(input []MicrosoftAuthV2Settings) *webapps.LegacyMicrosoftAccount {
 	if len(input) == 1 {
 		msft := input[0]
 		return &webapps.LegacyMicrosoftAccount{
@@ -1963,7 +1949,7 @@ func expandMicrosoftAuthV2Settings(input []MicrosoftAuthV2Settings) *webapps.Leg
 	}
 }
 
-func flattenMicrosoftAuthV2Settings(input *webapps.LegacyMicrosoftAccount) []MicrosoftAuthV2Settings {
+func FlattenMicrosoftAuthV2Settings(input *webapps.LegacyMicrosoftAccount) []MicrosoftAuthV2Settings {
 	if input == nil || !pointer.From(input.Enabled) {
 		return []MicrosoftAuthV2Settings{}
 	}
@@ -2045,18 +2031,16 @@ func TwitterAuthV2SettingsSchemaComputed() *pluginsdk.Schema {
 	}
 }
 
-func expandTwitterAuthV2Settings(input []TwitterAuthV2Settings) *webapps.Twitter {
+func ExpandTwitterAuthV2Settings(input []TwitterAuthV2Settings) *webapps.Twitter {
 	if len(input) == 1 {
 		twitter := input[0]
-		result := &webapps.Twitter{
+		return &webapps.Twitter{
 			Enabled: pointer.To(true),
 			Registration: &webapps.TwitterRegistration{
 				ConsumerKey:               pointer.To(twitter.ConsumerKey),
 				ConsumerSecretSettingName: pointer.To(twitter.ConsumerSecretSettingName),
 			},
 		}
-
-		return result
 	}
 
 	return &webapps.Twitter{
@@ -2064,7 +2048,7 @@ func expandTwitterAuthV2Settings(input []TwitterAuthV2Settings) *webapps.Twitter
 	}
 }
 
-func flattenTwitterAuthV2Settings(input *webapps.Twitter) []TwitterAuthV2Settings {
+func FlattenTwitterAuthV2Settings(input *webapps.Twitter) []TwitterAuthV2Settings {
 	if input == nil || !pointer.From(input.Enabled) {
 		return []TwitterAuthV2Settings{}
 	}
@@ -2078,7 +2062,7 @@ func flattenTwitterAuthV2Settings(input *webapps.Twitter) []TwitterAuthV2Setting
 		return []TwitterAuthV2Settings{result}
 	}
 
-	return nil
+	return []TwitterAuthV2Settings{}
 }
 
 func ExpandAuthV2Settings(input []AuthV2Settings) *webapps.SiteAuthSettingsV2 {
@@ -2096,28 +2080,28 @@ func ExpandAuthV2Settings(input []AuthV2Settings) *webapps.SiteAuthSettingsV2 {
 		},
 		GlobalValidation: &webapps.GlobalValidation{
 			RequireAuthentication:       pointer.To(settings.RequireAuth),
-			UnauthenticatedClientAction: pointer.To(webapps.UnauthenticatedClientActionV2(settings.UnauthenticatedAction)),
+			UnauthenticatedClientAction: pointer.ToEnum[webapps.UnauthenticatedClientActionV2](settings.UnauthenticatedAction),
 			ExcludedPaths:               pointer.To(settings.ExcludedPaths),
 		},
 		IdentityProviders: &webapps.IdentityProviders{
-			AzureActiveDirectory:         expandAadAuthV2Settings(settings.AzureActiveDirectoryAuth),
-			Facebook:                     expandFacebookAuthV2Settings(settings.FacebookAuth),
-			GitHub:                       expandGitHubAuthV2Settings(settings.GithubAuth),
-			Google:                       expandGoogleAuthV2Settings(settings.GoogleAuth),
-			Twitter:                      expandTwitterAuthV2Settings(settings.TwitterAuth),
-			CustomOpenIdConnectProviders: pointer.To(expandCustomOIDCAuthV2Settings(settings.CustomOIDCAuth)),
-			LegacyMicrosoftAccount:       expandMicrosoftAuthV2Settings(settings.MicrosoftAuth),
-			Apple:                        expandAppleAuthV2Settings(settings.AppleAuth),
-			AzureStaticWebApps:           expandStaticWebAppAuthV2Settings(settings.AzureStaticWebAuth),
+			AzureActiveDirectory:         ExpandAadAuthV2Settings(settings.AzureActiveDirectoryAuth),
+			Facebook:                     ExpandFacebookAuthV2Settings(settings.FacebookAuth),
+			GitHub:                       ExpandGitHubAuthV2Settings(settings.GithubAuth),
+			Google:                       ExpandGoogleAuthV2Settings(settings.GoogleAuth),
+			Twitter:                      ExpandTwitterAuthV2Settings(settings.TwitterAuth),
+			CustomOpenIdConnectProviders: pointer.To(ExpandCustomOIDCAuthV2Settings(settings.CustomOIDCAuth)),
+			LegacyMicrosoftAccount:       ExpandMicrosoftAuthV2Settings(settings.MicrosoftAuth),
+			Apple:                        ExpandAppleAuthV2Settings(settings.AppleAuth),
+			AzureStaticWebApps:           ExpandStaticWebAppAuthV2Settings(settings.AzureStaticWebAuth),
 		},
-		Login: expandAuthV2LoginSettings(settings.Login),
+		Login: ExpandAuthV2LoginSettings(settings.Login),
 		HTTPSettings: &webapps.HTTPSettings{
 			RequireHTTPS: pointer.To(settings.RequireHTTPS),
 			Routes: &webapps.HTTPSettingsRoutes{
 				ApiPrefix: pointer.To(settings.HttpRoutesAPIPrefix),
 			},
 			ForwardProxy: &webapps.ForwardProxy{
-				Convention: pointer.To(webapps.ForwardProxyConvention(settings.ForwardProxyConvention)),
+				Convention: pointer.ToEnum[webapps.ForwardProxyConvention](settings.ForwardProxyConvention),
 			},
 		},
 	}
@@ -2162,7 +2146,7 @@ func FlattenAuthV2Settings(input webapps.SiteAuthSettingsV2) []AuthV2Settings {
 
 	if global := settings.GlobalValidation; global != nil {
 		result.RequireAuth = pointer.From(global.RequireAuthentication)
-		result.UnauthenticatedAction = string(pointer.From(global.UnauthenticatedClientAction))
+		result.UnauthenticatedAction = pointer.FromEnum(global.UnauthenticatedClientAction)
 		result.DefaultAuthProvider = pointer.From(global.RedirectToProvider)
 		result.ExcludedPaths = pointer.From(global.ExcludedPaths)
 	}
@@ -2173,26 +2157,26 @@ func FlattenAuthV2Settings(input webapps.SiteAuthSettingsV2) []AuthV2Settings {
 			result.HttpRoutesAPIPrefix = pointer.From(http.Routes.ApiPrefix)
 		}
 		if fp := http.ForwardProxy; fp != nil {
-			result.ForwardProxyConvention = string(pointer.From(fp.Convention))
+			result.ForwardProxyConvention = pointer.FromEnum(fp.Convention)
 			result.ForwardProxyCustomHostHeaderName = pointer.From(fp.CustomHostHeaderName)
 			result.ForwardProxyCustomSchemeHeaderName = pointer.From(fp.CustomProtoHeaderName)
 		}
 	}
 
 	if login := settings.Login; login != nil {
-		result.Login = flattenAuthV2LoginSettings(login)
+		result.Login = FlattenAuthV2LoginSettings(login)
 	}
 
 	if authProviders := settings.IdentityProviders; authProviders != nil {
-		result.AppleAuth = flattenAppleAuthV2Settings(authProviders.Apple)
-		result.AzureActiveDirectoryAuth = flattenAadAuthV2Settings(authProviders.AzureActiveDirectory)
-		result.AzureStaticWebAuth = flattenStaticWebAppAuthV2Settings(authProviders.AzureStaticWebApps)
-		result.CustomOIDCAuth = flattenCustomOIDCAuthV2Settings(authProviders.CustomOpenIdConnectProviders)
-		result.FacebookAuth = flattenFacebookAuthV2Settings(authProviders.Facebook)
-		result.GithubAuth = flattenGitHubAuthV2Settings(authProviders.GitHub)
-		result.GoogleAuth = flattenGoogleAuthV2Settings(authProviders.Google)
-		result.MicrosoftAuth = flattenMicrosoftAuthV2Settings(authProviders.LegacyMicrosoftAccount)
-		result.TwitterAuth = flattenTwitterAuthV2Settings(authProviders.Twitter)
+		result.AppleAuth = FlattenAppleAuthV2Settings(authProviders.Apple)
+		result.AzureActiveDirectoryAuth = FlattenAadAuthV2Settings(authProviders.AzureActiveDirectory)
+		result.AzureStaticWebAuth = FlattenStaticWebAppAuthV2Settings(authProviders.AzureStaticWebApps)
+		result.CustomOIDCAuth = FlattenCustomOIDCAuthV2Settings(authProviders.CustomOpenIdConnectProviders)
+		result.FacebookAuth = FlattenFacebookAuthV2Settings(authProviders.Facebook)
+		result.GithubAuth = FlattenGitHubAuthV2Settings(authProviders.GitHub)
+		result.GoogleAuth = FlattenGoogleAuthV2Settings(authProviders.Google)
+		result.MicrosoftAuth = FlattenMicrosoftAuthV2Settings(authProviders.LegacyMicrosoftAccount)
+		result.TwitterAuth = FlattenTwitterAuthV2Settings(authProviders.Twitter)
 	}
 
 	return []AuthV2Settings{result}
