@@ -1,5 +1,6 @@
 
 AAD B2C
+API Center
 API Management
 Active Directory Domain Services
 Advisor
@@ -84,7 +85,6 @@ Network
 Network Function
 New Relic
 Oracle
-Orbital
 Palo Alto
 Policy
 Portal
@@ -96,7 +96,6 @@ Qumulo
 Recovery Services
 Red Hat OpenShift
 Redis
-Redis Enterprise
 Search
 Security Center
 Sentinel
@@ -112,6 +111,5 @@ System Center Virtual Machine Manager
 Template
 Trusted Signing
 Video Indexer
-Voice Services
 Web PubSub
 Workloads
