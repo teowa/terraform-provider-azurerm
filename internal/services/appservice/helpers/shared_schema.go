@@ -1,4 +1,4 @@
-// Copyright IBM Corp. 2014, 2025
+// Copyright IBM Corp. 2014, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package helpers
@@ -292,13 +292,13 @@ func CorsSettingsSchema() *pluginsdk.Schema {
 			if stateCors == nil || planCors == nil {
 				return false
 			}
-			stateAttrs := stateCors.([]interface{})
-			planAttrs := planCors.([]interface{})
+			stateAttrs := stateCors.([]any)
+			planAttrs := planCors.([]any)
 
 			// Fixes https://github.com/hashicorp/terraform-provider-azurerm/issues/22879
 			// If the plan wants to set default values and the state is empty; suppress diff
 			if len(stateAttrs) == 0 && len(planAttrs) > 0 && planAttrs[0] != nil {
-				planAttr := planAttrs[0].(map[string]interface{})
+				planAttr := planAttrs[0].(map[string]any)
 
 				newAllowedOrigins, ok := planAttr["allowed_origins"].(*schema.Set)
 				if !ok {
@@ -1234,7 +1234,7 @@ func ExpandIpRestrictions(restrictions []IpRestriction) (*[]webapps.IPSecurityRe
 
 		restriction.Action = pointer.To(v.Action)
 
-		restriction.Headers = expandIpRestrictionHeaders(v.Headers)
+		restriction.Headers = ExpandIpRestrictionHeaders(v.Headers)
 
 		expanded = append(expanded, restriction)
 	}
@@ -1242,7 +1242,7 @@ func ExpandIpRestrictions(restrictions []IpRestriction) (*[]webapps.IPSecurityRe
 	return &expanded, nil
 }
 
-func expandIpRestrictionHeaders(headers []IpRestrictionHeaders) *map[string][]string {
+func ExpandIpRestrictionHeaders(headers []IpRestrictionHeaders) *map[string][]string {
 	result := make(map[string][]string)
 	if len(headers) == 0 {
 		return nil
@@ -1374,8 +1374,8 @@ func FlattenAuthSettings(auth *webapps.SiteAuthSettings) []AuthSettings {
 	props := *auth.Properties
 
 	result := AuthSettings{
-		DefaultProvider:             string(pointer.From(props.DefaultProvider)),
-		UnauthenticatedClientAction: string(pointer.From(props.UnauthenticatedClientAction)),
+		DefaultProvider:             pointer.FromEnum(props.DefaultProvider),
+		UnauthenticatedClientAction: pointer.FromEnum(props.UnauthenticatedClientAction),
 	}
 
 	if props.Enabled != nil {
@@ -1563,7 +1563,7 @@ func FlattenIpRestrictions(ipRestrictionsList *[]webapps.IPSecurityRestriction) 
 			ipRestriction.Action = *v.Action
 		}
 
-		ipRestriction.Headers = flattenIpRestrictionHeaders(pointer.From(v.Headers))
+		ipRestriction.Headers = FlattenIpRestrictionHeaders(pointer.From(v.Headers))
 		if v.Description != nil {
 			ipRestriction.Description = *v.Description
 		}
@@ -1574,7 +1574,7 @@ func FlattenIpRestrictions(ipRestrictionsList *[]webapps.IPSecurityRestriction) 
 	return ipRestrictions
 }
 
-func flattenIpRestrictionHeaders(headers map[string][]string) []IpRestrictionHeaders {
+func FlattenIpRestrictionHeaders(headers map[string][]string) []IpRestrictionHeaders {
 	if len(headers) == 0 {
 		return []IpRestrictionHeaders{}
 	}
